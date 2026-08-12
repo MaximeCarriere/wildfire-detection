@@ -434,8 +434,13 @@ per batch-8 iteration, or **~23.7 min per epoch**.
 
 What that implies for §2:
 
-- **Pruning recovery fine-tune (XP6)** — one run, ~20 epochs from an already-trained model:
-  **~4 h at 640, ~2.5 h at 512** of compute. An overnight job. **No GPU rental needed.**
+- **Pruning recovery fine-tune (XP6)** — one run from an already-trained model. The
+  compute-only figure above says ~2.5 h at 512 for 20 epochs. **Measured in XP6 with the
+  real dataloader and augmentation: ~20 min/epoch at 512 px, batch 8 — roughly 3x the
+  compute-only estimate**, because the Orin's CPU, not its GPU, is the bottleneck for JPEG
+  decode and mosaic. So ~4 h for 12 epochs. Still an overnight job, still **no GPU rental
+  needed** — but every wall-clock estimate derived from the compute-only table above should
+  be multiplied by about three.
 - **XP4's distillation ladder** — ~5 rungs x 2 arms = 10 runs at ~24 min/epoch:
   **8+ days of board time for 50 epochs each.** Not feasible here. It needs a rented GPU, or
   the ladder needs shrinking (fewer rungs, fewer epochs, or 512px training — which is 37%

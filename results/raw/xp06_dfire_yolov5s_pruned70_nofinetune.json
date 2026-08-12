@@ -1,0 +1,90 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_pruned70_nofinetune",
+  "params_m": 0.6206,
+  "size_disk_mb": 2.935,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.0,
+  "map5095_dfire_test": 0.0,
+  "map50_fire_class": 0.0,
+  "map50_smoke_class": 0.0,
+  "map50_small_plume": 0.0,
+  "map50_tiny_plume": 0.0,
+  "bg_false_alarm_rate": 0.0,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "latency_ms_median": 23.715,
+    "latency_ms_median_se": 0.0117,
+    "latency_ms_p95": 24.153,
+    "fps_batch1": 42.02,
+    "fps_se": 0.068,
+    "runs": 3,
+    "warmup_frames": 50,
+    "measured_frames": 1000,
+    "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+    "protocol_compliant": true,
+    "power_w_mean": 6.73,
+    "energy_j_per_1000_frames": 159.64,
+    "gpu_util_pct": 62.8,
+    "temp_c_peak": 56.218,
+    "batch": 16,
+    "fps_batched": 312.21,
+    "fps_batched_se": 2.727,
+    "ms_per_image_batched": 3.203,
+    "measured_images": 960,
+    "mem_mb": 660.1
+  },
+  "accuracy_detail": {
+    "map50": 0.0,
+    "map5095": 0.0,
+    "per_class": {
+      "smoke": {
+        "map50": 0.0,
+        "map5095": 0.0
+      },
+      "fire": {
+        "map50": 0.0,
+        "map5095": 0.0
+      }
+    },
+    "small_plume": {
+      "map50": 0.0,
+      "map5095": 0.0
+    },
+    "tiny_plume": {
+      "map50": 0.0,
+      "map5095": 0.0
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 0,
+      "false_alarm_rate": 0.0,
+      "false_boxes_per_bg_image": 0.0
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 0,
+    "fingerprint": "720fd865df4a253c"
+  },
+  "ood_detail": null,
+  "notes": "XP6 structured channel pruning of yolov5s at 512px. Requested channel ratio 0.7; achieved 91.2% parameter and 88.9% MAC reduction. NO recovery fine-tune \u2014 this is the raw structural damage.",
+  "prune_meta": {
+    "requested_channel_ratio": 0.7,
+    "params_m_before": 7.025,
+    "params_m_after": 0.6206,
+    "params_reduction": 0.9117,
+    "gmacs_before": 5.075,
+    "gmacs_after": 0.561,
+    "macs_reduction": 0.8895
+  },
+  "train_meta": null
+}

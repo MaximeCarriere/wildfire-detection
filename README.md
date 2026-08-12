@@ -31,13 +31,14 @@ That runs on a fanless $249 computer drawing about 11 watts.
 | [XP0](experiments/xp00_foundation/) | Data, splits, measuring harness | Splits frozen and checksummed; class labels *proven* from the data, not assumed |
 | [XP1](experiments/xp01_baselines/) | Baselines | **A 6.6× bigger model buys 1.4 accuracy points** at 3.3× the energy |
 | [XP2](experiments/xp02_resolution/) | Resolution — the null hypothesis | **512px beats 640px outright**; overall accuracy hides a 77% collapse in distant-smoke detection |
+| [XP6](experiments/xp06_pruning/) | Pruning | **Cutting 2% of channels costs 9 accuracy points**; removing 89% of the arithmetic buys only 1.7× speed |
 | [XP9](experiments/xp09_tensorrt_fp16/) | TensorRT FP16 | **Up to 5× faster, accuracy free** — and it exposed that all earlier speed numbers were measuring the software |
 | [XP10](experiments/xp10_int8_slices/) | INT8 quantization | **One default setting cost 67% of the accuracy**; fixed, the real cost is ~8% |
 | [XP12](experiments/xp12_endurance/) | Endurance | 10 min flat out, 280k images, −1.3% drift, no throttling |
 
-Planned and not yet run: distillation (XP3–5), pruning and sparsity (XP6–8),
-quantization-aware training (XP11), full-stack demo (XP13), and a cascade "sleeping
-detector" (XP14). See [PLAN.md](PLAN.md).
+Planned and not yet run: distillation (XP3–5, needs a rented GPU — measured at 8+ days on
+this board), 2:4 sparsity (XP7), quantization-aware training (XP11), full-stack demo (XP13),
+and a cascade "sleeping detector" (XP14). See [PLAN.md](PLAN.md).
 
 ## Three findings worth the click
 

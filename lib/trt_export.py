@@ -230,3 +230,65 @@ def build_int8_engine(onnx_path: Path, engine_path: Path, *, calibrator,
 
 
 __all__ = ["make_calibrator", "build_int8_engine"]
+
+
+def export_onnx_from_model(model, onnx_path: Path, *, res: int = 512,
+                           dynamic: bool = True, device: str = "cuda:0",
+                           repo: Path | None = None) -> Path:
+    """Export a *live* YOLOv5 model object to ONNX.
+
+    Needed because a pruned network no longer matches its architecture file, so
+    YOLOv5's own ``export.py`` (which rebuilds from the config) cannot load it.
+
+    The Detect module has to be switched into export mode explicitly: in training
+    or inference mode it writes into its output tensor in place, which the ONNX
+    tracer records as a fixed-size scatter and which then breaks for any other
+    input resolution or batch size.
+    """
+    import sys
+
+    import torch
+
+    if repo is not None and str(repo) not in sys.path:
+        sys.path.insert(0, str(repo))
+
+    model = model.float().eval().to(device)
+    for m in model.modules():
+        if type(m).__name__ == "Detect":
+            m.inplace = False
+            m.dynamic = dynamic
+            m.export = True
+
+    onnx_path = Path(onnx_path)
+    onnx_path.parent.mkdir(parents=True, exist_ok=True)
+    dummy = torch.zeros(1, 3, res, res, device=device)
+    with torch.no_grad():
+        model(dummy)                      # warm the tracer through one clean pass
+
+    axes = {"images": {0: "batch", 2: "height", 3: "width"},
+            "output0": {0: "batch", 1: "anchors"}} if dynamic else None
+    torch.onnx.export(
+        model, dummy, str(onnx_path), verbose=False, opset_version=13,
+        do_constant_folding=True, input_names=["images"], output_names=["output0"],
+        dynamic_axes=axes,
+    )
+    return onnx_path
+
+
+def build_fp16_engine(onnx_path: Path, engine_path: Path, *, res: int,
+                      max_batch: int = 16, trtexec: str = "/usr/src/tensorrt/bin/trtexec") -> Path:
+    """FP16 engine via trtexec — the same path XP9's engines were built with, so
+    the pruned models land on exactly the same measurement footing."""
+    import subprocess
+
+    engine_path = Path(engine_path)
+    cmd = [trtexec, f"--onnx={onnx_path}", f"--saveEngine={engine_path}", "--fp16",
+           f"--minShapes=images:1x3x{res}x{res}",
+           f"--optShapes=images:1x3x{res}x{res}",
+           f"--maxShapes=images:{max_batch}x3x{res}x{res}",
+           "--skipInference"]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if not engine_path.exists():
+        tail = "\n".join(r.stdout.splitlines()[-15:])
+        raise RuntimeError(f"engine build failed for {onnx_path.name}:\n{tail}")
+    return engine_path
