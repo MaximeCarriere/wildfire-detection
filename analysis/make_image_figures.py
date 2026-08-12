@@ -185,23 +185,82 @@ def resolution_visual(samples) -> Path | None:
         d = det.predict([s.image])[0]
         return any(sc >= thr and iou(gt, xy) >= 0.3 for xy, sc in zip(d.xyxy, d.scores))
 
+    # Sorted large-first: among frames that fail the test, we want the most
+    # visible one. A target the reader cannot see unaided makes the figure a
+    # matter of trust rather than evidence.
+    def central(s):
+        """Reject targets hugging the frame edge. D-Fire's surveillance frames
+        carry burnt-in camera IDs and timestamps along the top and bottom, which
+        both wreck the contrast score and get clipped by the letterbox padding."""
+        b = min(s.boxes, key=lambda b: b.area_frac)
+        return 0.10 < b.cy < 0.85 and 0.08 < b.cx < 0.92
+
     cands = [s for s in samples
              if s.boxes and 1 <= len(s.boxes) <= 3
-             and 0.0004 < min(b.area_frac for b in s.boxes) < 0.006]
+             and 0.004 < min(b.area_frac for b in s.boxes) < 0.04
+             and central(s)]
+    cands.sort(key=lambda s: -min(b.area_frac for b in s.boxes))
     # Daylight only: a dark frame renders as a black rectangle on a README page.
     bright = []
-    for s in cands[:400]:
+    for s in cands[:600]:
         if dataset.image_stats(s.image)["mean"] > 70:
             bright.append(s)
-        if len(bright) >= 120:
+        if len(bright) >= 200:
             break
 
-    chosen = None
-    for s in bright:
-        if hits_small_gt(dets[640], s) and not hits_small_gt(dets[320], s):
-            chosen = s
-            break
-    chosen = chosen or (bright[0] if bright else cands[0])
+    def visibility(s):
+        """How obvious is the target to a human? Contrast of the box against the
+        ring of image immediately around it. A smoke column against sky scores
+        high; a haze band blending into a ridge scores near zero — and a figure
+        whose target the reader cannot see unaided proves nothing."""
+        import cv2
+        import numpy as np
+        im = cv2.imread(str(s.image), cv2.IMREAD_GRAYSCALE)
+        h, w = im.shape[:2]
+        b = min(s.boxes, key=lambda b: b.area_frac)
+        x0, y0, x1, y1 = [int(v) for v in b.to_xyxy(w, h)]
+        x0, y0 = max(0, x0), max(0, y0)
+        x1, y1 = min(w, x1), min(h, y1)
+        if x1 - x0 < 3 or y1 - y0 < 3:
+            return 0.0
+        inner = im[y0:y1, x0:x1].astype(float)
+        pad = max(int(0.6 * max(x1 - x0, y1 - y0)), 8)
+        rx0, ry0 = max(0, x0 - pad), max(0, y0 - pad)
+        rx1, ry1 = min(w, x1 + pad), min(h, y1 + pad)
+        ring = im[ry0:ry1, rx0:rx1].astype(float).copy()
+        ring[y0 - ry0:y1 - ry0, x0 - rx0:x1 - rx0] = np.nan
+        outer = np.nanmean(ring)
+        if not np.isfinite(outer):
+            return 0.0
+        return abs(float(inner.mean()) - outer)
+
+    def conf_on_target(det, s):
+        """Best confidence the detector assigns to the labelled target."""
+        import cv2
+        im = cv2.imread(str(s.image))
+        h, w = im.shape[:2]
+        gt = min(s.boxes, key=lambda b: b.area_frac).to_xyxy(w, h)
+        d = det.predict([s.image])[0]
+        hits = [sc for xy, sc in zip(d.xyxy, d.scores) if iou(gt, xy) >= 0.3]
+        return max(hits) if hits else 0.0
+
+    # Rank on: clearly visible to a human, AND confidence that falls as resolution
+    # falls. Requiring an outright miss kept selecting marginal, ugly frames; a
+    # monotonic decline tells the same story and stays legible.
+    scored = []
+    for s in bright[:60]:
+        confs = [conf_on_target(dets[r], s) for r in RESOLUTIONS]
+        if confs[0] < 0.5:                       # must be solidly found at full res
+            continue
+        decline = confs[0] - confs[-1]
+        scored.append((visibility(s) / 255 * 0.5 + decline, s, confs))
+    if scored:
+        scored.sort(key=lambda t: -t[0])
+        _, chosen, chosen_confs = scored[0]
+        print(f"  picked {chosen.rel}: confidence {[round(c,2) for c in chosen_confs]} "
+              f"across {RESOLUTIONS}, contrast {visibility(chosen):.0f}/255", flush=True)
+    else:
+        chosen = bright[0] if bright else cands[0]
     print(f"  resolution_visual frame: {chosen.rel} "
           f"(smallest target {min(b.area_frac for b in chosen.boxes)*100:.3f}% of frame)",
           flush=True)
@@ -226,9 +285,13 @@ def resolution_visual(samples) -> Path | None:
                              gridspec_kw={"height_ratios": [2.05, 1.0]})
     fig.suptitle("The same frame as the model actually receives it", y=1.02,
                  fontsize=14, fontweight="bold")
+    _, _ratio_min, _ = letterbox(im0, (min(RESOLUTIONS), min(RESOLUTIONS)),
+                                 stride=32, auto=False)
+    _side_min = max((gx1 - gx0) * _ratio_min[0], (gy1 - gy0) * _ratio_min[1])
     style.subtitle(fig, "Top: the network input at each resolution. Bottom: the target "
-                        "magnified. Fewer pixels reach the model each step — by 320 px the "
-                        "plume is ~12 px across and is missed.", y=0.975)
+                        f"magnified. Fewer pixels reach the model each step — at "
+                        f"{min(RESOLUTIONS)} px the target is ~{_side_min:.0f} px across.",
+                   y=0.975)
 
     for col, res in enumerate(RESOLUTIONS):
         lb, ratio, (dw, dh) = letterbox(im0, (res, res), stride=32, auto=False)
@@ -252,9 +315,12 @@ def resolution_visual(samples) -> Path | None:
                                    fill=False, edgecolor=SMOKE
                                    if dataset.CLASS_NAMES[d.classes[i]] == "smoke" else FIRE,
                                    linewidth=1.6))
+        best = max([d.scores[i] for i in keep
+                    if iou((gx0, gy0, gx1, gy1), d.xyxy[i]) >= 0.3], default=0.0)
         colour = style.INK if found_small else "#d03b3b"
         ax.set_title(f"{res} × {res} px input\n"
-                     f"{'target found' if found_small else 'target MISSED'}",
+                     + (f"target found — confidence {best:.2f}" if found_small
+                        else "target MISSED"),
                      fontsize=11, color=colour, fontweight="bold", pad=6)
         ax.set_xticks([]); ax.set_yticks([])
         for sp in ax.spines.values():
@@ -263,7 +329,7 @@ def resolution_visual(samples) -> Path | None:
         # Bottom row: the target region magnified, same crop in every panel.
         axz = axes[1, col]
         cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
-        half = max(side * 3.0, 26)
+        half = min(max(side * 1.7, 22), res * 0.22)
         zx0, zx1 = int(max(0, cx - half)), int(min(res, cx + half))
         zy0, zy1 = int(max(0, cy - half)), int(min(res, cy + half))
         axz.imshow(disp[zy0:zy1, zx0:zx1], interpolation="nearest")

@@ -13,10 +13,16 @@ How much of the compression story does it already explain?
 ![The same frame at four resolutions](../../results/figures/xp02_resolution_visual.png)
 
 Each panel is the image **as the network receives it** — letterboxed to a square at that
-resolution, with the grey bars the model actually sees. The bottom row magnifies the target:
-the same plume measures 21, 17, 14 and 11 pixels across. It is detected at 640 and 512 and
-missed at 416 and 320, while the overall accuracy score barely moves. That gap between "the
-headline number is fine" and "it can no longer see the thing" is the whole finding.
+resolution, grey bars included. The bottom row magnifies the target.
+
+The plume here is obvious to the eye, and the detector still finds it at every resolution —
+but its confidence slides from **0.75 to 0.48** as the target shrinks from 116 to 58 pixels.
+That slide is the mechanism: on a plume a quarter this size the same decline crosses the
+detection threshold and the target is simply gone. That is what the −77% tiny-plume column
+in the table below is made of, and why overall accuracy barely moves while it happens.
+
+The frame is chosen automatically — most visible target whose confidence declines with
+resolution — rather than picked by hand.
 
 ## The frontier
 
