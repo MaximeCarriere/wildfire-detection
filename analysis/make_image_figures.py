@@ -27,6 +27,7 @@ sys.path.insert(0, str(REPO))
 from analysis import style              # noqa: E402
 from lib import data as dataset         # noqa: E402
 from lib import evaluator               # noqa: E402
+from lib.detectors import YOLOV5_REPO as YOLOV5_REPO_PATH   # noqa: E402
 
 FIGURES = REPO / "results" / "figures"
 RESOLUTIONS = [640, 512, 416, 320]
@@ -205,30 +206,73 @@ def resolution_visual(samples) -> Path | None:
           f"(smallest target {min(b.area_frac for b in chosen.boxes)*100:.3f}% of frame)",
           flush=True)
 
-    fig, axes = plt.subplots(1, 4, figsize=(15, 4.2))
-    fig.suptitle("The same frame, seen at four resolutions", y=1.06,
-                 fontsize=14, fontweight="bold")
-    style.subtitle(fig, "What the detector finds as pixels are taken away. The frame is "
-                        "selected automatically: its smallest labelled target is found at "
-                        "640 px and missed at 320 px.", y=1.0)
+    # Render what the MODEL receives, not the original photo. An earlier version
+    # drew the full-resolution frame in all four panels and changed only the boxes,
+    # so the panels looked identical and the figure silently made the opposite of
+    # its point. Each panel below is the actual letterboxed network input at its
+    # true pixel count, upscaled with nearest-neighbour for display so the lost
+    # detail is visible rather than smoothed back in by the renderer.
+    import cv2
+    import numpy as np
+    sys.path.insert(0, str(YOLOV5_REPO_PATH))
+    from utils.augmentations import letterbox
 
-    im = _load_rgb(chosen.image)
-    h, w = im.shape[:2]
-    for ax, res in zip(axes, RESOLUTIONS):
+    im0 = cv2.imread(str(chosen.image))
+    h0, w0 = im0.shape[:2]
+    gt_box = min(chosen.boxes, key=lambda b: b.area_frac)
+    gx0, gy0, gx1, gy1 = gt_box.to_xyxy(w0, h0)
+
+    fig, axes = plt.subplots(2, 4, figsize=(15.5, 7.0),
+                             gridspec_kw={"height_ratios": [2.05, 1.0]})
+    fig.suptitle("The same frame as the model actually receives it", y=1.02,
+                 fontsize=14, fontweight="bold")
+    style.subtitle(fig, "Top: the network input at each resolution. Bottom: the target "
+                        "magnified. Fewer pixels reach the model each step — by 320 px the "
+                        "plume is ~12 px across and is missed.", y=0.975)
+
+    for col, res in enumerate(RESOLUTIONS):
+        lb, ratio, (dw, dh) = letterbox(im0, (res, res), stride=32, auto=False)
+        disp = lb[..., ::-1]                       # BGR -> RGB, res x res
+        # Ground truth mapped into letterbox space.
+        bx0, by0 = gx0 * ratio[0] + dw, gy0 * ratio[1] + dh
+        bx1, by1 = gx1 * ratio[0] + dw, gy1 * ratio[1] + dh
+        side = max(bx1 - bx0, by1 - by0)
+
         d = dets[res].predict([chosen.image])[0]
         keep = [i for i, sc in enumerate(d.scores) if sc >= 0.35]
-        ax.imshow(im)
-        _draw_boxes(ax, [d.xyxy[i] for i in keep], w, h, gt=False,
-                    scores=[d.scores[i] for i in keep],
-                    classes=[d.classes[i] for i in keep])
-        found = len(keep)
-        colour = style.INK if found else "#d03b3b"
-        ax.set_title(f"{res} px — {found} detection{'s' if found != 1 else ''}"
-                     + ("" if found else "  ✕ missed"),
+        found_small = any(iou((gx0, gy0, gx1, gy1), d.xyxy[i]) >= 0.3 for i in keep)
+
+        ax = axes[0, col]
+        ax.imshow(disp, interpolation="nearest")
+        for i in keep:                              # predictions, in letterbox space
+            px0, py0, px1, py1 = d.xyxy[i]
+            from matplotlib.patches import Rectangle
+            ax.add_patch(Rectangle((px0 * ratio[0] + dw, py0 * ratio[1] + dh),
+                                   (px1 - px0) * ratio[0], (py1 - py0) * ratio[1],
+                                   fill=False, edgecolor=SMOKE
+                                   if dataset.CLASS_NAMES[d.classes[i]] == "smoke" else FIRE,
+                                   linewidth=1.6))
+        colour = style.INK if found_small else "#d03b3b"
+        ax.set_title(f"{res} × {res} px input\n"
+                     f"{'target found' if found_small else 'target MISSED'}",
                      fontsize=11, color=colour, fontweight="bold", pad=6)
         ax.set_xticks([]); ax.set_yticks([])
         for sp in ax.spines.values():
             sp.set_visible(False)
+
+        # Bottom row: the target region magnified, same crop in every panel.
+        axz = axes[1, col]
+        cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
+        half = max(side * 3.0, 26)
+        zx0, zx1 = int(max(0, cx - half)), int(min(res, cx + half))
+        zy0, zy1 = int(max(0, cy - half)), int(min(res, cy + half))
+        axz.imshow(disp[zy0:zy1, zx0:zx1], interpolation="nearest")
+        axz.set_title(f"target ≈ {side:.0f} × {side:.0f} px", fontsize=9.5,
+                      color=style.INK_2, pad=4)
+        axz.set_xticks([]); axz.set_yticks([])
+        for sp in axz.spines.values():
+            sp.set_edgecolor(style.GRID)
+
     fig.tight_layout()
     out = FIGURES / "xp02_resolution_visual.png"
     fig.savefig(out, bbox_inches="tight", dpi=150)

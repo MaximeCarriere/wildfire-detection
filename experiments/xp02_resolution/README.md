@@ -12,8 +12,11 @@ How much of the compression story does it already explain?
 
 ![The same frame at four resolutions](../../results/figures/xp02_resolution_visual.png)
 
-The distant plume is found at 640 and 512 pixels, weakly at 416, and missed entirely at 320
-— while the overall accuracy score barely moves. That gap is the whole finding.
+Each panel is the image **as the network receives it** — letterboxed to a square at that
+resolution, with the grey bars the model actually sees. The bottom row magnifies the target:
+the same plume measures 21, 17, 14 and 11 pixels across. It is detected at 640 and 512 and
+missed at 416 and 320, while the overall accuracy score barely moves. That gap between "the
+headline number is fine" and "it can no longer see the thing" is the whole finding.
 
 ## The frontier
 
