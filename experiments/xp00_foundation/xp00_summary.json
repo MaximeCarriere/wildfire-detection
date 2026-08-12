@@ -1,0 +1,86 @@
+{
+  "protocol_version": "1.1",
+  "stages_run": [
+    "smoke",
+    "repro"
+  ],
+  "dry_run": {
+    "protocol_version": "1.1",
+    "model_id": "yolov8n_coco_pretrained",
+    "params_m": 3.1519,
+    "size_disk_mb": 6.55,
+    "format": "pt",
+    "input_res": 640,
+    "nms_iou": 0.45,
+    "eval_conf": 0.001,
+    "max_det": 300,
+    "seed": 42,
+    "map50_dfire_test": 0.0003,
+    "map5095_dfire_test": 0.0001,
+    "map50_fire_class": 0.0003,
+    "map50_smoke_class": 0.0004,
+    "map50_small_plume": 0.0,
+    "map50_tiny_plume": 0.0,
+    "bg_false_alarm_rate": 0.2209,
+    "map50_ood_flame": null,
+    "map50_ood_boreal": null,
+    "jetson": {
+      "power_mode": "MAXN_SUPER",
+      "latency_ms_median": 17.504,
+      "latency_ms_median_se": 0.0023,
+      "latency_ms_p95": 18.688,
+      "fps_batch1": 56.63,
+      "fps_se": 0.013,
+      "runs": 3,
+      "warmup_frames": 50,
+      "measured_frames": 1000,
+      "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+      "protocol_compliant": true,
+      "power_w_mean": 9.218,
+      "energy_j_per_1000_frames": 162.11,
+      "gpu_util_pct": 69.4,
+      "temp_c_peak": 57.343,
+      "mem_mb": 183.9
+    },
+    "accuracy_detail": {
+      "map5095": 0.0001,
+      "map50": 0.0003,
+      "per_class": {
+        "smoke": {
+          "map5095": 0.0001,
+          "map50": 0.0004
+        },
+        "fire": {
+          "map5095": 0.0,
+          "map50": 0.0003
+        }
+      },
+      "small_plume": {
+        "map5095": 0.0,
+        "map50": 0.0
+      },
+      "tiny_plume": {
+        "map5095": 0.0,
+        "map50": 0.0
+      },
+      "background": {
+        "conf": 0.25,
+        "n_background_images": 2005,
+        "n_alarmed": 443,
+        "false_alarm_rate": 0.2209,
+        "false_boxes_per_bg_image": 0.4489
+      },
+      "n_images": 4306,
+      "n_images_small_plume": 1229,
+      "n_images_tiny_plume": 298,
+      "n_detections": 236847,
+      "fingerprint": "b6943aacb90e35f3"
+    },
+    "ood_detail": null,
+    "notes": "XP0 dry run: COCO-pretrained weights, NOT fine-tuned on D-Fire. Near-zero mAP is the expected and correct outcome \u2014 COCO has no fire or smoke class. This record exists to prove the harness works end to end."
+  },
+  "reproducibility": {
+    "bit_reproducible": true,
+    "fingerprint": "b6943aacb90e35f3"
+  }
+}

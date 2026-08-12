@@ -1,0 +1,82 @@
+# ============================================================================
+# jetson-fire-watch — two environments, both documented here (PLAN.md §1).
+# ============================================================================
+#
+# ---------------------------------------------------------------------------
+# A. JETSON ORIN NANO SUPER  (JetPack R36.4.3 / CUDA 12.6 / TensorRT 10.3 / Py 3.10)
+#    All evaluation, all timing, all power. These are Jetson-specific wheels —
+#    they DO NOT install from plain PyPI. Built by scripts/setup_fire_venv.sh;
+#    kept SEPARATE from ~/xray-venv so the sister repo's env is never disturbed.
+# ---------------------------------------------------------------------------
+#
+#   sudo apt-get update && sudo apt-get install -y python3.10-venv
+#   python3 -m venv ~/fire-venv --system-site-packages
+#   ~/fire-venv/bin/pip install --upgrade pip
+#
+#   # 1. PyTorch + torchvision from the Jetson AI Lab index (NOTE: .io, not .dev):
+#   ~/fire-venv/bin/pip install torch==2.11.0 torchvision==0.26.0 \
+#       --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
+#
+#   # 2. cuDSS (torch 2.11 needs libcudss.so.0, not on the default RPATH):
+#   ~/fire-venv/bin/pip install nvidia-cudss-cu12==0.8.0.10 \
+#       --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
+#   SP=~/fire-venv/lib/python3.10/site-packages
+#   ln -sf $SP/nvidia/cu12/lib/libcudss*.so.0 $SP/torch/lib/   # put on torch RPATH
+#
+#   # 3. FIX cuBLAS mismatch: the pip nvidia-cublas-cu12 (12.9.x) is INCOMPATIBLE
+#   #    with the L4T CUDA 12.6 driver -> CUBLAS_STATUS_ALLOC_FAILED. Point torch
+#   #    at the SYSTEM cuBLAS 12.6 instead:
+#   CB=$SP/nvidia/cublas/lib; CUDA=/usr/local/cuda-12.6/lib64
+#   for lib in libcublas.so.12 libcublasLt.so.12; do \
+#       mv $CB/$lib $CB/$lib.pip-bak; ln -sf $CUDA/$lib $CB/$lib; done
+#
+#   # 4. Analysis deps (-I forces into the venv, shadowing ABI-mismatched
+#   #    system-site-packages copies built against a different numpy):
+#   ~/fire-venv/bin/pip install -I numpy pandas matplotlib
+#
+#   # 5. Detection stack + export toolchain:
+#   ~/fire-venv/bin/pip install ultralytics onnx onnxslim pycocotools
+#
+#   # 6. Monitoring (system-wide, provides the jtop service):
+#   sudo pip3 install jetson-stats
+#
+# TensorRT is the SYSTEM install (python3-libnvinfer 10.3.0.30), reached through
+# --system-site-packages. Do NOT pip install tensorrt into the venv: the PyPI
+# wheel is x86/SBSA-targeted and will shadow the working L4T one.
+#
+# Verified on the board 2026-08-12: torch 2.11.0 cuda=True (Orin),
+# torchvision 0.26.0, ultralytics 8.4.118, numpy 2.2.6, TensorRT 10.3.0.
+
+# --- Jetson-specific (from https://pypi.jetson-ai-lab.io/jp6/cu126) ---
+torch==2.11.0
+torchvision==0.26.0
+nvidia-cudss-cu12==0.8.0.10
+# nvidia-cublas-cu12  # installed as a torch dep, .so symlinked to system 12.6 (step 3)
+
+# --- from PyPI (aarch64 wheels exist for all of these) ---
+ultralytics==8.4.118
+onnx==1.22.0
+onnxslim==0.1.95
+pycocotools==2.0.11
+numpy==2.2.6
+matplotlib
+pandas
+# jetson-stats  # installed system-wide via sudo pip3, not in the venv
+
+# ---------------------------------------------------------------------------
+# B. DESKTOP / RENTED GPU  (4090 / A10 class, CUDA 12.x, Py 3.10+)
+#    Training, distillation (XP3-XP5), pruning recovery fine-tunes (XP6-XP7),
+#    QAT (XP11). Nothing measured here counts as a "Jetson" number.
+# ---------------------------------------------------------------------------
+#
+#   python -m venv .venv && . .venv/bin/activate
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+#   pip install -r requirements.txt   # the block below
+#
+# ultralytics==8.4.118      # pin identical to the Jetson side: same training and
+#                           # inference code path on both machines, or the
+#                           # frozen protocol is not frozen
+# torch>=2.5                # any recent CUDA build; exact version is not load-bearing
+#                           # off-device, but record it in the XP README
+# torch-pruning             # XP6 structured channel pruning
+# onnx onnxslim pycocotools numpy matplotlib pandas

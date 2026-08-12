@@ -1,0 +1,80 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5l_published@512",
+  "params_m": 46.1437,
+  "size_disk_mb": 92.801,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7819,
+  "map5095_dfire_test": 0.4429,
+  "map50_fire_class": 0.7146,
+  "map50_smoke_class": 0.8491,
+  "map50_small_plume": 0.6086,
+  "map50_tiny_plume": 0.1673,
+  "bg_false_alarm_rate": 0.0214,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "latency_ms_median": 36.801,
+    "latency_ms_median_se": 0.0166,
+    "latency_ms_p95": 37.225,
+    "fps_batch1": 27.12,
+    "fps_se": 0.014,
+    "runs": 3,
+    "warmup_frames": 50,
+    "measured_frames": 1000,
+    "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+    "protocol_compliant": true,
+    "power_w_mean": 15.304,
+    "energy_j_per_1000_frames": 563.17,
+    "gpu_util_pct": 71.0,
+    "temp_c_peak": 66.937,
+    "batch": 16,
+    "fps_batched": 53.23,
+    "fps_batched_se": 0.012,
+    "ms_per_image_batched": 18.787,
+    "measured_images": 960,
+    "mem_mb": 840.3
+  },
+  "accuracy_detail": {
+    "map5095": 0.4429,
+    "map50": 0.7819,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.5157,
+        "map50": 0.8491
+      },
+      "fire": {
+        "map5095": 0.37,
+        "map50": 0.7146
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2668,
+      "map50": 0.6086
+    },
+    "tiny_plume": {
+      "map5095": 0.0471,
+      "map50": 0.1673
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 43,
+      "false_alarm_rate": 0.0214,
+      "false_boxes_per_bg_image": 0.0224
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 26564,
+    "fingerprint": "a4c7d75b0d220a28"
+  },
+  "ood_detail": null,
+  "notes": "XP2 inference-resolution arm: published D-Fire weights evaluated at 512px without retraining. Params and disk size are unchanged by resolution \u2014 the speed comes entirely from the smaller input."
+}

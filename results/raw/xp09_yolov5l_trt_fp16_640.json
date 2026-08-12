@@ -1,0 +1,80 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5l_trt_fp16@640",
+  "params_m": 46.144,
+  "size_disk_mb": 94.7,
+  "format": "trt_fp16",
+  "input_res": 640,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7853,
+  "map5095_dfire_test": 0.439,
+  "map50_fire_class": 0.7215,
+  "map50_smoke_class": 0.849,
+  "map50_small_plume": 0.6425,
+  "map50_tiny_plume": 0.1974,
+  "bg_false_alarm_rate": 0.0229,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "latency_ms_median": 16.116,
+    "latency_ms_median_se": 0.0098,
+    "latency_ms_p95": 17.466,
+    "fps_batch1": 61.68,
+    "fps_se": 0.06,
+    "runs": 3,
+    "warmup_frames": 50,
+    "measured_frames": 1000,
+    "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+    "protocol_compliant": true,
+    "power_w_mean": 19.661,
+    "energy_j_per_1000_frames": 317.3,
+    "gpu_util_pct": 90.1,
+    "temp_c_peak": 67.781,
+    "batch": 16,
+    "fps_batched": 73.21,
+    "fps_batched_se": 0.056,
+    "ms_per_image_batched": 13.66,
+    "measured_images": 960,
+    "mem_mb": 317.5
+  },
+  "accuracy_detail": {
+    "map5095": 0.439,
+    "map50": 0.7853,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.5068,
+        "map50": 0.849
+      },
+      "fire": {
+        "map5095": 0.3712,
+        "map50": 0.7215
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2852,
+      "map50": 0.6425
+    },
+    "tiny_plume": {
+      "map5095": 0.0591,
+      "map50": 0.1974
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 46,
+      "false_alarm_rate": 0.0229,
+      "false_boxes_per_bg_image": 0.0249
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 27381,
+    "fingerprint": "ea281203d785215a"
+  },
+  "ood_detail": null,
+  "notes": "TensorRT FP16 engine built from the published D-Fire yolov5l checkpoint via ONNX (dynamic batch profile 1-16). Same letterbox, same NMS, same thresholds as the PyTorch path, so the comparison isolates the runtime. Disk size is the engine, not the checkpoint."
+}

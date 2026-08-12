@@ -1,0 +1,118 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_trt_int8rand@640",
+  "params_m": 7.025,
+  "size_disk_mb": 9.134,
+  "format": "trt_int8rand",
+  "input_res": 640,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.2526,
+  "map5095_dfire_test": 0.1067,
+  "map50_fire_class": 0.1742,
+  "map50_smoke_class": 0.3311,
+  "map50_small_plume": 0.0529,
+  "map50_tiny_plume": 0.0019,
+  "bg_false_alarm_rate": 0.02,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "latency_ms_median": 4.646,
+    "latency_ms_median_se": 0.0034,
+    "latency_ms_p95": 6.173,
+    "fps_batch1": 204.11,
+    "fps_se": 3.366,
+    "runs": 3,
+    "warmup_frames": 50,
+    "measured_frames": 1000,
+    "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+    "protocol_compliant": true,
+    "power_w_mean": 9.882,
+    "energy_j_per_1000_frames": 47.87,
+    "gpu_util_pct": 74.0,
+    "temp_c_peak": 56.156,
+    "batch": 16,
+    "fps_batched": 489.49,
+    "fps_batched_se": 2.49,
+    "ms_per_image_batched": 2.043,
+    "measured_images": 960,
+    "mem_mb": 317.6
+  },
+  "accuracy_detail": {
+    "map5095": 0.1067,
+    "map50": 0.2526,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.1579,
+        "map50": 0.3311
+      },
+      "fire": {
+        "map5095": 0.0554,
+        "map50": 0.1742
+      }
+    },
+    "small_plume": {
+      "map5095": 0.0166,
+      "map50": 0.0529
+    },
+    "tiny_plume": {
+      "map5095": 0.0004,
+      "map50": 0.0019
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 40,
+      "false_alarm_rate": 0.02,
+      "false_boxes_per_bg_image": 0.02
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 31347,
+    "fingerprint": "0c1c807411a37fbd"
+  },
+  "ood_detail": null,
+  "notes": "TensorRT INT8RAND engine. INT8 is calibrated on the frozen XP0 500-image calibration set (night/fog/backlight/small-plume stratified) and built with FP16 fallback enabled, which is the configuration anyone actually deploys. Condition slices in slices_detail.",
+  "slices_detail": {
+    "all": {
+      "map50": 0.2526,
+      "map50_small_plume": 0.0529,
+      "map50_tiny_plume": 0.0019,
+      "map50_fire": 0.1742,
+      "map50_smoke": 0.3311,
+      "n_images": 4306,
+      "bg_false_alarm_rate": 0.02
+    },
+    "night": {
+      "map50": 0.4764,
+      "map50_small_plume": 0.1276,
+      "map50_tiny_plume": 0.0041,
+      "map50_fire": 0.2859,
+      "map50_smoke": 0.6669,
+      "n_images": 645,
+      "bg_false_alarm_rate": 0.0275
+    },
+    "fog": {
+      "map50": 0.3962,
+      "map50_small_plume": 0.1239,
+      "map50_tiny_plume": 0.0062,
+      "map50_fire": 0.2594,
+      "map50_smoke": 0.5329,
+      "n_images": 645,
+      "bg_false_alarm_rate": 0.0222
+    },
+    "backlight": {
+      "map50": 0.3147,
+      "map50_small_plume": 0.0152,
+      "map50_tiny_plume": 0.0006,
+      "map50_fire": 0.2075,
+      "map50_smoke": 0.4218,
+      "n_images": 645,
+      "bg_false_alarm_rate": 0.0119
+    }
+  }
+}

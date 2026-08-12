@@ -1,0 +1,19 @@
+{
+  "n": 500,
+  "seed": 42,
+  "source": "train split only (never val/test, never OOD)",
+  "composition": {
+    "small_plume": 150,
+    "night": 100,
+    "fog": 100,
+    "backlight": 100,
+    "random": 50
+  },
+  "checksum": "765a705ff8071af3",
+  "condition_proxies": {
+    "night": "lowest 15% mean luminance",
+    "fog": "lowest 15% luminance std (low contrast)",
+    "backlight": "highest 15% (p95 - mean) luminance (blown sky, dark ground)",
+    "small_plume": "has a GT box < 1% of image area"
+  }
+}

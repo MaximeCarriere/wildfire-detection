@@ -1,0 +1,111 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_trt_int8@512",
+  "params_m": 7.025,
+  "size_disk_mb": 9.145,
+  "format": "trt_int8",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": null,
+  "map5095_dfire_test": null,
+  "map50_fire_class": null,
+  "map50_smoke_class": null,
+  "map50_small_plume": null,
+  "map50_tiny_plume": null,
+  "bg_false_alarm_rate": null,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "endurance_minutes": 10.0,
+    "batch": 16,
+    "images_total": 447056,
+    "fps_mean": 745.46,
+    "fps_first_minute": 743.62,
+    "fps_last_minute": 745.39,
+    "drift_pct": 0.238,
+    "throttled": false,
+    "temp_c_peak": 72.218,
+    "energy_j_total": 11562.1,
+    "energy_j_per_1000_frames": 25.86,
+    "buckets": [
+      {
+        "minute": 1,
+        "fps": 743.62,
+        "power_w": 18.977,
+        "temp_c": 67.343,
+        "gpu_util_pct": 97.2
+      },
+      {
+        "minute": 2,
+        "fps": 745.79,
+        "power_w": 19.268,
+        "temp_c": 70.062,
+        "gpu_util_pct": 97.3
+      },
+      {
+        "minute": 3,
+        "fps": 745.82,
+        "power_w": 19.305,
+        "temp_c": 71.031,
+        "gpu_util_pct": 97.3
+      },
+      {
+        "minute": 4,
+        "fps": 745.67,
+        "power_w": 19.343,
+        "temp_c": 71.531,
+        "gpu_util_pct": 97.2
+      },
+      {
+        "minute": 5,
+        "fps": 745.72,
+        "power_w": 19.34,
+        "temp_c": 71.812,
+        "gpu_util_pct": 97.2
+      },
+      {
+        "minute": 6,
+        "fps": 745.65,
+        "power_w": 19.347,
+        "temp_c": 71.937,
+        "gpu_util_pct": 97.1
+      },
+      {
+        "minute": 7,
+        "fps": 745.97,
+        "power_w": 19.342,
+        "temp_c": 72.031,
+        "gpu_util_pct": 97.3
+      },
+      {
+        "minute": 8,
+        "fps": 745.5,
+        "power_w": 19.336,
+        "temp_c": 72.062,
+        "gpu_util_pct": 97.2
+      },
+      {
+        "minute": 9,
+        "fps": 745.42,
+        "power_w": 19.337,
+        "temp_c": 72.156,
+        "gpu_util_pct": 97.2
+      },
+      {
+        "minute": 10,
+        "fps": 745.39,
+        "power_w": 19.327,
+        "temp_c": 72.218,
+        "gpu_util_pct": 97.2
+      }
+    ],
+    "protocol_compliant": true
+  },
+  "accuracy_detail": null,
+  "ood_detail": null,
+  "notes": "XP12 endurance: 10 min sustained batched inference at power mode MAXN_SUPER. Accuracy is not re-measured here \u2014 it is a property of the weights, established in XP9/XP10; this run is about whether the board can hold the throughput."
+}

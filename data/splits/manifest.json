@@ -1,0 +1,58 @@
+{
+  "seed": 42,
+  "source": "D-Fire published train/test split; val carved from train",
+  "val_frac": 0.1,
+  "small_plume_area_frac": 0.01,
+  "class_names": {
+    "0": "smoke",
+    "1": "fire"
+  },
+  "counts": {
+    "train": 15500,
+    "val": 1721,
+    "test": 4306
+  },
+  "test_small_plume": 1229,
+  "content_mix": {
+    "train": {
+      "both": 3387,
+      "fire": 850,
+      "none": 7050,
+      "smoke": 4213
+    },
+    "val": {
+      "both": 376,
+      "fire": 94,
+      "none": 783,
+      "smoke": 468
+    },
+    "test": {
+      "both": 895,
+      "fire": 220,
+      "none": 2005,
+      "smoke": 1186
+    }
+  },
+  "boxes": {
+    "train": {
+      "fire": 10593,
+      "small_plume_boxes": 8550,
+      "smoke": 8600
+    },
+    "val": {
+      "fire": 1221,
+      "small_plume_boxes": 947,
+      "smoke": 950
+    },
+    "test": {
+      "fire": 2878,
+      "small_plume_boxes": 2359,
+      "smoke": 2315
+    }
+  },
+  "checksums": {
+    "train": "8dea80450f1d1611",
+    "val": "48c7552154b86a49",
+    "test": "7cc103e8cbb706f5"
+  }
+}

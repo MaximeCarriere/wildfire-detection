@@ -1,0 +1,38 @@
+# Datasets and weights are never committed — data/README.md records how to restore them.
+data/*.zip
+data/dfire/
+data/flame/
+data/flame2/
+data/boreal/
+data/calib/
+*.pt
+*.onnx
+*.engine
+*.engine.calib
+
+# Per-run measurements ARE committed — they are the evidence behind every claim,
+# they are small (a few KB each), and analysis/make_figures.py regenerates every
+# figure from them. Figures are committed too so the READMEs render on GitHub;
+# they remain generated-only (never hand-edited).
+results/raw/*
+!results/raw/*.json
+!results/raw/.gitkeep
+results/figures/*
+!results/figures/*.png
+!results/figures/.gitkeep
+
+# Demo captures (large video) — the 20 s final clip is committed deliberately, nothing else.
+demos/frames/
+demos/*.mp4
+!demos/final_*.mp4
+
+# Ultralytics training scratch
+runs/
+*.cache
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+fire-venv/
+.DS_Store
