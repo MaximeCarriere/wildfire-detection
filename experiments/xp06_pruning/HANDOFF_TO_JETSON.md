@@ -156,7 +156,7 @@ they are small, they are the evidence, and `analysis/make_figures.py` and
 Then update these three places in [`README.md`](README.md), which currently say the answer is
 not known:
 
-- Result 4, which still quotes only XP6's original speed measurements.
+- Result 5, which still quotes only XP6's original speed measurements.
 - The verdict table, which has no throughput column for the new models.
 - The limitations list, whose first bullet says speed is unresolved for everything new.
 

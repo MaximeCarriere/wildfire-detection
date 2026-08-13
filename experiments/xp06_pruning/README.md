@@ -3,9 +3,11 @@
 **Question:** pruning deletes parts of a trained network to make it smaller and faster. Does
 any version of it beat the far simpler option of feeding the same network a smaller image?
 
-**Outcome:** still no, but the earlier verdict was right for the wrong reason. The best pruned
-model here keeps **97% of the accuracy at 56% of the parameters**, and the collapse this page
-originally reported turned out to be mostly an artifact of one badly chosen setting.
+**Outcome:** still no, but the earlier verdict was right for the wrong reason. This detector
+turns out to need **about a tenth of its weights**: at 90% sparsity it keeps 96% of its
+accuracy. The collapse this page originally reported was mostly an artifact of one badly chosen
+setting, and what actually blocks pruning here is not the network's capacity but the absence of
+hardware that can exploit the shape of the removal.
 
 **The line to beat**, and nothing on this page beats it: YOLOv5s at 512 px, TensorRT FP16,
 **0.7776 mAP50 at 474 img/s and 52 J per 1000 frames** on the Jetson Orin Nano Super.
@@ -142,7 +144,40 @@ zeros sit inside a full-size tensor with no matching kernels on this hardware, s
 not smaller in memory and not faster in time. It is an accuracy ceiling experiment and quoting
 a speed figure for it would imply a deployment claim that does not exist.
 
-## Result 3. Where you cut matters, but less than what you cut
+## Result 3. The one sparsity pattern with silicon behind it holds its accuracy
+
+Fine-grained pruning proves the capacity is spare but cannot be accelerated. **2:4 sparsity is
+the version of that idea the hardware can actually use:** of every four neighbouring weights
+exactly two must be zero, and Ampere GPUs have circuitry that skips them for up to twice the
+throughput. The board's GPU is Ampere class.
+
+| | non-zero weights | mAP50 | small plumes | tiny plumes | correctly silent |
+|---|---:|---:|---:|---:|---:|
+| **unpruned** | 7.03 M | **0.7764** | 0.6038 | 0.1380 | 0.9736 |
+| 2:4, no retraining | 3.53 M | **0.0000** | 0.0000 | 0.0000 | - |
+| 2:4, after 12 epochs | 3.53 M | **0.7527** | 0.5880 | 0.1249 | 0.9726 |
+
+Two things in that table are worth separating.
+
+**The constraint alone destroys the model.** Free-choice pruning at the same 50% sparsity
+scores 0.7622 untouched; forcing the identical amount into the two-of-every-four pattern scores
+exactly zero. That is the structure thesis again, at its sharpest: it is not how much you
+remove, it is whether the removal has to follow a shape.
+
+**Retraining wins it all back.** 0.7527 is 97% of the unpruned accuracy, which matches what
+NVIDIA reports for detection (SSD-RN50, 24.8 to 24.8 box AP on COCO). Their recipe assumes the
+retraining step, and this is what skipping it would have cost.
+
+**No speed number appears here and the accuracy result does not imply one.** Whether TensorRT
+selects sparse kernels for this network on this board is a separate question with a separate
+answer, and the build log has to be read to confirm it rather than inferred from the flag being
+set. The checkpoint and ONNX are exported and waiting; see
+[`HANDOFF_TO_JETSON.md`](HANDOFF_TO_JETSON.md). **If the speed-up materialises, this is the most
+promising deployment candidate in the study**, because it reaches channel-pruning accuracy at
+half the weights with a hardware path that channel pruning does not need and fine-grained
+pruning cannot have.
+
+## Result 4. Where you cut matters, but less than what you cut
 
 Pruning one layer at a time, with everything else left alone, maps where the damage is cheap
 and where it is fatal. This runs on the **validation** split, never test, because its output
@@ -181,7 +216,7 @@ worth 4.5.** The map is correct and acting on it is second-order. It does buy on
 having: correct silence on empty frames returns to the unpruned 97.4%, undoing the extra false
 alarms that pruning otherwise introduces.
 
-## Result 4. Arithmetic removed is still not speed gained
+## Result 5. Arithmetic removed is still not speed gained
 
 This has not changed and is the most portable lesson here. On the board, removing **88.9% of
 the multiply-adds bought 1.7x the throughput**, not the roughly 9x the arithmetic implies.
@@ -212,6 +247,8 @@ What changed is the size of the loss and the reason for it. The deficit went fro
 |---|---:|---:|---:|---:|---:|
 | **unpruned at 512 px** | 7.03 M | **0.7764** | **0.6038** | **0.1380** | 0.9736 |
 | best pruned (LAMP, 12 epochs) | **3.91 M** | 0.7543 | 0.5783 | 0.1294 | 0.9771 |
+| 2:4 sparsity (hardware path exists) | 3.53 M non-zero | 0.7527 | 0.5880 | 0.1249 | 0.9726 |
+| 90% of weights removed | 0.74 M non-zero | 0.7425 | 0.5933 | 0.1187 | 0.9546 |
 | as originally published (L2) | 4.24 M | 0.7298 | 0.5525 | 0.0963 | - |
 
 The honest summary is that **this detector can be pruned much harder than this page previously
