@@ -5,9 +5,9 @@ apparatus trustworthy?
 
 **Outcome:** yes — and two things surfaced that changed the rest of the project.
 
-![What a fire detector is asked to find](../../results/figures/xp00_dataset.png)
-
 ![What the detector is looking at](../../results/figures/dataset_examples.png)
+
+![What a fire detector is asked to find](../../results/figures/xp00_dataset.png)
 
 ## What was frozen
 
@@ -24,41 +24,42 @@ literature; only a validation set is carved out, at seed 42.
 Also frozen: a 500-image calibration set for later compression work, and the definition of
 a "small plume".
 
+## Two findings that reshaped the plan
+
+**1. Half the targets are tiny.**
+
+- The median box covers **1.34%** of the image.
+- The plan defined a "small plume" as anything under 1% — which sits almost exactly *on*
+  that median, so it selects the smaller **half** of all targets rather than the hard cases.
+- A second tier was added at **0.1%** (≈20×20 pixels, 10.6% of boxes).
+- The two behave completely differently under compression, so the distinction mattered:
+  dropping resolution later cost 30% of the first tier and **77%** of the second.
+
+**2. Nearly half the frames contain nothing.**
+
+- **2,005 of 4,306** test images are empty landscape — no fire, no smoke.
+- Standard detection metrics fold false alarms on those into one aggregate score.
+- So a separate **false-alarm rate** was added: what fraction of empty frames raise an alarm.
+- For a camera that watches nothing almost all the time, that is arguably the number that
+  decides whether the system is deployable at all.
+
 > **What "plume" means here.** A plume is the visible smoke or flame region the detector has
 > to find. Accuracy is reported separately for **small plumes** (under 1% of the frame) and
-> **tiny plumes** (under 0.1%, roughly 20x20 pixels) — distant smoke, which is what early
+> **tiny plumes** (under 0.1%, roughly 20×20 pixels) — distant smoke, which is what early
 > detection actually depends on.
 
 ![What small and tiny plume mean](../../results/figures/plume_definition.png)
 
-## Two findings that reshaped the plan
-
-**Half the targets are tiny.** The median box covers 1.34% of the image. The plan defined
-"small plume" as anything under 1% — which turns out to sit almost exactly on the median,
-selecting the *smaller half* rather than the hard cases. A second tier was added at 0.1%
-(≈20×20 pixels, 10.6% of boxes). Later experiments showed the two behave completely
-differently, so this mattered.
-
-**Nearly half the frames contain nothing.** 2,005 of 4,306 test images are empty
-landscape. Standard detection metrics fold false alarms on those into one aggregate number,
-so a separate false-alarm rate was added — for a camera that watches nothing almost all the
-time, it is arguably the metric that decides deployability.
-
-## What nearly went wrong
-
-- **The class labels were ambiguous.** D-Fire's docs number the classes 1/2 while the files
-  use 0/1. Rather than guess, the mapping was derived from the data: observed box counts
-  (11,865 / 14,692) match the published fire/smoke totals *exactly*, proving `0 = smoke,
-  1 = fire`. Re-checked on every run.
-- **The accuracy metric was silently undefined.** The standard COCO evaluator hard-codes an
-  assumption that our configuration broke, returning `-1` — which would have been written
-  to results files as though it were a score. Now computed directly.
-
 ## Limitations
 
-- Condition labels (night / fog / backlight) don't exist in D-Fire; they are approximated
-  from image brightness statistics and are stated as proxies wherever used.
-- Splits are frozen against these checksums. Changing them invalidates every result.
+- **Condition labels don't exist in D-Fire.** Night, fog and backlight are approximated from
+  image brightness statistics, and are stated as proxies wherever they are used.
+- **The splits are pinned to the checksums above.** Each split is a list of image paths, and
+  the checksum is a fingerprint of that list — move one image between splits and it changes.
+  Every accuracy number in this repo was measured on one specific set of 4,306 test images,
+  so if that set silently changed, comparing a new model against an old number would be
+  comparing scores on different exam papers. A checksum mismatch makes that visible instead
+  of invisible, and invalidates every prior result until they are re-run.
 
 ## Next
 
