@@ -140,18 +140,25 @@ def t_e5() -> None:
     head("E5. Granularity: individual weights versus whole channels")
     print("No speed number appears here, on any machine: irregular zeros have no matching")
     print("kernels on this hardware. Accuracy only, which is the question being asked.\n")
-    print("| sparsity | non-zero params | mAP50 before recovery | mAP50 after | small | tiny |")
+    print("| sparsity | non-zero params | mAP50, no retraining | mAP50 after 12 epochs | small | tiny |")
     print("|---|---:|---:|---:|---:|---:|")
     print(f"| **none (unpruned)** | {UNPRUNED['params']} | {UNPRUNED['map50']:.4f} | "
           f"**{UNPRUNED['map50']:.4f}** | {UNPRUNED['small']:.4f} | {UNPRUNED['tiny']:.4f} |")
     for r in sorted(recs, key=lambda r: r["prune_meta"]["requested_sparsity"]):
         m = r["prune_meta"]
-        nz = m.get("nonzero_params_m")
-        print(f"| {m['requested_sparsity']:.0%} of all weights | "
-              f"{nz:.2f} M | {f(m.get('map50_before_recovery'))} | "
-              f"{f(r['map50_dfire_test'])} | {f(r['map50_small_plume'])} | "
-              f"{f(r['map50_tiny_plume'])} |")
-    chan = [r for r in records() if "_nofinetune" in r["model_id"]]
+        nz = m.get("nonzero_params_m") or 0.0
+        # A damage-only run has no recovery. Printing its damage figure in the
+        # recovered column would silently claim a training budget it never had.
+        recovered = r.get("train_meta") is not None
+        after = f(r["map50_dfire_test"]) if recovered else "not retrained"
+        small = f(r["map50_small_plume"]) if recovered else "-"
+        tiny = f(r["map50_tiny_plume"]) if recovered else "-"
+        print(f"| {m['requested_sparsity']:.0%} of all weights | {nz:.2f} M | "
+              f"{f(m.get('map50_before_recovery'))} | {after} | {small} | {tiny} |")
+    # "_nofinetune" alone now also matches the fine-grained damage records, which
+    # are a different granularity and must not be listed as channel pruning.
+    chan = [r for r in records() if "_nofinetune" in r["model_id"]
+            and "requested_channel_ratio" in r.get("prune_meta", {})]
     if chan:
         print("\nFor comparison, whole-channel removal with no retraining:\n")
         print("| channels cut | params | mAP50 |")

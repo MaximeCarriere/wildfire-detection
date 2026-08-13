@@ -489,7 +489,10 @@ def fig_xp06(records) -> Path | None:
     """Two things pruning does on this board, neither of them what you would hope."""
     import matplotlib.pyplot as plt
 
-    raw = sorted([r for r in records if "_nofinetune" in r["model_id"]],
+    # "_nofinetune" also matches the fine-grained damage records added later, which
+    # mask weights rather than removing channels and carry no MAC reduction.
+    raw = sorted([r for r in records if "_nofinetune" in r["model_id"]
+                  and "macs_reduction" in r.get("prune_meta", {})],
                  key=lambda r: r["prune_meta"]["macs_reduction"])
     if len(raw) < 3:
         return None
@@ -742,9 +745,16 @@ def fig_xp06e5(records) -> Path | None:
     """Capacity was never the problem. Structure was."""
     import matplotlib.pyplot as plt
 
-    fine = sorted([r for r in records if r.get("granularity") == "unstructured"],
-                  key=lambda r: r["prune_meta"]["requested_sparsity"])
+    by_sparsity = {}
+    for r in records:
+        if r.get("granularity") != "unstructured":
+            continue
+        s = r["prune_meta"]["requested_sparsity"]
+        # Either record carries the same damage number; keep one per level.
+        by_sparsity.setdefault(s, r)
+    fine = [by_sparsity[k] for k in sorted(by_sparsity)]
     chan = sorted([r for r in records if "_nofinetune" in r["model_id"]
+                   and r.get("granularity") != "unstructured"
                    and r.get("prune_meta", {}).get("requested_channel_ratio") is not None],
                   key=lambda r: r["prune_meta"]["requested_channel_ratio"])
     if not fine or not chan:

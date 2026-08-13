@@ -112,12 +112,30 @@ capacity without removing shape.
 
 **Ninety percent of every weight in the network can be deleted and the model still scores
 higher than one with 5% of its channels removed.** 0.1447 against 0.0956, neither retrained.
-Half the weights can go for a 2% accuracy cost.
+Half the weights can go for a 2% accuracy cost with no retraining at all.
+
+With recovery training the gap becomes absurd:
+
+| what was removed | weights left | mAP50 | small plumes | tiny plumes |
+|---|---:|---:|---:|---:|
+| **nothing (unpruned)** | 7.03 M | **0.7764** | 0.6038 | 0.1380 |
+| 25% of individual weights | 5.28 M | 0.7552 | 0.6003 | 0.1370 |
+| **90% of individual weights** | **0.74 M** | **0.7425** | 0.5933 | 0.1187 |
+| 25% of channels (best criterion) | 3.91 M | 0.7543 | 0.5783 | 0.1294 |
+| 5% of channels, no retraining | 6.53 M | 0.0956 | 0.0327 | 0.0036 |
+
+**The detector needs about a tenth of its weights.** At 90% sparsity it holds 96% of its
+overall accuracy and 86% of its tiny-plume accuracy on 0.74 M non-zero parameters.
 
 That settles a question this page could not previously answer. The detector is not short of
 capacity, and pruning is not futile here. **What it cannot absorb is having whole channels
 taken away**, because a channel is a unit the surrounding architecture depends on, and every
 residual add and concatenation downstream is shaped by it.
+
+This is also the sharpest statement of why the study keeps landing where it does. **The
+capacity is provably there to be removed; what is missing is hardware that can exploit its
+removal in this shape.** Nine tenths of this network is redundant and no kernel on this board
+can turn that into a single frame per second.
 
 **No speed number appears for fine-grained pruning, on any machine, deliberately.** Irregular
 zeros sit inside a full-size tensor with no matching kernels on this hardware, so the model is

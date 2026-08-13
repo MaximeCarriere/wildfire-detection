@@ -1,0 +1,81 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_finegrained50_nofinetune",
+  "params_m": 3.5304,
+  "size_disk_mb": 0.0,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7622,
+  "map5095_dfire_test": 0.4056,
+  "map50_fire_class": 0.7158,
+  "map50_smoke_class": 0.8087,
+  "map50_small_plume": 0.655,
+  "map50_tiny_plume": 0.1562,
+  "bg_false_alarm_rate": 0.016,
+  "bg_correctly_silent_rate": 0.984,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": null,
+  "accuracy_detail": {
+    "map5095": 0.4056,
+    "map50": 0.7622,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.4537,
+        "map50": 0.8087
+      },
+      "fire": {
+        "map5095": 0.3575,
+        "map50": 0.7158
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2906,
+      "map50": 0.655
+    },
+    "tiny_plume": {
+      "map5095": 0.0416,
+      "map50": 0.1562
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 32,
+      "false_alarm_rate": 0.016,
+      "correctly_silent_rate": 0.984,
+      "false_boxes_per_bg_image": 0.017
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 37481,
+    "fingerprint": "2fe4f360f71329ab"
+  },
+  "ood_detail": null,
+  "notes": "XP6 E5: fine-grained global magnitude pruning at 50% sparsity, NO recovery training. Weights are masked, not removed. Accuracy only; no speedup exists for irregular sparsity on this hardware. 3090 screening measurement, off-device.",
+  "prune_meta": {
+    "granularity": "unstructured",
+    "requested_sparsity": 0.5,
+    "achieved_sparsity": 0.50015,
+    "threshold": 0.006916046142578125,
+    "prunable_weights": 6987136,
+    "zeroed_weights": 3494646,
+    "map50_before_recovery": 0.7622,
+    "map50_small_before_recovery": 0.655,
+    "map50_tiny_before_recovery": 0.1562,
+    "masked_layers": 57,
+    "measured_sparsity": 0.50015,
+    "nonzero_params_m": 3.5304,
+    "dense_params_m": 7.025
+  },
+  "train_meta": null,
+  "machine": "rtx3090_screening",
+  "experiment": "xp06e5",
+  "granularity": "unstructured",
+  "requested_sparsity": 0.5,
+  "speed_measured": false
+}

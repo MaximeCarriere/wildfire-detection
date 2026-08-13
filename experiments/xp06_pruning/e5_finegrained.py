@@ -79,9 +79,9 @@ def main() -> None:
         # and damage costs one forward pass over the test set rather than an
         # hour of training. Recorded separately so it can never be mistaken for
         # a recovered result.
-        import json
         from lib import evaluator
         from _screen import RAW
+        meta.update(verify_sparsity(model))    # the non-zero count is part of the result
         rec = evaluator.results_record(
             model_id=f"dfire_{BASE}_finegrained{pct}_nofinetune", fmt="pt",
             params_m=meta.get("nonzero_params_m", 0.0), size_disk_mb=0.0,
