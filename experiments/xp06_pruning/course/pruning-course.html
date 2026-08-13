@@ -282,6 +282,7 @@ td.dead { color: var(--red); font-weight: bold; }
 }
 .status.run { color: var(--select); }
 .status.board { color: var(--yellow); }
+.status.done { color: var(--green); }
 .xgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px,1fr)); gap: 18px; margin-top: 18px; padding-top: 16px; border-top: 2px dotted var(--frontBrightBorder); }
 .xgrid dt { font-size: .72em; letter-spacing: 2px; text-transform: uppercase; color: var(--frontBrightText); font-weight: bold; margin-bottom: 3px; }
 .xgrid dd { margin: 0; font-size: .9em; }
@@ -667,7 +668,7 @@ td.dead { color: var(--red); font-weight: bold; }
   <div class="steps">
 
     <div class="step">
-      <div class="step-head"><span class="num">01 · sensitivity</span><span class="status run">running</span></div>
+      <div class="step-head"><span class="num">01 · sensitivity</span><span class="status done">done</span></div>
       <h3>Which layers can this detector afford to lose?</h3>
       <p class="q">Prune one layer, measure, put it back, move on. 57 layers &times; 5 severities.</p>
       <p>
@@ -677,9 +678,12 @@ td.dead { color: var(--red); font-weight: bold; }
         in the worst possible place. That would explain a 2% cut costing 9 accuracy points.
       </p>
       <p>
-        The first cells are already suggestive: halving the network's <em>first</em> convolution
-        destroys 84% of the accuracy and saves <span class="accent">0.16%</span> of the
-        parameters. A terrible trade, and a blind threshold is free to make it.
+        <strong>Result: fragility tracks depth, and the fragile layers are the ones that free
+        the least.</strong> Halving the first convolution destroys 84% of the accuracy to free
+        <span class="accent">0.16%</span> of the parameters. Halving <code>model.21.conv</code>
+        costs 0.9% and frees <span class="accent">5.13%</span>: fifty times the saving for a
+        hundredth of the damage. Stages 0-4 keep 58.6% of accuracy under a 50% cut; stages 6-23
+        keep 94.3%. A global threshold ranks channels by weight size and cannot see any of it.
       </p>
       <dl class="xgrid">
         <div><dt>differs from</dt><dd>Everything else prunes the whole network. This prunes one layer at a time and never retrains.</dd></div>
@@ -689,7 +693,7 @@ td.dead { color: var(--red); font-weight: bold; }
     </div>
 
     <div class="step">
-      <div class="step-head"><span class="num">02 · criterion</span><span class="status">queued</span></div>
+      <div class="step-head"><span class="num">02 · criterion</span><span class="status done">done</span></div>
       <h3>Does the choice of importance measure matter, and does any of it beat random?</h3>
       <p class="q">Fix the amount at 25%, change only the rule for choosing victims, run all eight.</p>
       <p>
@@ -708,6 +712,12 @@ td.dead { color: var(--red); font-weight: bold; }
         <div><dt>watch for</dt><dd>Taylor and Hessian read gradients, not weights, so they need a real backward pass before they mean anything.</dd></div>
         <div><dt>the control</dt><dd>Random. If nothing beats it, the criterion literature does not apply to this model.</dd></div>
       </dl>
+      <p style="margin-top:16px"><strong>Result: the criterion decides everything.</strong> At a
+        5% cut <strong>L1 keeps 99% of the accuracy where L2 keeps 12%</strong> — and L2 is what
+        the original study used. After retraining, the best criterion reaches 0.7543 mAP50 at
+        3.91 M parameters, beating the published L2 arm on both counts (0.7298 at 4.24 M).
+        Random keeps 91% of overall accuracy but only <strong>49% on tiny plumes</strong>, so the
+        criterion earns its keep exactly where the application needs it.</p>
     </div>
 
     <div class="step">
@@ -747,7 +757,7 @@ td.dead { color: var(--red); font-weight: bold; }
     </div>
 
     <div class="step">
-      <div class="step-head"><span class="num">05 · fine-grained ceiling</span><span class="status">queued</span></div>
+      <div class="step-head"><span class="num">05 · fine-grained ceiling</span><span class="status done">done</span></div>
       <h3>Is the collapse a capacity problem or a structure problem?</h3>
       <p class="q">Delete individual weights anywhere, at 25 / 50 / 70 / 90%, retrain, measure accuracy only.</p>
       <p>
@@ -766,10 +776,15 @@ td.dead { color: var(--red); font-weight: bold; }
         <div><dt>deliberately not measured</dt><dd>Speed. Reporting it would imply a deployment claim the hardware cannot support.</dd></div>
         <div><dt>answers</dt><dd>Capacity, or structure?</dd></div>
       </dl>
+      <p style="margin-top:16px"><strong>Result: structure, decisively.</strong> With no
+        retraining, <strong>90% of every weight deleted scores higher (0.1447) than 5% of
+        channels deleted (0.0956)</strong>. Half the weights can go for a 2% accuracy cost. The
+        capacity was never the problem; the detector simply cannot absorb losing whole channels,
+        because every residual add and concatenation downstream is shaped by them.</p>
     </div>
 
     <div class="step">
-      <div class="step-head"><span class="num">06 · ratio allocation</span><span class="status">queued</span></div>
+      <div class="step-head"><span class="num">06 · ratio allocation</span><span class="status done">done</span></div>
       <h3>Same total cut, spread three different ways. Does allocation rescue it?</h3>
       <p class="q">Sensitivity-driven vs uniform vs the single global threshold used so far.</p>
       <p>
@@ -782,10 +797,15 @@ td.dead { color: var(--red); font-weight: bold; }
         <div><dt>depends on</dt><dd>Experiment 01. Cannot start before it finishes.</dd></div>
         <div><dt>stakes</dt><dd>Pruning's best remaining chance on this model.</dd></div>
       </dl>
+      <p style="margin-top:16px"><strong>Result: it helps, and less than expected.</strong>
+        Sensitivity-driven allocation wins by <strong>0.4 accuracy points</strong>, against the
+        4.5 points that simply changing the criterion was worth. The map is correct and acting on
+        it is second-order. It does restore correct silence on empty frames to the unpruned
+        97.4%, undoing the extra false alarms pruning otherwise introduces.</p>
     </div>
 
     <div class="step">
-      <div class="step-head"><span class="num">07 · the fair rerun</span><span class="status">queued</span></div>
+      <div class="step-head"><span class="num">07 · the fair rerun</span><span class="status run">running</span></div>
       <h3>Does iterative still lose once both arms get equal training in their final shape?</h3>
       <p class="q">Fix the confound: equal epochs after the final cut. Then extend to 50 epochs.</p>
       <p>
