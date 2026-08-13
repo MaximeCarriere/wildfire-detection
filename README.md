@@ -103,6 +103,8 @@ results/figures/  generated only, never edited by hand
 analysis/         figure generation
 scripts/          engine building and ablations
 PLAN.md           the original plan, plus a section reconciling it against what was measured
+HANDOFF_RTX3090.md  setup, protocol and experiment plan for continuing the pruning work
+                    on a desktop GPU, and what has to stay on the Jetson
 ```
 
 Hardware: NVIDIA Jetson Orin Nano Super (8 GB), JetPack R36.4.3, CUDA 12.6, TensorRT 10.3.
