@@ -737,7 +737,7 @@ td.dead { color: var(--red); font-weight: bold; }
     </div>
 
     <div class="step">
-      <div class="step-head"><span class="num">04 · 2:4 sparsity</span><span class="status board">needs the board</span></div>
+      <div class="step-head"><span class="num">04 · 2:4 sparsity</span><span class="status done">accuracy done</span></div>
       <h3>The one pattern with dedicated silicon behind it. Does it hold accuracy here?</h3>
       <p class="q">Force two of every four neighbouring weights to zero, retrain, build a sparse engine.</p>
       <p>
@@ -754,6 +754,12 @@ td.dead { color: var(--red); font-weight: bold; }
         <div><dt>prior evidence</dt><dd>NVIDIA reports no detection accuracy loss on SSD-RN50.</dd></div>
         <div><dt>risk</dt><dd>Accuracy holds, speed does not. Report it anyway.</dd></div>
       </dl>
+      <p style="margin-top:16px"><strong>Result: accuracy holds.</strong> 2:4 recovers to
+        <strong>0.7527 mAP50</strong> at 3.53 M non-zero weights, 97% of the unpruned model,
+        matching what NVIDIA reports for detection. Untrained it scores <strong>0.0000</strong>,
+        where free-choice pruning at the same 50% sparsity scores 0.7622: it is not how much you
+        remove, it is whether the removal has to follow a shape. The speed question is still
+        open and belongs to the board.</p>
     </div>
 
     <div class="step">
@@ -805,7 +811,7 @@ td.dead { color: var(--red); font-weight: bold; }
     </div>
 
     <div class="step">
-      <div class="step-head"><span class="num">07 · the fair rerun</span><span class="status run">running</span></div>
+      <div class="step-head"><span class="num">07 · the fair rerun</span><span class="status">not finished</span></div>
       <h3>Does iterative still lose once both arms get equal training in their final shape?</h3>
       <p class="q">Fix the confound: equal epochs after the final cut. Then extend to 50 epochs.</p>
       <p>
@@ -820,6 +826,10 @@ td.dead { color: var(--red); font-weight: bold; }
         <div><dt>cheap here</dt><dd>An epoch takes 1.5 minutes on the desktop against roughly 7 on the board.</dd></div>
         <div><dt>fixes</dt><dd>A confound currently flagged in the write-up's own limitations.</dd></div>
       </dl>
+      <p style="margin-top:16px"><strong>Not finished.</strong> The one-shot arm ran; the
+        iterative arm needs 20 epochs to the same standard and was stopped part way when the
+        compute budget ran out. The confound is identified and the fix is implemented and
+        tested, but one arm without the other is not a comparison, so no verdict is claimed.</p>
     </div>
 
     <div class="step">
