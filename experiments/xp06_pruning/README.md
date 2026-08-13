@@ -167,6 +167,11 @@ alarms that pruning otherwise introduces.
 
 This has not changed and is the most portable lesson here. On the board, removing **88.9% of
 the multiply-adds bought 1.7x the throughput**, not the roughly 9x the arithmetic implies.
+
+![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
+
+The right-hand panel is the whole point: the dashed line is what the arithmetic promises and
+the solid line is what the board delivered.
 Pruned layers land on awkward widths, 47 channels instead of 64, and GPU kernels are written
 for regular tile sizes, so a layer with 27% fewer channels often takes exactly as long.
 
@@ -218,11 +223,31 @@ damage before recovery handed the optimizer FP16 parameters and torch refused th
 Only the experiments that measure damage *before* retraining ever hit it. Evaluation now runs
 on a copy.
 
+## What was not finished
+
+Stated plainly, because a plan is not a result.
+
+- **The regularity experiment (`round_to`) was not run.** Its script is
+  [`e3_regularity.py`](e3_regularity.py) and it is ready, but its headline question is
+  throughput and the answer has to come from the board, so it was the first thing cut when the
+  compute budget ran out. It remains the most direct test of the one genuinely surprising
+  observation in this study, that a larger pruned model ran faster than a smaller one.
+- **The iterative arm of the fair rerun did not finish.** One-shot completed with its full
+  post-cut budget; iterative needs 20 epochs to the same standard (8 between increments plus 12
+  after the final cut) and was stopped part way. The confound described below is therefore
+  identified and its fix is implemented and tested, but not yet measured. One arm without the
+  other is not a comparison, so no verdict is claimed.
+- **Two fine-grained levels have damage numbers only.** 25% and 90% sparsity were retrained;
+  50% and 70% were masked and scored without recovery after two runs were lost to a GPU
+  out-of-memory error. They are recorded as damage-only and labelled as such, never mixed into
+  a recovered column.
+
 ## Limitations
 
 - **Speed is unresolved for everything new on this page.** The extension was screened on a
-  desktop GPU. The regularity experiment (`round_to`) and 2:4 sparsity both have throughput as
-  their headline question, and both hand back checkpoints and ONNX rather than an answer.
+  desktop GPU. Both granularity experiments and the regularity experiment have throughput as
+  their headline question, and hand back checkpoints and ONNX rather than an answer. See
+  [`HANDOFF_TO_JETSON.md`](HANDOFF_TO_JETSON.md).
 - **Fixed channel ratio is not a fixed operating point.** At a 25% ratio, LAMP lands at 3.91 M
   parameters while cutting 20.1% of the arithmetic, and FPGM lands at 4.55 M while cutting
   33.5%. The criterion table compares equal *ratios*, not equal size or equal compute.

@@ -46,6 +46,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sparsity", type=float, required=True)
     ap.add_argument("--epochs", type=int, default=12)
+    ap.add_argument("--damage-only", action="store_true",
+                    help="mask and score, no recovery -- fills the granularity curve cheaply")
     args = ap.parse_args()
 
     from lib.prune_utils import detect_head_convs
@@ -71,6 +73,33 @@ def main() -> None:
     meta["map50_before_recovery"] = acc0["map50"]
     meta["map50_small_before_recovery"] = acc0["small_plume"]["map50"]
     meta["map50_tiny_before_recovery"] = acc0["tiny_plume"]["map50"]
+
+    if args.damage_only:
+        # The granularity comparison against channel pruning is a DAMAGE curve,
+        # and damage costs one forward pass over the test set rather than an
+        # hour of training. Recorded separately so it can never be mistaken for
+        # a recovered result.
+        import json
+        from lib import evaluator
+        from _screen import RAW
+        rec = evaluator.results_record(
+            model_id=f"dfire_{BASE}_finegrained{pct}_nofinetune", fmt="pt",
+            params_m=meta.get("nonzero_params_m", 0.0), size_disk_mb=0.0,
+            input_res=RES, accuracy=acc0, jetson=None,
+            notes=(f"XP6 E5: fine-grained global magnitude pruning at {pct}% sparsity, "
+                   f"NO recovery training. Weights are masked, not removed. Accuracy only; "
+                   f"no speedup exists for irregular sparsity on this hardware. 3090 "
+                   f"screening measurement, off-device."))
+        rec["prune_meta"] = meta
+        rec["train_meta"] = None
+        rec["machine"] = "rtx3090_screening"
+        rec["experiment"] = "xp06e5"
+        rec["granularity"] = "unstructured"
+        rec["requested_sparsity"] = args.sparsity
+        rec["speed_measured"] = False
+        evaluator.write_results(rec, RAW / f"xp06e5_dfire_{BASE}_finegrained{pct}_nofinetune.json")
+        log(TAG, f"  damage-only record written: mAP50 {acc0['map50']:.4f}")
+        return
 
     def after_training(m):
         """Re-impose the mask on the EMA weights, verify, then bake it in.

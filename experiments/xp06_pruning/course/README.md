@@ -1,4 +1,4 @@
-# Pruning course — reusable page
+# Pruning course: a reusable page
 
 An interactive course covering every pruning technique from MIT 6.5940 Lecture 3, grounded in
 the wildfire-detection measurements. Written in the kernwerk.org house style.
