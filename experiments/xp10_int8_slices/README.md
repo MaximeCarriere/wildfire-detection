@@ -1,11 +1,10 @@
-# XP10 — INT8 compression, and the default setting that broke everything
+# XP10. INT8 compression, and the default setting that broke everything
 
 **Question:** INT8 quantization halves model size and promises ~1.5× speed. What does it
 cost in accuracy?
 
-**Outcome:** with TensorRT's **default** settings, 67% of the accuracy — a catastrophic
-result that turned out to be a single wrong option, not a property of INT8. Fixed, the real
-cost is ~8%.
+**Outcome:** with TensorRT's **default** settings, 67% of the accuracy. That turned out to
+be a single wrong option rather than a property of INT8. Fixed, the real cost is about 8%.
 
 ![One default setting cost 67% of the accuracy](../../results/figures/xp10_int8.png)
 
@@ -21,8 +20,8 @@ Full 4,306-image test set, YOLOv5s at 512 pixels.
 
 > **What "plume" means here.** A plume is the visible smoke or flame region the detector has
 > to find. Accuracy is reported separately for **small plumes** (under 1% of the frame) and
-> **tiny plumes** (under 0.1%, roughly 20x20 pixels) — distant smoke, which is what early
-> detection actually depends on.
+> **tiny plumes** (under 0.1%, roughly 20x20 pixels), which is distant smoke, and what
+> early detection actually depends on.
 
 ![What small and tiny plume mean](../../results/figures/plume_definition.png)
 
@@ -34,8 +33,8 @@ in a statistical sense, and does it by **clipping outliers**.
 
 Reading the calibration file directly showed what it clipped. The input images are
 normalised to a 0–1 brightness scale; the default calibrator decided the useful range
-was **0 to 0.45** — flattening everything brighter to a single value. On a camera pointed at
-the sky, that is most of the frame, and the bright end is precisely where faint grey smoke
+was **0 to 0.45**, flattening everything brighter to a single value. On a camera pointed at
+the sky that is most of the frame, and the bright end is precisely where faint grey smoke
 has to be distinguished.
 
 Switching to min/max calibration, which clips nothing, changed one line of code and:
@@ -48,11 +47,11 @@ Switching to min/max calibration, which clips nothing, changed one line of code 
 The cause was not obvious, and three plausible hypotheses were tested and eliminated before
 reading the calibration data directly:
 
-1. **The detection head is too sensitive to quantize** — forced it to full precision.
+1. **The detection head is too sensitive to quantize.** Forced it to full precision.
    Negligible change.
-2. **The final coordinate maths is too sensitive** — forced that too. No change.
-3. **Our calibration images are unrepresentative** (they were 90% deliberately hard cases —
-   night, fog, backlight). Real but small: +22% accuracy from using a random sample instead.
+2. **The final coordinate maths is too sensitive.** Forced that too. No change.
+3. **The calibration images are unrepresentative** (90% of them deliberately hard cases:
+   night, fog, backlight). Real but small: +22% accuracy from a random sample instead.
    A genuine finding on its own: calibration data should reflect the *deployment*
    distribution, with hard cases present, not consist almost entirely of them.
 
@@ -63,8 +62,8 @@ the tool produced was the right one.
 
 INT8 is now a real trade rather than a broken one: **−8% accuracy for 1.5× the speed, 36%
 less power and half the file size.** Whether that trade is worth taking depends on the
-deployment; for early detection of distant smoke it probably is not — tiny-plume accuracy
-still falls 58%.
+deployment. For early detection of distant smoke it probably is not, since tiny-plume
+accuracy still falls 58%.
 
 **Every INT8 number anywhere should state its calibration method.** Labelled only "INT8",
 these two engines differ by 36× on the metric that matters most here.

@@ -145,53 +145,76 @@ def fig_xp01(records) -> Path | None:
     import matplotlib.pyplot as plt
     import numpy as np
 
-    s = by_id(records, "dfire_yolov5s_published")
-    l = by_id(records, "dfire_yolov5l_published")
-    if not (s and l):
+    s_rec = by_id(records, "dfire_yolov5s_published")
+    l_rec = by_id(records, "dfire_yolov5l_published")
+    if not (s_rec and l_rec):
         return None
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
-    fig.suptitle("A 6.6× bigger model buys almost nothing", y=1.06)
-    style.subtitle(fig, "The large model gains 1.4 accuracy points and costs 3.3× the "
-                        "energy per frame — which undermines the plan to distil from it.", y=1.0)
+    fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.3),
+                             gridspec_kw={"width_ratios": [2.1, 1.0, 1.5]})
+    fig.suptitle("A 6.6x bigger model buys almost nothing", y=1.06)
+    style.subtitle(fig, "The large model gains 1.4 accuracy points and costs 3.3x the "
+                        "energy per frame. What it does buy is fewer false alarms.", y=1.0)
 
+    # Panel 1 - accuracy on frames that DO contain fire or smoke.
     metrics = [("map50_dfire_test", "overall"), ("map50_fire_class", "fire"),
                ("map50_smoke_class", "smoke"), ("map50_small_plume", "small\nplumes"),
                ("map50_tiny_plume", "tiny\nplumes")]
     x = np.arange(len(metrics))
     w = 0.36
     ax = axes[0]
-    sv = [s[k] or 0 for k, _ in metrics]
-    lv = [l[k] or 0 for k, _ in metrics]
-    ax.bar(x - w/2, sv, w, label="YOLOv5s — 7.0 M params", color=style.BLUE, zorder=3)
-    ax.bar(x + w/2, lv, w, label="YOLOv5l — 46.1 M params", color=style.ORANGE, zorder=3)
+    sv = [s_rec[k] or 0 for k, _ in metrics]
+    lv = [l_rec[k] or 0 for k, _ in metrics]
+    ax.bar(x - w/2, sv, w, label="YOLOv5s, 7.0 M params", color=style.BLUE, zorder=3)
+    ax.bar(x + w/2, lv, w, label="YOLOv5l, 46.1 M params", color=style.ORANGE, zorder=3)
     for xi, (a, b) in enumerate(zip(sv, lv)):
         style.annotate(ax, xi - w/2, a, f"{a:.2f}", dy=4, size=8.5, weight="normal")
         style.annotate(ax, xi + w/2, b, f"{b:.2f}", dy=4, size=8.5, weight="normal")
     ax.set_xticks(x); ax.set_xticklabels([n for _, n in metrics])
     ax.set_ylabel("detection accuracy (mAP50)")
     ax.set_ylim(0, 1.16)
-    ax.set_title("Accuracy: nearly identical everywhere", fontsize=11.5, pad=8)
+    ax.set_title("Frames that contain fire or smoke", fontsize=11.5, pad=8)
     ax.legend(loc="upper center", ncol=2, columnspacing=1.2)
     style.tidy(ax)
 
-    # Cost panel — indexed to the small model so the multiple is the message.
+    # Panel 2 - the other half of the test set: frames with nothing in them.
+    # Accuracy is undefined there (nothing to detect), so the right measure is how
+    # often the detector correctly stays quiet.
     ax = axes[1]
+    def silent(r):
+        v = r.get("bg_correctly_silent_rate")
+        return 100 * (v if v is not None else 1 - r["bg_false_alarm_rate"])
+    vals = [silent(s_rec), silent(l_rec)]
+    bars = ax.bar(["YOLOv5s", "YOLOv5l"], vals, color=[style.BLUE, style.ORANGE],
+                  width=0.55, zorder=3)
+    for b, v in zip(bars, vals):
+        style.annotate(ax, b.get_x() + b.get_width()/2, v, f"{v:.1f}%", dy=5)
+    n_bg = (s_rec.get("accuracy_detail", {}).get("background") or {}).get(
+        "n_background_images", 2005)
+    ax.set_ylabel("correctly silent (%)")
+    ax.set_ylim(90, 101)
+    ax.set_title(f"The {n_bg:,} empty frames", fontsize=11.5, pad=8)
+    ax.text(0.5, 0.06, "no fire, no smoke:\nthe right answer is nothing",
+            transform=ax.transAxes, ha="center", fontsize=9, color=style.INK_2)
+    style.tidy(ax)
+
+    # Panel 3 - cost, indexed to the small model so the multiple is the message.
+    ax = axes[2]
     names = ["energy\nper frame", "latency", "memory", "model\nsize"]
     ratios = [
-        l["jetson"]["energy_j_per_1000_frames"] / s["jetson"]["energy_j_per_1000_frames"],
-        l["jetson"]["latency_ms_median"] / s["jetson"]["latency_ms_median"],
-        l["jetson"]["mem_mb"] / s["jetson"]["mem_mb"],
-        l["size_disk_mb"] / s["size_disk_mb"],
+        l_rec["jetson"]["energy_j_per_1000_frames"] / s_rec["jetson"]["energy_j_per_1000_frames"],
+        l_rec["jetson"]["latency_ms_median"] / s_rec["jetson"]["latency_ms_median"],
+        l_rec["jetson"]["mem_mb"] / s_rec["jetson"]["mem_mb"],
+        l_rec["size_disk_mb"] / s_rec["size_disk_mb"],
     ]
     bars = ax.bar(names, ratios, color=style.ORANGE, width=0.6, zorder=3)
     ax.axhline(1.0, color=style.INK, linewidth=1.2, zorder=4)
-    ax.text(3.45, 1.0, "YOLOv5s = 1×", ha="right", va="bottom", fontsize=9, color=style.INK)
+    ax.text(3.45, 1.06, "YOLOv5s = 1x", ha="right", va="bottom", fontsize=9, color=style.INK)
     for b, v in zip(bars, ratios):
-        style.annotate(ax, b.get_x() + b.get_width()/2, v, f"{v:.1f}×", dy=5)
+        style.annotate(ax, b.get_x() + b.get_width()/2, v, f"{v:.1f}x", dy=5)
     ax.set_ylabel("cost relative to YOLOv5s")
     ax.set_ylim(0, max(ratios) * 1.22)
-    ax.set_title("Cost: 1.7× to 6.5× worse on every axis", fontsize=11.5, pad=8)
+    ax.set_title("What the extra size costs", fontsize=11.5, pad=8)
     style.tidy(ax)
 
     fig.tight_layout()

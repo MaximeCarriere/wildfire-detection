@@ -1,4 +1,4 @@
-# XP12 — Endurance: does it hold up for more than a benchmark?
+# XP12. Endurance: does it hold up for more than a benchmark?
 
 **Question:** benchmarks run for seconds; a fire watch runs for months. Does throughput
 survive sustained load, or does the board overheat and quietly slow down?
@@ -20,11 +20,11 @@ Sustained batched inference, reported per minute so a trend is distinguishable f
 ## What this means
 
 No thermal throttling in either case; both stay inside a ±2% band. The FP16 curve declines
-gently after minute 3 and settles 2.6 °C hotter — it is doing more work per frame — but
-never falls off a cliff. In practice: **pack a cooldown between back-to-back heavy runs**,
+gently after minute 3 and settles 2.6 °C hotter, because it is doing more work per frame,
+but never falls off a cliff. In practice: **pack a cooldown between back-to-back heavy runs**,
 or accumulated heat shows up as a transient slowdown in the next one.
 
-**The second row is a trap, kept deliberately.** The INT8 engine wins every column here —
+**The second row is a trap, kept deliberately.** The INT8 engine wins every column here:
 faster, cooler, 43% less energy. It is also the engine XP10 measured at less than a third of
 the accuracy. An endurance table is exactly where that mistake gets made: throughput, watts
 and temperature all say "ship it". **No endurance number means anything without the accuracy
