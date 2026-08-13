@@ -320,6 +320,10 @@ def background_false_alarms(samples: Sequence[dataset.Sample], dets: Sequence[Im
         "n_background_images": len(bg),
         "n_alarmed": alarms,
         "false_alarm_rate": round(alarms / len(bg), 4),
+        # The same fact stated the useful way round: how often the detector
+        # correctly stays quiet. This is what a deployed camera does almost all
+        # the time, so it deserves to be readable without mental arithmetic.
+        "correctly_silent_rate": round(1 - alarms / len(bg), 4),
         "false_boxes_per_bg_image": round(boxes / len(bg), 4),
     }
 
@@ -532,6 +536,7 @@ def results_record(*, model_id: str, fmt: str, params_m: float, size_disk_mb: fl
         "map50_small_plume": acc.get("small_plume", {}).get("map50"),
         "map50_tiny_plume": acc.get("tiny_plume", {}).get("map50"),
         "bg_false_alarm_rate": (acc.get("background") or {}).get("false_alarm_rate"),
+        "bg_correctly_silent_rate": (acc.get("background") or {}).get("correctly_silent_rate"),
         "map50_ood_flame": (ood.get("flame") or {}).get("map50"),
         "map50_ood_boreal": (ood.get("boreal") or {}).get("map50"),
 

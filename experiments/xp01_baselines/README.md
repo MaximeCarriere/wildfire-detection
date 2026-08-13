@@ -6,24 +6,48 @@ buy over the smaller one?
 **Outcome:** the bigger model buys almost nothing — which undermines the project's plan to
 use it as a teacher for model distillation.
 
+## The models
+
+**We did not train these.** They are the D-Fire dataset authors' own published detectors,
+used exactly as released.
+
+| | YOLOv5s | YOLOv5l |
+|---|---|---|
+| Architecture | YOLOv5 small | YOLOv5 large |
+| Parameters | 7.03 M | 46.14 M |
+| File size | 14.4 MB | 92.8 MB |
+| Input resolution | 640 × 640 | 640 × 640 |
+| Classes | `0 = smoke`, `1 = fire` | `0 = smoke`, `1 = fire` |
+| Trained on | D-Fire official train split (17,221 images) | same |
+
+- **Who made them:** Pedro Vinícius Almeida Borges de Venâncio and colleagues — the same
+  group that built the D-Fire dataset (Gaia, solutions on demand).
+- **Where to get them:** [github.com/pedbrgs/Fire-Detection](https://github.com/pedbrgs/Fire-Detection).
+  The weights sit behind OneDrive links in that repo's README and need a browser to
+  download; scripted requests get a 403.
+- **Licence:** their code is MIT; the YOLOv5 architecture itself is Ultralytics AGPL-3.0, so
+  the AGPL note in the top-level README applies to any derived weights here too.
+- **Training recipe:** not published — epochs, augmentation and training resolution are all
+  unknown. That is a real limitation of using them, noted at the bottom of this page.
+
+**Why use someone else's weights at all?** They were trained on D-Fire's *official* training
+split, and XP0 deliberately preserved that split rather than reshuffling. So our 4,306-image
+test set is provably outside their training data, and they can be scored honestly on day
+one — no GPU rental, no waiting. It also means the numbers below are comparable to what the
+dataset's own authors report.
+
 ![A 6.6x bigger model buys almost nothing](../../results/figures/xp01_baselines.png)
 
 ## What was measured
-
-The **D-Fire authors' own published models** (MIT licence), not models we trained. They were
-trained on D-Fire's official training split, and because XP0 preserved that split, our test
-set is provably outside their training data — so they can be scored honestly, on day one,
-with no GPU rental.
 
 Jetson Orin Nano Super · PyTorch FP16 · 640×640 · full 4,306-image test set.
 
 | | YOLOv5s | YOLOv5l |
 |---|---:|---:|
-| Parameters / size | 7.0 M · 14.4 MB | 46.1 M · 92.8 MB |
 | **Accuracy (mAP50)** | 0.7708 | **0.7847** |
 | fire / smoke | 0.7206 / 0.8210 | 0.7211 / 0.8484 |
 | tiny plumes | 0.1654 | 0.1974 |
-| False alarms on empty frames | 3.1% | **2.2%** |
+| Correctly silent on empty frames | 96.9% | **97.8%** |
 | Speed | 43.8 fps | 25.1 fps |
 | Energy per 1000 frames | 232 J | 761 J |
 

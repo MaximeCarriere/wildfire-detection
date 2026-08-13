@@ -336,6 +336,45 @@ def load_samples(name: str, *, split_dir: Path = SPLITS, data_root: Path = DATA)
     return samples
 
 
+def verify_splits(*, split_dir: Path = SPLITS, strict: bool = True) -> dict:
+    """Re-hash the split lists and compare them to the frozen manifest.
+
+    The point of failure this guards against is **moving training to another
+    machine**. Weights can be produced anywhere; the split membership cannot
+    change when they are. If a split is regenerated on the new box — a different
+    seed, a different script, or simply pointing the trainer at the whole image
+    folder — test images leak into training, every published number becomes a
+    comparison against a model that has seen the exam paper, and nothing visibly
+    breaks. A checksum mismatch turns that silent failure into a loud one.
+
+    Call it at the top of any training entry point, on any machine.
+    """
+    manifest_path = Path(split_dir) / "manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"{manifest_path} missing — splits are not frozen")
+    manifest = json.loads(manifest_path.read_text())
+    expected = manifest["checksums"]
+
+    observed, bad = {}, []
+    for name, want in expected.items():
+        rels = sorted(ln.strip() for ln in
+                      (Path(split_dir) / f"{name}.txt").read_text().splitlines() if ln.strip())
+        got = _list_checksum(rels)
+        observed[name] = {"expected": want, "observed": got, "n": len(rels),
+                          "ok": got == want}
+        if got != want:
+            bad.append(f"{name}: expected {want}, got {got} ({len(rels)} entries)")
+
+    if bad and strict:
+        raise RuntimeError(
+            "SPLIT CHECKSUM MISMATCH — the data has changed since the results were "
+            "measured, so nothing new is comparable to anything already published:\n  "
+            + "\n  ".join(bad)
+            + "\nEither restore the committed data/splits/*.txt, or re-run every "
+              "experiment and bump the protocol version.")
+    return observed
+
+
 # --------------------------------------------------------------------------
 # OOD quarantine
 # --------------------------------------------------------------------------
@@ -500,5 +539,6 @@ __all__ = [
     "Box", "Sample", "CLASS_NAMES", "SEED", "SMALL_PLUME_AREA_FRAC", "DATA", "SPLITS",
     "read_label", "scan_dataset", "verify_class_map",
     "build_splits", "load_split", "load_samples", "quarantined", "assert_trainable",
+    "verify_splits",
     "image_stats", "build_calibration_set",
 ]

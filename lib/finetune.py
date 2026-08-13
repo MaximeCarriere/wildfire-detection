@@ -76,6 +76,13 @@ def build_loader(split: str, res: int, batch: int, repo: Path, hyp: dict, *,
                  augment: bool, workers: int = 4):
     from lib import data as dataset
 
+    # Refuse to train against splits that do not match the frozen manifest. This
+    # matters most when training moves to another machine: weights can be made
+    # anywhere, but if the split membership changes there, test images leak into
+    # training and every published number silently becomes a comparison against a
+    # model that has seen the exam paper.
+    dataset.verify_splits()
+
     if str(repo) not in sys.path:
         sys.path.insert(0, str(repo))
     from utils.dataloaders import create_dataloader
