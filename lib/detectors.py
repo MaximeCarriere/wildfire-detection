@@ -216,6 +216,44 @@ class Yolov5Detector:
                 f"rather than silently mislabelling the classes.")
         self.names = names
 
+    @classmethod
+    def from_model(cls, model, *, input_res: int = 640, device: str = "cuda:0",
+                   half: bool = True, name: str = "live"):
+        """Wrap an in-memory model, skipping the disk round trip.
+
+        The sensitivity sweep scores one pruned variant per prunable layer per
+        ratio, several hundred models that exist only to produce a single mAP50
+        and are then discarded. Writing each to disk purely to read it straight
+        back would dominate the run.
+
+        Everything that decides a *number* is untouched: this shares
+        :meth:`predict` and therefore the same letterbox, thresholds, NMS and
+        max_det as a checkpoint loaded from disk. Only the loading differs, and
+        the class-name assertion still runs, because the trap it guards against
+        (silently scoring a different model) is not less likely just because the
+        weights arrived in memory.
+        """
+        import torch
+
+        self = cls.__new__(cls)
+        self.weights = Path(f"<in-memory:{name}>")
+        self.input_res = input_res
+        self.device = device
+        self.half = half
+        self.name = name
+
+        model = model.float().eval().to(device)
+        if half:
+            model.half()
+        self.model = model
+
+        names = list(model.names.values()) if isinstance(model.names, dict) else list(model.names)
+        if names != cls.EXPECTED_NAMES:
+            raise ValueError(
+                f"in-memory model has class names {names}, expected {cls.EXPECTED_NAMES}.")
+        self.names = names
+        return self
+
     # ---- accuracy path ---------------------------------------------------
 
     def predict(self, images: Sequence[Path], *, batch: int = 16) -> list[ImageDets]:

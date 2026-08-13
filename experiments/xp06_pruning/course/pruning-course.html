@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pruning — build → shrink → measure</title>
+<meta name="description" content="A working course in every way to prune a neural network, tested on a fire and smoke detector running on a fanless embedded board.">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pruning — build → shrink → measure">
+<meta property="og:description" content="A working course in every way to prune a neural network, tested on a fire and smoke detector running on a fanless embedded board.">
+
+<!-- ==================================================================
+     TO PUBLISH THIS ON kernwerk.org
+     ------------------------------------------------------------------
+     1. Delete the whole <style id="kernwerk-base"> block below. It is a
+        local copy of your style.css tokens and base rules, present only
+        so this file works standalone. Replace it with:
+            <link rel="stylesheet" href="/style.css">
+            <script src="/script.js"></script>
+     2. Delete the <script id="standalone-theme"> block at the end of
+        <body>. Your script.js already owns the theme cycle and sets the
+        same data-theme values this page reads.
+     3. Keep <style id="course-components"> as is. It only defines the
+        page-specific pieces (charts, weight matrix, channel bars) and
+        the chart colour tokens, none of which exist in style.css.
+     Everything else is already written against your class names and
+     your data-theme="light" / data-theme="night" contract.
+     ================================================================== -->
+
+<style id="kernwerk-base">
+/* --- local copy of kernwerk.org tokens + base. Delete when linking /style.css --- */
+@font-face {
+  font-family: 'iAWriterQuattroS';
+  src: local('iAWriterQuattroS'), local('iA Writer Quattro S'), local('iAWriterQuattroS-Regular');
+  font-weight: normal;
+}
+@font-face {
+  font-family: 'iAWriterQuattroS';
+  src: local('iAWriterQuattroS-Bold'), local('iA Writer Quattro S Bold');
+  font-weight: bold;
+}
+
+:root, [data-theme="light"] {
+  color-scheme: light;
+  --red: #ee5253;
+  --yellow: #ffa801;
+  --green: #27ae60;
+  --select: #00b894;
+  --bg: #ecf0f1;
+  --front: #34495e;
+  --frontBrightText: #34495ea6;
+  --frontBrightBorder: #34495e87;
+  --disabled: #34495e42;
+}
+[data-theme="night"] {
+  color-scheme: dark;
+  --red: #f35b5b;
+  --yellow: #ffa801;
+  --green: #00b894;
+  --select: #00b894;
+  --bg: #3a5168;
+  --front: #ecf0f1;
+  --frontBrightText: #ecf0f1;
+  --frontBrightBorder: #ecf0f1;
+  --disabled: #ecf0f157;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --red: #f35b5b;
+    --yellow: #ffa801;
+    --green: #00b894;
+    --select: #00b894;
+    --bg: #3a5168;
+    --front: #ecf0f1;
+    --frontBrightText: #ecf0f1;
+    --frontBrightBorder: #ecf0f1;
+    --disabled: #ecf0f157;
+  }
+}
+
+* {
+  font-family: 'iAWriterQuattroS', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  box-sizing: border-box;
+}
+body {
+  background-color: var(--bg);
+  color: var(--front);
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.72;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+}
+header, main, footer { width: 100%; max-width: 1180px; }
+::selection { background: var(--select); }
+a { color: var(--front); text-underline-offset: 5px; }
+a:visited { color: inherit; }
+a:hover { color: var(--frontBrightText); }
+header {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 14px 40px; margin-bottom: 34px; padding-bottom: 8px;
+}
+.mainTitle {
+  text-decoration: underline; text-decoration-thickness: 2px;
+  text-decoration-style: wavy; text-underline-offset: 10px;
+  user-select: none; font-size: 1.5em; font-weight: bold;
+  white-space: nowrap; text-transform: lowercase; color: var(--front);
+}
+.menu {
+  user-select: none; font-weight: bold; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 4px 6px; font-size: .95em;
+}
+.menu a { margin: 0 5px; text-decoration: none; cursor: pointer; }
+.menu a:hover { text-decoration: underline; text-underline-offset: 6px; color: var(--front); }
+.menu .sep { opacity: .4; }
+#daynight { cursor: pointer; }
+h1 {
+  margin: 6px 0 20px; font-size: clamp(1.7em, 1.1em + 2.4vw, 2.3em);
+  line-height: 1.18; font-weight: bold; letter-spacing: -0.01em; max-width: 20ch;
+}
+h2 { font-size: 1.25em; display: flex; align-items: center; gap: 14px; margin: 0 0 6px; line-height: 1.35; }
+h2::before { content: ""; flex: none; width: 14px; height: 14px; background: var(--select); border-radius: 2px; }
+h3 { font-size: 1.05em; margin: 26px 0 0; }
+p { margin: 0 0 15px; }
+.lead { font-size: 1.1em; line-height: 1.55; }
+.muted { color: var(--frontBrightText); }
+.accent { color: var(--select); font-weight: bold; }
+.mono-tag { font-size: .8em; letter-spacing: 2px; text-transform: uppercase; color: var(--frontBrightText); font-weight: bold; }
+ul, ol { padding-left: 1.3em; margin: 0 0 15px; }
+li { margin-bottom: 6px; }
+footer { margin-top: 70px; padding-top: 22px; border-top: 2px dotted var(--frontBrightBorder); font-size: .85em; color: var(--frontBrightText); }
+</style>
+
+<style id="course-components">
+/* --- page-specific: chart tokens + components. Keep this block. --- */
+:root, [data-theme="light"] {
+  --panel: #e3e9ea;
+  --hair: #34495e2e;
+  /* size tiers are nested subsets, so one hue light to dark, not three hues */
+  --seq-1: #00553f;
+  --seq-2: #009279;
+  --seq-3: #5bbba2;
+  /* reference versus two treatments */
+  --cat-ref: #34495e;
+  --cat-a: #00866b;
+  --cat-b: #d13c3d;
+  --tipbg: #34495e;
+  --tipfg: #ecf0f1;
+}
+[data-theme="night"] {
+  --panel: #33485d;
+  --hair: #ecf0f13d;
+  --seq-1: #a8ecd9;
+  --seq-2: #35c4a3;
+  --seq-3: #10937a;
+  --cat-ref: #ecf0f1;
+  --cat-a: #00ac8a;
+  --cat-b: #ee5253;
+  --tipbg: #ecf0f1;
+  --tipfg: #34495e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --panel: #33485d;
+    --hair: #ecf0f13d;
+    --seq-1: #a8ecd9;
+    --seq-2: #35c4a3;
+    --seq-3: #10937a;
+    --cat-ref: #ecf0f1;
+    --cat-a: #00ac8a;
+    --cat-b: #ee5253;
+    --tipbg: #ecf0f1;
+    --tipfg: #34495e;
+  }
+}
+
+.col { max-width: 74ch; }
+.col p, .col ul, .col ol { max-width: 74ch; }
+section { margin-top: 62px; }
+code { font-size: .9em; border: 1px solid var(--hair); padding: 0 4px; border-radius: 3px; }
+
+.facts {
+  display: flex; flex-wrap: wrap; gap: 10px 34px; margin: 26px 0 0;
+  padding-top: 20px; border-top: 2px dotted var(--frontBrightBorder);
+}
+.facts div { min-width: 120px; }
+.facts dt { font-size: .74em; letter-spacing: 2px; text-transform: uppercase; color: var(--frontBrightText); font-weight: bold; }
+.facts dd { margin: 0; font-weight: bold; font-size: 1.02em; font-variant-numeric: tabular-nums; }
+
+.note {
+  border: 2px solid var(--frontBrightBorder); border-radius: 6px;
+  padding: 18px 22px; margin: 24px 0; max-width: 74ch; position: relative; overflow: hidden;
+}
+.note::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--select); opacity: .8; }
+.note p:last-child { margin-bottom: 0; }
+.note .num { display: block; margin-bottom: 6px; }
+.num { font-weight: bold; font-size: .78em; letter-spacing: 2px; text-transform: uppercase; color: var(--frontBrightText); }
+
+.panel { border: 2px solid var(--frontBrightBorder); border-radius: 6px; margin: 26px 0; overflow: hidden; }
+.panel-head {
+  padding: 14px 22px; border-bottom: 2px dotted var(--frontBrightBorder);
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+}
+.panel-body { padding: 22px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+button {
+  font-family: inherit; font-size: .82em; font-weight: bold; letter-spacing: 1px;
+  text-transform: uppercase; padding: 7px 13px; background: transparent;
+  color: var(--frontBrightText); border: 2px solid var(--frontBrightBorder);
+  border-radius: 4px; cursor: pointer; transition: border-color .18s, color .18s, background .18s;
+}
+button:hover { border-color: var(--select); color: var(--front); }
+button:focus-visible { outline: 2px solid var(--select); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--select); border-color: var(--select); color: #ffffff; }
+[data-theme="night"] button[aria-pressed="true"] { color: #34495e; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) button[aria-pressed="true"] { color: #34495e; }
+}
+
+.gran-layout { display: grid; grid-template-columns: minmax(0,262px) minmax(0,1fr); gap: 34px; align-items: start; }
+@media (max-width: 720px) { .gran-layout { grid-template-columns: 1fr; } }
+.wmat-frame { position: relative; width: 100%; max-width: 262px; }
+.wmat { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; aspect-ratio: 1; }
+.wcell { background: var(--select); border-radius: 1px; transition: background .2s, opacity .2s; }
+.wcell.cut { background: var(--disabled); }
+.kgrid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4,1fr); grid-template-rows: repeat(4,1fr); pointer-events: none; }
+.kgrid div { border: 1px dashed var(--frontBrightBorder); opacity: .4; }
+.gran-note dt { font-size: .74em; letter-spacing: 2px; text-transform: uppercase; color: var(--frontBrightText); font-weight: bold; margin-bottom: 2px; }
+.gran-note dd { margin: 0 0 18px; font-size: .95em; }
+.hw {
+  display: inline-block; font-size: .74em; font-weight: bold; letter-spacing: 2px;
+  text-transform: uppercase; padding: 3px 9px; border: 2px solid currentColor;
+  border-radius: 4px; margin-bottom: 8px;
+}
+.hw.yes { color: var(--green); }
+.hw.no { color: var(--red); }
+.hw.partial { color: var(--yellow); }
+
+.chan-rows { display: flex; flex-direction: column; gap: 7px; }
+.chan { display: grid; grid-template-columns: 60px minmax(0,1fr) 56px; align-items: center; gap: 14px; font-size: .84em; font-variant-numeric: tabular-nums; }
+.chan-name { color: var(--frontBrightText); font-weight: bold; }
+.chan-track { background: var(--disabled); height: 18px; border-radius: 2px; overflow: hidden; }
+.chan-fill { height: 100%; background: var(--select); transition: width .28s, background .28s; }
+.chan.cut .chan-fill { background: var(--red); opacity: .5; }
+.chan.cut .chan-name { text-decoration: line-through; color: var(--red); }
+.chan-val { text-align: right; font-weight: bold; }
+.chan.cut .chan-val { color: var(--red); }
+
+.chart-wrap { overflow-x: auto; }
+svg { display: block; max-width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 16px; font-size: .8em; font-weight: bold; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.swatch { width: 12px; height: 12px; border-radius: 2px; flex: none; }
+
+table { border-collapse: collapse; width: 100%; font-size: .82em; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 8px 12px; border-bottom: 1px solid var(--hair); white-space: nowrap; }
+th { color: var(--frontBrightText); font-size: .86em; letter-spacing: 1.4px; text-transform: uppercase; border-bottom: 2px dotted var(--frontBrightBorder); }
+th:first-child, td:first-child { text-align: left; }
+td.hi { font-weight: bold; }
+td.dead { color: var(--red); font-weight: bold; }
+
+.steps { display: flex; flex-direction: column; gap: 20px; margin: 26px 0 0; }
+.step {
+  position: relative; border: 2px solid var(--frontBrightBorder); border-radius: 6px;
+  padding: 22px 26px 24px; overflow: hidden; transition: transform .18s ease, border-color .18s ease;
+}
+.step::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--select); opacity: .8; }
+.step:hover { transform: translateY(-3px); border-color: var(--select); }
+.step-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: baseline; justify-content: space-between; }
+.step h3 { margin: 2px 0 4px; font-size: 1.22em; }
+.step .q { color: var(--frontBrightText); margin: 0 0 12px; font-size: .95em; }
+.status {
+  font-size: .72em; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;
+  padding: 3px 9px; border: 2px solid currentColor; border-radius: 4px;
+  white-space: nowrap; color: var(--frontBrightText);
+}
+.status.run { color: var(--select); }
+.status.board { color: var(--yellow); }
+.xgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px,1fr)); gap: 18px; margin-top: 18px; padding-top: 16px; border-top: 2px dotted var(--frontBrightBorder); }
+.xgrid dt { font-size: .72em; letter-spacing: 2px; text-transform: uppercase; color: var(--frontBrightText); font-weight: bold; margin-bottom: 3px; }
+.xgrid dd { margin: 0; font-size: .9em; }
+
+.axes { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap: 20px; margin-top: 26px; }
+.axis { border: 2px solid var(--frontBrightBorder); border-radius: 6px; padding: 20px 22px; position: relative; overflow: hidden; }
+.axis::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--select); opacity: .8; }
+.axis h4 { margin: 0 0 10px; font-size: 1.02em; }
+.axis p { font-size: .9em; margin-bottom: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.chip { font-size: .76em; font-weight: bold; padding: 3px 8px; border: 2px solid var(--frontBrightBorder); border-radius: 4px; color: var(--frontBrightText); }
+.chip.was { border-color: var(--select); color: var(--select); }
+.chip.open { border-style: dotted; }
+
+.tooltip {
+  position: fixed; pointer-events: none; background: var(--tipbg); color: var(--tipfg);
+  font-size: .78em; line-height: 1.55; font-weight: bold; padding: 9px 12px;
+  border-radius: 4px; opacity: 0; transition: opacity .12s; z-index: 40;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.tooltip.on { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="mainTitle" href="/">※ pruning</a>
+  <nav class="menu">
+    <span class="sep">/</span>
+    <a href="#axes">axes</a><span class="sep">/</span>
+    <a href="#granularity">granularity</a><span class="sep">/</span>
+    <a href="#criterion">criterion</a><span class="sep">/</span>
+    <a href="#known">known</a><span class="sep">/</span>
+    <a href="#plan">plan</a><span class="sep">/</span>
+    <a href="#traps">traps</a><span class="sep">/</span>
+    <a id="daynight" onclick="daynight()">light theme</a><span class="sep">/</span>
+  </nav>
+</header>
+
+<main>
+
+<section style="margin-top:0">
+  <p class="mono-tag">MIT 6.5940 · lecture 03 · applied to a shipping detector</p>
+  <h1>build → shrink → measure</h1>
+  <p class="lead col">
+    Pruning removes parts of a neural network to make it smaller and faster. This is a working
+    course in every way you can do that, tested on a smoke-and-fire detector running on a
+    fanless $249 board — <strong>including the versions that failed</strong>.
+  </p>
+  <dl class="facts">
+    <div><dt>model</dt><dd>YOLOv5s</dd></div>
+    <div><dt>parameters</dt><dd>7.03 M</dd></div>
+    <div><dt>dataset</dt><dd>D-Fire 21,527</dd></div>
+    <div><dt>board</dt><dd>Orin Nano</dd></div>
+    <div><dt>line to beat</dt><dd>0.7776 mAP50</dd></div>
+    <div><dt>at</dt><dd>474 img/s</dd></div>
+  </dl>
+</section>
+
+<section id="why">
+  <div class="col">
+    <h2>A detector that must run on a pole in a forest</h2>
+    <p class="lead">
+      The job is spotting smoke and fire early enough to matter, on hardware with no fan and no
+      internet. Fifteen watts, eight gigabytes, no cloud.
+    </p>
+    <p>
+      That budget is what makes compression interesting. A model that is 5% more accurate but
+      three times slower is not better here, it is unusable. So every technique below is judged
+      against one measured line: the unpruned detector, fed 512-pixel images, compiled to a real
+      engine. <span class="accent">0.7776 mAP50 at 474 images per second.</span> Anything that
+      does not beat that has lost.
+    </p>
+    <div class="note">
+      <span class="num">the running joke</span>
+      <p>
+        The most effective compression so far was <strong>feeding the network smaller
+        pictures</strong>. Not pruning, not quantisation. Just 512 pixels instead of 640. The
+        cheap knob is beating the clever ones, and a fair course says so before it teaches you
+        the clever ones.
+      </p>
+    </div>
+    <h3>What the numbers mean</h3>
+    <p>
+      <strong>mAP50</strong> is the standard detection score: did the box the model drew land on
+      the thing that is actually there. 1.0 is perfect, 0.0 is useless.
+    </p>
+    <p>
+      One number is never enough. A wildfire system exists to catch fires <em>early</em>, which
+      means catching them while the smoke is still a smudge on the horizon. So accuracy is always
+      split by size: <strong>small plumes</strong> are under 1% of the frame,
+      <strong>tiny plumes</strong> under 0.1% — roughly a 20&times;20 pixel patch. A model can
+      hold its headline score while going quietly blind to exactly the case it was built for, and
+      the only way to see that is to measure it separately.
+    </p>
+  </div>
+</section>
+
+<section id="axes">
+  <div class="col">
+    <h2>Every pruning method is four decisions</h2>
+    <p class="lead">
+      The literature looks like dozens of competing techniques. It is one problem with four
+      independent choices, and almost every named method is a particular combination of them.
+    </p>
+    <p>
+      Formally: keep the network as accurate as possible while holding no more than
+      <code>N</code> non-zero weights. Everything below answers <em>which</em> weights,
+      <em>in what pattern</em>, <em>how many per layer</em>, and <em>what training happens
+      afterwards</em>.
+    </p>
+  </div>
+
+  <div class="axes">
+    <div class="axis">
+      <h4>A → granularity</h4>
+      <p>In what <em>pattern</em> do we remove things? Irregular patterns compress more; regular
+      patterns actually run faster.</p>
+      <span class="num">tested</span>
+      <div class="chips"><span class="chip was">channel</span></div>
+      <span class="num">open</span>
+      <div class="chips"><span class="chip open">fine-grained</span><span class="chip open">2:4</span><span class="chip open">vector</span><span class="chip open">kernel</span></div>
+    </div>
+    <div class="axis">
+      <h4>B → criterion</h4>
+      <p>Given that something must go, <em>which</em> parts? The less important what you delete,
+      the less it hurts. Defining "important" is the whole game.</p>
+      <span class="num">tested</span>
+      <div class="chips"><span class="chip was">L2 magnitude</span></div>
+      <span class="num">open</span>
+      <div class="chips"><span class="chip open">L1</span><span class="chip open">BN scale</span><span class="chip open">Taylor</span><span class="chip open">Hessian</span><span class="chip open">FPGM</span><span class="chip open">LAMP</span><span class="chip open">random</span></div>
+    </div>
+    <div class="axis">
+      <h4>C → ratio</h4>
+      <p>How much comes out of <em>each layer</em>? The same average can be spread evenly, set by
+      one global threshold, or allocated by measuring what each layer survives.</p>
+      <span class="num">tested</span>
+      <div class="chips"><span class="chip was">global</span></div>
+      <span class="num">open</span>
+      <div class="chips"><span class="chip open">uniform</span><span class="chip open">sensitivity-driven</span></div>
+    </div>
+    <div class="axis">
+      <h4>D → fine-tune</h4>
+      <p>How is the damage repaired? Cutting always hurts; retraining is how the survivors take
+      up the slack. On this model it <em>is</em> the experiment.</p>
+      <span class="num">tested</span>
+      <div class="chips"><span class="chip was">one-shot</span><span class="chip was">iterative</span></div>
+      <span class="num">open</span>
+      <div class="chips"><span class="chip open">equal post-cut</span><span class="chip open">longer budget</span><span class="chip open">LR rewind</span></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p style="margin-top:24px">
+      Read that grid again and the shape of the work is obvious. The detector has been pruned
+      exactly one way: cut whole channels, choose them by weight size, let one global threshold
+      set the per-layer amounts, retrain 12 epochs. That is <strong>one cell of a
+      four-dimensional space</strong>, and the conclusion drawn from it — "pruning loses" — is
+      only as broad as the cell it came from.
+    </p>
+  </div>
+</section>
+
+<section id="granularity">
+  <div class="col">
+    <h2>Granularity → the shape of the hole you leave</h2>
+    <p class="lead">
+      A network's weights are grids of numbers. Pruning sets some to zero. This axis asks what
+      <em>shape</em> the zeros make, and that decides whether any hardware can exploit them.
+    </p>
+    <p>
+      One trade-off governs everything: <strong>the more freely you choose what to drop, the more
+      you can drop</strong>, because you can always find the genuinely useless weights. But
+      scattered zeros do not make a matrix smaller, they make it a matrix with holes, and a GPU
+      multiplies it at exactly the same speed. Regular patterns delete less and actually run
+      faster.
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="mono-tag">interactive · one convolution, 50% removed five ways</span>
+    </div>
+    <div class="panel-body">
+      <div class="controls" id="gran-ctl"></div>
+      <div class="gran-layout">
+        <div class="wmat-frame">
+          <div class="wmat" id="wmat"></div>
+          <div class="kgrid" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+        </div>
+        <dl class="gran-note">
+          <dt>what is removed</dt><dd id="gran-what"></dd>
+          <dt>why you would</dt><dd id="gran-why"></dd>
+          <dt>runs faster on</dt><dd id="gran-hw"></dd>
+        </dl>
+      </div>
+      <p class="muted" style="font-size:.85em;margin:20px 0 0;max-width:70ch">
+        Dashed boxes are individual 3&times;3 convolution kernels. Each column of boxes is one
+        input channel, each row one output channel. Teal squares survive, grey are removed.
+      </p>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>The two that matter here</h3>
+    <p>
+      <strong>Channel pruning</strong> is the only one that makes a network genuinely smaller on
+      ordinary hardware. Remove a channel and the matrix loses a whole dimension: fewer rows,
+      fewer columns, less arithmetic, no special kernel required. That is what has been tested so
+      far, and that is why.
+    </p>
+    <p>
+      <strong>2:4 sparsity</strong> is the interesting one. The rule is rigid — of every four
+      neighbouring weights exactly two must be zero — and the rigidity is the point, because
+      Ampere GPUs have circuitry that skips those zeros for roughly double the throughput. It is
+      50% sparsity with silicon behind it, and NVIDIA's published table shows a detector,
+      SSD-RN50, going 24.8 → 24.8 box AP on COCO: no measurable loss.
+      <span class="accent">The target board is Ampere-class</span>, so the path exists. Whether it
+      delivers on this particular chip is a measurement, not a datasheet reading.
+    </p>
+  </div>
+</section>
+
+<section id="criterion">
+  <div class="col">
+    <h2>Criterion → deciding what is expendable</h2>
+    <p class="lead">
+      Something has to go. Which? The principle is easy to state and hard to apply: the less
+      important the thing you delete, the less the network notices.
+    </p>
+    <p>
+      Each criterion below is a different theory of "important", and they genuinely disagree. Run
+      them on the same layer and watch different channels get selected.
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="mono-tag">interactive · which 3 of these 10 channels does each criterion delete?</span>
+    </div>
+    <div class="panel-body">
+      <div class="controls" id="crit-ctl"></div>
+      <div class="chan-rows" id="chan-rows"></div>
+      <p id="crit-explain" style="margin:22px 0 0;font-size:.95em;max-width:70ch"></p>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>Why "random" is on that list</h3>
+    <p>
+      It looks like a joke entry and it is the most important control in the study. Every
+      criterion above will produce a number. Without random next to them you cannot tell whether a
+      criterion is <em>smart</em>, or whether <strong>any</strong> cut of that size followed by the
+      same retraining lands in the same place. A leaderboard without a control says which method
+      won. A leaderboard with one says whether winning meant anything.
+    </p>
+    <h3>A criterion that does not transfer</h3>
+    <p>
+      APoZ ranks channels by how often they output exact zeros — a channel that is almost always
+      zero is doing nothing. It was designed for ReLU networks, which produce exact zeros
+      constantly. <strong>This detector uses SiLU, which almost never outputs exactly zero</strong>,
+      so literal APoZ would rank every channel as equally busy and decide nothing. The honest move
+      is to adapt it to average activation size and label it an adaptation. Reporting that a
+      textbook method does not transfer, and why, is worth more than quietly substituting a
+      different one and reporting a number.
+    </p>
+  </div>
+</section>
+
+<section id="known">
+  <div class="col">
+    <h2>What is already measured</h2>
+    <p class="lead">
+      Before any of the new work, here is the starting point — and it is much worse than the
+      textbook curves suggest it should be.
+    </p>
+    <p>
+      Each point below is the model with some percentage of channels cut and
+      <strong>no retraining at all</strong>. Published curves usually drift down gently and fall
+      off somewhere past 50%. This one is over a cliff by 5%.
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="mono-tag">accuracy vs channels removed · no retraining · 4,306 test images</span>
+      <button id="dmg-toggle" aria-pressed="false">Show table</button>
+    </div>
+    <div class="panel-body">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--seq-1)"></i>overall mAP50</span>
+        <span><i class="swatch" style="background:var(--seq-2)"></i>small plumes</span>
+        <span><i class="swatch" style="background:var(--seq-3)"></i>tiny plumes</span>
+      </div>
+      <div class="chart-wrap" id="dmg-chart"></div>
+      <div id="dmg-table" hidden></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="note">
+      <span class="num">the mechanism</span>
+      <p>
+        The collapse is not gradual because <strong>the confidence head fails first</strong>. The
+        part of the network scoring "how sure am I something is here" falls from 0.72 to 0.0045 by
+        the 5% cut. The model is still finding smoke internally and drawing boxes around it — it
+        has simply stopped believing any of them, so nothing survives the threshold and the score
+        reads zero.
+      </p>
+    </div>
+    <p>
+      This is why retraining is not a finishing touch in this project, it is the experiment. An
+      accuracy-versus-sparsity curve without retraining, which is how pruning is usually
+      illustrated, would be a row of zeros.
+    </p>
+    <h3>And when you do retrain, it still loses</h3>
+    <p>
+      Two ways of removing 25% of the channels, each given 12 epochs of recovery, each compiled to
+      a real engine so the speed numbers are honest:
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="mono-tag">25% pruned and recovered vs not pruning at all</span>
+      <button id="rec-toggle" aria-pressed="false">Show table</button>
+    </div>
+    <div class="panel-body">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--cat-ref)"></i>unpruned (reference)</span>
+        <span><i class="swatch" style="background:var(--cat-a)"></i>one-shot</span>
+        <span><i class="swatch" style="background:var(--cat-b)"></i>iterative</span>
+      </div>
+      <div class="chart-wrap" id="rec-chart"></div>
+      <div id="rec-table" hidden></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <p>Three findings come out of that, and the third is the one worth chasing.</p>
+    <ol>
+      <li><strong>Neither version beats doing nothing.</strong> One-shot gives up 4.8 accuracy
+        points and runs 20% slower.</li>
+      <li><strong>Removing arithmetic is not gaining speed.</strong> Cutting 88.9% of the
+        multiply-adds bought 1.7&times; the throughput, not the ~9&times; the arithmetic implies.
+        Pruned layers end up with awkward channel counts — 47 instead of 64 — and GPU kernels are
+        built for neat tile sizes.</li>
+      <li><strong>The bigger pruned model was the faster one.</strong> Iterative kept more
+        parameters (4.51 M vs 4.24 M) and ran substantially faster (450 vs 381 img/s). If that is
+        real, <em>how</em> you prune matters more for speed than <em>how much</em>.</li>
+    </ol>
+    <div class="note">
+      <span class="num">a confound, stated plainly</span>
+      <p>
+        Both arms got 12 epochs. But the iterative model's final shape existed for only the last 4
+        of them, while one-shot trained all 12 in its final shape. Equal total budget is not equal
+        recovery budget, so part of iterative's deficit may be nothing more interesting than a
+        shorter run. Until that is fixed the comparison is not a clean result — which is what
+        experiment 07 is for.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="plan">
+  <div class="col">
+    <h2>Eight experiments, ordered by what they teach per hour</h2>
+    <p class="lead">
+      Each isolates a different axis. The numbering is not decoration — it is the run order,
+      because early results feed later ones.
+    </p>
+    <p>
+      One constraint shapes all of them. <strong>A compiled engine only runs on the GPU
+      architecture it was built for</strong>, and a speed reading from a desktop RTX 3090 says
+      nothing about a 15-watt board. So the desktop makes weights and screens accuracy; the board
+      produces every number about speed, power and memory. Two experiments below can only be
+      finished on the board, and they are marked.
+    </p>
+  </div>
+
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-head"><span class="num">01 · sensitivity</span><span class="status run">running</span></div>
+      <h3>Which layers can this detector afford to lose?</h3>
+      <p class="q">Prune one layer, measure, put it back, move on. 57 layers &times; 5 severities.</p>
+      <p>
+        The output is a map of where damage is cheap and where it is fatal.
+        <strong>This goes first</strong> because the pruning done so far used one global threshold
+        across the whole network, which means it had no such map and was free to spend its budget
+        in the worst possible place. That would explain a 2% cut costing 9 accuracy points.
+      </p>
+      <p>
+        The first cells are already suggestive: halving the network's <em>first</em> convolution
+        destroys 84% of the accuracy and saves <span class="accent">0.16%</span> of the
+        parameters. A terrible trade, and a blind threshold is free to make it.
+      </p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>Everything else prunes the whole network. This prunes one layer at a time and never retrains.</dd></div>
+        <div><dt>measured on</dt><dd>The validation split, never test — its output chooses a configuration, so test must stay clean.</dd></div>
+        <div><dt>feeds</dt><dd>Experiment 06, which uses the map to allocate cuts.</dd></div>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="num">02 · criterion</span><span class="status">queued</span></div>
+      <h3>Does the choice of importance measure matter, and does any of it beat random?</h3>
+      <p class="q">Fix the amount at 25%, change only the rule for choosing victims, run all eight.</p>
+      <p>
+        L2, L1, BN scale, Taylor, Hessian, FPGM, LAMP and random. Measure raw damage first because
+        it is cheap, then pay for recovery training on the best few plus random.
+      </p>
+      <p>
+        <strong>One design change from the original plan.</strong> A 25% cut with no retraining
+        already scores exactly zero, so at that ratio every criterion reads zero and the sweep
+        ranks nothing. Damage is therefore also measured at 2% and 5%, where the model still
+        produces usable output and the criteria separate. That the comparison has to be taken at
+        2% to exist at all is itself a statement about this detector.
+      </p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>Experiment 01 varies <em>where</em>. This varies <em>how you choose</em>, at a fixed amount.</dd></div>
+        <div><dt>watch for</dt><dd>Taylor and Hessian read gradients, not weights, so they need a real backward pass before they mean anything.</dd></div>
+        <div><dt>the control</dt><dd>Random. If nothing beats it, the criterion literature does not apply to this model.</dd></div>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="num">03 · regularity</span><span class="status board">needs the board</span></div>
+      <h3>Was the bigger-but-faster result really about neat channel counts?</h3>
+      <p class="q">Round surviving channels up to a multiple of 8, 16, 32 — then measure.</p>
+      <p>
+        Prune 25% four times with different rounding, retrain each identically, and measure. If
+        regularity is the mechanism behind finding 3, heavier rounding should recover the missing
+        speed at equal accuracy — a genuinely useful practical rule.
+      </p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>Same criterion, amount and training as the existing arm. Only the alignment of surviving shapes changes.</dd></div>
+        <div><dt>desktop makes</dt><dd>Four trained checkpoints.</dd></div>
+        <div><dt>board makes</dt><dd>The four throughput numbers, which are the entire point.</dd></div>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="num">04 · 2:4 sparsity</span><span class="status board">needs the board</span></div>
+      <h3>The one pattern with dedicated silicon behind it. Does it hold accuracy here?</h3>
+      <p class="q">Force two of every four neighbouring weights to zero, retrain, build a sparse engine.</p>
+      <p>
+        Three things get reported separately and must not be blurred: whether accuracy held,
+        whether the compiler <em>actually chose</em> sparse kernels, and what speed came out.
+      </p>
+      <p>
+        It is entirely possible accuracy holds and the speed-up never materialises on this chip.
+        <strong>That is a publishable result</strong> and fits this project exactly, whose
+        recurring theme is that hardware does not do what the arithmetic promises.
+      </p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>Every other experiment prunes channels. This is the only one changing granularity.</dd></div>
+        <div><dt>prior evidence</dt><dd>NVIDIA reports no detection accuracy loss on SSD-RN50.</dd></div>
+        <div><dt>risk</dt><dd>Accuracy holds, speed does not. Report it anyway.</dd></div>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="num">05 · fine-grained ceiling</span><span class="status">queued</span></div>
+      <h3>Is the collapse a capacity problem or a structure problem?</h3>
+      <p class="q">Delete individual weights anywhere, at 25 / 50 / 70 / 90%, retrain, measure accuracy only.</p>
+      <p>
+        <strong>No speed-up is expected and none will be reported</strong>: scattered zeros have
+        no matching kernels on this hardware, and saying so plainly is part of the result.
+      </p>
+      <p>
+        This is the experiment that licenses the strongest possible sentence. If the network
+        survives 90% of its weights being deleted but dies at a 5% channel cut, then capacity was
+        never the problem — <strong>structure was</strong>. That is a far more interesting and more
+        accurate conclusion than "pruning does not work here", and right now there is no evidence
+        to choose between them.
+      </p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>The maximum-freedom end of the granularity axis, against channel pruning's minimum.</dd></div>
+        <div><dt>deliberately not measured</dt><dd>Speed. Reporting it would imply a deployment claim the hardware cannot support.</dd></div>
+        <div><dt>answers</dt><dd>Capacity, or structure?</dd></div>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="num">06 · ratio allocation</span><span class="status">queued</span></div>
+      <h3>Same total cut, spread three different ways. Does allocation rescue it?</h3>
+      <p class="q">Sensitivity-driven vs uniform vs the single global threshold used so far.</p>
+      <p>
+        Using experiment 01's map, protect the fragile layers and cut hard where there is slack.
+        <strong>Identical total parameter reduction in all three</strong>, so the only thing that
+        varies is where the damage lands.
+      </p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>Same criterion and amount throughout. Only the per-layer distribution changes.</dd></div>
+        <div><dt>depends on</dt><dd>Experiment 01. Cannot start before it finishes.</dd></div>
+        <div><dt>stakes</dt><dd>Pruning's best remaining chance on this model.</dd></div>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="num">07 · the fair rerun</span><span class="status">queued</span></div>
+      <h3>Does iterative still lose once both arms get equal training in their final shape?</h3>
+      <p class="q">Fix the confound: equal epochs after the final cut. Then extend to 50 epochs.</p>
+      <p>
+        The textbook says iterative should win — the standard figure has pruning alone failing past
+        50% sparsity, pruning with retraining holding to 80%, and iterative holding past 90%. The
+        measurement here found the opposite ordering. That is a real disagreement with the
+        literature and deserves a clean test rather than an excuse. If a longer budget flips it,
+        the finding is about <strong>who can afford to prune</strong>, not about pruning.
+      </p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>Nothing about the cut changes. This is purely the training axis.</dd></div>
+        <div><dt>cheap here</dt><dd>An epoch takes 1.5 minutes on the desktop against roughly 7 on the board.</dd></div>
+        <div><dt>fixes</dt><dd>A confound currently flagged in the write-up's own limitations.</dd></div>
+      </dl>
+    </div>
+
+    <div class="step">
+      <div class="step-head"><span class="num">08 · regression selection</span><span class="status">optional</span></div>
+      <h3>Pick channels by reconstructing the layer's output rather than guessing at the loss.</h3>
+      <p class="q">Solve for the subset that best reproduces what the layer originally emitted.</p>
+      <p>
+        Alternate between choosing channels and re-fitting the remaining weights. It is the most
+        implementation-heavy item on the list with no ready-made implementation to lean on. Also
+        here: recovering the pruned model under supervision from the larger YOLOv5l — cheap to
+        describe, unpromising in practice, since the bigger model is only 1.4 accuracy points
+        better and so has very little to teach.
+      </p>
+      <p><strong>An honest "attempted, here is where it got hard" is a perfectly good outcome for both.</strong></p>
+      <dl class="xgrid">
+        <div><dt>differs from</dt><dd>Every other criterion is a formula over weights. This solves an optimisation per layer.</dd></div>
+        <div><dt>status</dt><dd>Attempt last, abandon with a written reason if it does not converge.</dd></div>
+        <div><dt>honest outcome</dt><dd>A negative result, written up.</dd></div>
+      </dl>
+    </div>
+
+  </div>
+</section>
+
+<section id="traps">
+  <div class="col">
+    <h2>Four traps that already cost real time</h2>
+    <p class="lead">
+      Measurement studies fail quietly. Each of these produced a plausible, publishable, wrong
+      number before it was caught.
+    </p>
+    <h3>The library swapped the model</h3>
+    <p>
+      Asked to load <code>yolov5s.pt</code>, a popular library recognised the filename, silently
+      downloaded <em>its own</em> 80-class model trained on general photographs, and returned that
+      instead. It ran. It drew plausible boxes. It was measuring an entirely different network.
+      Caught only by printing the class names, which should have read
+      <code>['smoke', 'fire']</code>. Every load now asserts that.
+    </p>
+    <h3>The training loop destroyed the model</h3>
+    <p>
+      A first attempt at recovery training took the <em>unpruned</em> model from 0.818 to
+      <span class="accent">0.008</span> in a single epoch, and two published numbers had to be
+      withdrawn. Three independent causes, each sufficient alone — most memorably a loss weight
+      40&times; too heavy, drowning out the very "is anything there?" signal that was collapsing.
+      The standing rule: before believing any recovery number, retrain the <em>unpruned</em> model
+      and check it comes back where it started. If that control fails, the session measured the
+      training loop, not pruning.
+    </p>
+    <h3>Defaults are not neutral</h3>
+    <p>
+      A separate quantisation experiment lost 67% of its accuracy to one default setting, which
+      decided the useful brightness range stopped at 45% and flattened the bright sky where faint
+      smoke lives. It looked exactly like "this technique is bad for detection" — a tidy, quotable,
+      wrong conclusion. It was one option, and changing it fixed the problem. When a pruning
+      criterion produces a catastrophic result, suspect the setting before writing the conclusion.
+    </p>
+    <h3>The exported file was a stub</h3>
+    <p>
+      One export path silently wrote a 0.5 MB file for a model holding 4.24 M parameters, and
+      failed no check because nothing checked. The export now asserts on file size.
+    </p>
+    <div class="note">
+      <span class="num">the rule underneath all four</span>
+      <p>
+        Every number goes through one measurement harness with a version stamp, and the figure
+        generator refuses to draw a chart mixing versions. The data splits are frozen and
+        checksummed, and training <strong>refuses to start</strong> if they do not match — which
+        matters most when work moves to a second machine, because if the split changes there, test
+        images leak into training and every published number silently becomes a score on an exam
+        the model has already seen.
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    Techniques follow MIT 6.5940 (Song Han), lecture 03. Measurements come from the
+    wildfire-detection study: YOLOv5s detectors trained by the D-Fire dataset authors, 21,527
+    images, splits frozen at 15,500 train / 1,721 val / 4,306 test. Accuracy figures quoted here
+    are the project's committed results; experiments 01 through 08 are in progress and each card
+    carries its own status.
+  </p>
+</footer>
+
+<div class="tooltip" id="tip" role="status" aria-live="polite"></div>
+
+<!-- Delete this block when linking /script.js, which owns the same cycle. -->
+<script id="standalone-theme">
+(function () {
+  var DAY = "light", NIGHT = "night", AUTO = "automatic";
+  function media() {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? NIGHT : DAY;
+  }
+  function read() {
+    var c = null;
+    try { c = localStorage.getItem("theme"); } catch (e) {}
+    return [DAY, NIGHT, AUTO].indexOf(c) >= 0 ? c : DAY;
+  }
+  function apply(label) {
+    var theme = label === AUTO ? media() : label;
+    document.documentElement.dataset.theme = theme;
+    if (document.body) document.body.dataset.theme = theme;
+    var el = document.getElementById("daynight");
+    if (el) el.innerText = label + " theme";
+  }
+  window.daynight = function () {
+    var order = [DAY, NIGHT, AUTO];
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    apply(next);
+  };
+  apply(read());
+})();
+</script>
+
+<script src="pruning-course.js"></script>
+</body>
+</html>

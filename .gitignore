@@ -5,6 +5,10 @@ data/flame/
 data/flame2/
 data/boreal/
 data/calib/
+# YOLOv5-format path lists, regenerated per machine by lib/finetune.py. Absolute
+# paths, machine-specific — never commit them next to the frozen, checksummed
+# relative-path splits they are derived from.
+data/splits/yolo/
 *.pt
 *.onnx
 *.engine
