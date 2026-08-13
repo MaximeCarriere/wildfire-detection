@@ -84,41 +84,6 @@ accuracy points. Nearly half of this test set contains no fire at all, and stand
 detection metrics fold those false alarms into one aggregate score, so it is reported
 separately here.
 
-## Are these numbers right?
-
-Cross-checked against **YOLOv5's own evaluator** (`val.py`), same weights, same 4,306 images,
-same thresholds:
-
-| | this harness | YOLOv5 `val.py` |
-|---|---:|---:|
-| mAP50 (all) | 0.7708 | 0.7850 |
-| mAP50-95 | 0.4233 | 0.4420 |
-| smoke | 0.8210 | 0.8360 |
-| fire | 0.7206 | 0.7340 |
-
-The two agree to within 1.4 points, about 98% of each other, and the small gap is accounted
-for. YOLOv5 silently discards 17 ground-truth boxes that this harness keeps, four of them
-zero-area labels that cannot be detected and therefore count as permanent misses here. The
-two also use different average-precision interpolation. Reading slightly low is the safe
-direction for a project whose purpose is measuring what compression costs.
-
-Per-class ordering is identical in both tools, smoke ahead of fire by about 10 points, so
-finding 2 above does not depend on this implementation.
-
-**Against the dataset authors' own published numbers: not verified.** Their 2022 paper is
-paywalled and their code repository publishes no metrics table, so there is nothing to
-compare against directly. For outside context, a 2024 paper reports an improved YOLOv8n
-reaching mAP@0.5 = 0.794 on D-Fire, so stock YOLOv5s and YOLOv5l at 0.771 and 0.785 sit
-where baselines should relative to that.
-
-## What nearly went wrong
-
-The inference library **silently substituted a different model**. Given the weights file, it
-recognised the filename as a standard model name, downloaded a generic pre-trained model
-from its own servers, and used that instead: 80 everyday object classes, none of them fire.
-It logged a cheerful tip rather than an error. It was caught only by printing the class
-names, and the loader now refuses to proceed unless the classes are exactly `smoke, fire`.
-
 ## Limitations
 
 - These models arrived with their training recipe unpublished, so the small-versus-large

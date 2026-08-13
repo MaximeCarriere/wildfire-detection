@@ -30,7 +30,7 @@ That runs on a fanless $249 computer drawing about 11 watts.
 | [XP0](experiments/xp00_foundation/) | Data, splits, measuring harness | Splits frozen and checksummed; class labels *proven* from the data, not assumed |
 | [XP1](experiments/xp01_baselines/) | Baselines | **A 6.6× bigger model buys 1.4 accuracy points** at 3.3× the energy |
 | [XP2](experiments/xp02_resolution/) | Resolution, the cheapest knob | **512px beats 640px outright**; overall accuracy hides a 77% collapse in distant-smoke detection |
-| [XP6](experiments/xp06_pruning/) | Pruning | **Cutting 2% of channels costs 9 accuracy points**; removing 89% of the arithmetic buys only 1.7× speed |
+| [XP6](experiments/xp06_pruning/) | Pruning | **Loses on accuracy and speed** against the unpruned model; cutting 2% of channels costs 9 accuracy points |
 | [XP9](experiments/xp09_tensorrt_fp16/) | TensorRT FP16 | **Up to 5× faster, accuracy free**, and it exposed that all earlier speed numbers were measuring the software |
 | [XP10](experiments/xp10_int8_slices/) | INT8 quantization | **One default setting cost 67% of the accuracy**; fixed, the real cost is about 8% |
 | [XP12](experiments/xp12_endurance/) | Endurance | 10 min flat out, 280k images, −1.3% drift, no throttling |
@@ -43,7 +43,7 @@ and a two-stage cascade that keeps the expensive detector asleep. See [PLAN.md](
 **The cheap knob beats the clever ones, so far.** Simply feeding the network 512-pixel
 images instead of 640 made it *more* accurate and 1.6× faster. It also comes within 0.7
 accuracy points of a model 6.6× its size, at 5.4× the speed. Every sophisticated compression
-technique now has to beat that line to justify itself, and pruning already fails to.
+technique has to beat that line to justify itself, and pruning already fails to.
 
 **Headline accuracy hides what matters.** Distant smoke, the thing an early-warning system
 exists to catch, behaves nothing like the average. Dropping resolution cost 6% of overall

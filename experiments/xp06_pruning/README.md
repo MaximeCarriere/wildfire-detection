@@ -1,10 +1,10 @@
 # XP6. Pruning: cutting channels out of the model
 
-**Question:** pruning removes whole channels from the network, making it genuinely smaller.
-Does that beat the far simpler option of just feeding it a smaller image?
+**Question:** pruning removes whole channels from a network, making it genuinely smaller.
+Does that beat the far simpler option of feeding the same network a smaller image?
 
-**Outcome:** pruning **destroys this detector almost immediately** without retraining, and
-even after retraining it is beaten by simply running the unpruned model on smaller images.
+**Outcome:** no. Pruning loses on accuracy, and mostly on speed too. It also destroys this
+detector almost immediately if you do not retrain afterwards.
 
 ![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
 
@@ -17,7 +17,7 @@ even after retraining it is beaten by simply running the unpruned model on small
 
 ## Result 1. The damage is immediate
 
-Pruning with no retraining at all, full 4,306-image test set, 512 px:
+Pruning with no retraining at all. Full 4,306-image test set, 512 px:
 
 | channels cut | params | arithmetic cut | mAP50 | small plumes | tiny plumes |
 |---:|---:|---:|---:|---:|---:|
@@ -30,76 +30,81 @@ Pruning with no retraining at all, full 4,306-image test set, 512 px:
 | 70% | 0.62 M | 88.9% | 0.0000 | 0.0000 | 0.0000 |
 
 Removing **2%** of channels already costs 9 accuracy points. By 5% the model has lost 88% of
-its accuracy; by 10% it is dead.
+its accuracy, and by 10% it is dead.
 
-The confidence head fails first. The model's maximum objectness score falls from 0.72 to
-0.0045 by 5% pruning, so it still produces boxes internally but none survive any sensible
-threshold. That is why the table shows exact zeros rather than a gentle slide.
+The confidence head fails first. Maximum objectness falls from 0.72 to 0.0045 by 5% pruning,
+so the model still produces boxes internally but none survive any sensible threshold. That
+is why the table shows exact zeros rather than a gentle slide.
 
-**So recovery training is not a refinement here, it is the experiment.** An
-"accuracy vs sparsity" curve without retraining, which is how pruning is often illustrated,
-would be a curve of zeros on this model.
+**Recovery training is therefore not a refinement here, it is the experiment.** An
+"accuracy versus sparsity" curve without retraining, which is how pruning is often
+illustrated, would be a curve of zeros on this model.
 
 ## Result 2. Arithmetic removed is not speed gained
 
-The right-hand panel is the one worth arguing about. Removing **88.9% of the multiply-adds
-buys 1.7× the throughput**, not the ~9× the arithmetic implies.
+Removing **88.9% of the multiply-adds buys 1.7× the throughput**, not the roughly 9× the
+arithmetic implies.
 
 Pruned channel counts are irregular, 47 channels instead of 64, and GPU kernels are tuned
 for regular tile sizes, so a layer with 27% fewer channels frequently takes the same time as
 before. Parameter count and arithmetic are both poor predictors of speed on this hardware.
 
-It also means **parameter count is the wrong axis to judge pruning on.** The 70%-pruned
-model is 11× smaller and 1.7× faster.
+## Result 3. Pruned, recovered and deployed, it still loses
 
-## Result 3. Pruned, recovered and deployed, it still loses on every axis
+25% of channels removed two different ways, each given 12 epochs of recovery training, each
+exported to a TensorRT engine so the speed numbers are comparable:
 
-25% of channels removed, 12 epochs of recovery training, exported to a TensorRT engine so
-the speed number means something (XP9 showed PyTorch speed on this board is
-kernel-launch-bound and near-useless for comparing models):
+- **One-shot:** remove 25% in a single operation, then train for 12 epochs.
+- **Iterative:** remove about 7%, train 2 epochs, repeat four times, then train 4 more.
 
-| | pruned + recovered | unpruned at 512 px |
-|---|---:|---:|
-| mAP50 | 0.7297 | **0.7776** |
-| tiny plumes | 0.0960 | **0.1376** |
-| throughput | 381 img/s | **474 img/s** |
-| energy / 1000 frames | 54.3 J | **52.1 J** |
-| parameters | 4.24 M | 7.03 M |
+| | unpruned | one-shot | iterative |
+|---|---:|---:|---:|
+| parameters | 7.03 M | 4.24 M | 4.51 M |
+| **mAP50** | **0.7776** | 0.7297 | 0.6771 |
+| small plumes | **0.6061** | 0.5516 | 0.4386 |
+| tiny plumes | **0.1376** | 0.0960 | 0.0653 |
+| correctly silent on empty frames | **97.4%** | 95.2% | 92.7% |
+| throughput | **473.7 img/s** | 381.1 | 450.2 |
+| energy per 1000 frames | 52.1 J | 54.3 | **46.5 J** |
 
-**Less accurate, slower, and slightly more energy**, despite being 40% smaller. The recovery
-training worked (0.0 to 0.7297); it simply did not recover enough to pay for itself. The
-speed loss is Result 2 again: 43% less arithmetic, but irregular channel counts that the
-GPU's kernels handle worse than the dense original.
+**Neither arm beats simply running the unpruned model at 512 px.** One-shot gives up 4.8
+accuracy points and runs 20% slower. Iterative gives up 10 points and is still slower.
 
-For the metric that matters most here, distant smoke, pruning costs a further **30%** on top
-(0.1376 → 0.0960).
+Two things in that table matter more than the headline:
 
-## In progress: one-shot versus iterative
+**Pruning makes the detector noisier on empty frames.** Correct silence falls from 97.4% to
+95.2% and then 92.7%. For a camera that watches nothing almost all the time, nearly tripling
+the false-alarm rate is a bigger practical cost than the accuracy points, and it does not
+appear in mAP at all.
 
-The above prunes 25% in a single operation, then retrains. The alternative is progressive:
-remove a slice, retrain briefly, repeat. The steepness of Result 1, with 9 points lost to a
-**2%** cut, is the classic signature of survivors never getting a chance to compensate, so
-this may be the wrong method rather than the wrong technique.
-
-Running now at the **same 25% target and the same 12-epoch budget**, differing only in when
-the training happens: 4 increments of ~7% with 2 epochs between, then 4 final epochs. Equal
-budget is what makes it a fair test.
+**The iterative model is faster while being larger.** It keeps 4.51 M parameters against
+one-shot's 4.24 M, yet runs 18% faster (450 against 381 img/s) and uses 14% less energy.
+Removing channels gradually appears to leave more regular channel counts, which the GPU's
+kernels handle better. That is Result 2 seen from the other side, and it suggests *how* you
+prune changes speed more than *how much* you prune.
 
 ## Limitations
 
-- **Recovery is 10 to 12 epochs, not 50.** Longer training would likely recover more. This
-  is the budget the board allows in a night, and it is stated rather than implied.
-- **No teacher-supervised recovery arm.** Recovering under supervision from a larger model
-  is a known variant, but the larger model here is only 1.4 mAP points better
-  ([XP1](../xp01_baselines/)), so it is expensive and unpromising. Not run, not hidden.
+- **The two arms are not perfectly matched.** Both got 12 epochs in total, but the iterative
+  model's final architecture only existed for the last 4 of them, while the one-shot model
+  trained for all 12 in its final shape. Equal total budget is not equal recovery budget,
+  and that plausibly explains part of iterative's accuracy deficit. A fairer rerun would
+  give both the same number of epochs *after* the final cut.
+- **Recovery is 12 epochs, not 50.** Longer training would likely recover more. This is the
+  budget the board allows in a night, and it is stated rather than implied.
 - **One pruning method**: global magnitude-based structured pruning. Other importance
   criteria (Taylor, Hessian) may cut differently. Untested.
-- Pruning ratios are *channel* targets. The arithmetic actually removed is measured and
-  reported separately because the two diverge substantially.
+- **No teacher-supervised recovery.** Recovering under supervision from a larger model is a
+  known variant, but the larger model available here is only 1.4 mAP points better
+  ([XP1](../xp01_baselines/)), so it is expensive and unpromising.
+- Pruning ratios are *channel* targets. The arithmetic actually removed is measured
+  separately, because the two diverge substantially.
 
 ## Reproduce
 
 ```bash
 python experiments/xp06_pruning/run.py --stage damage --ratios 0.02 0.05 0.10 0.25 0.50 0.70
 python experiments/xp06_pruning/recover_and_deploy.py --ratio 0.25 --epochs 12
+python experiments/xp06_pruning/recover_and_deploy.py --ratio 0.25 --epochs 12 \
+    --mode iterative --steps 4
 ```

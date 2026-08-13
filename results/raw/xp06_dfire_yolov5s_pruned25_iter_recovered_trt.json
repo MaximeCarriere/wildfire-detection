@@ -1,0 +1,383 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_pruned25_iter_recovered_trt",
+  "params_m": 4.5139,
+  "size_disk_mb": 12.752,
+  "format": "trt_fp16",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.6771,
+  "map5095_dfire_test": 0.331,
+  "map50_fire_class": 0.5945,
+  "map50_smoke_class": 0.7596,
+  "map50_small_plume": 0.4386,
+  "map50_tiny_plume": 0.0653,
+  "bg_false_alarm_rate": 0.0728,
+  "bg_correctly_silent_rate": 0.9272,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "latency_ms_median": 4.159,
+    "latency_ms_median_se": 0.2133,
+    "latency_ms_p95": 7.361,
+    "fps_batch1": 212.35,
+    "fps_se": 12.805,
+    "runs": 3,
+    "warmup_frames": 50,
+    "measured_frames": 1000,
+    "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+    "protocol_compliant": true,
+    "power_w_mean": 10.017,
+    "energy_j_per_1000_frames": 46.48,
+    "gpu_util_pct": 74.1,
+    "temp_c_peak": 56.937,
+    "batch": 16,
+    "fps_batched": 450.16,
+    "fps_batched_se": 1.261,
+    "ms_per_image_batched": 2.221,
+    "measured_images": 960,
+    "mem_mb": 1127.1
+  },
+  "accuracy_detail": {
+    "map5095": 0.331,
+    "map50": 0.6771,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.3988,
+        "map50": 0.7596
+      },
+      "fire": {
+        "map5095": 0.2632,
+        "map50": 0.5945
+      }
+    },
+    "small_plume": {
+      "map5095": 0.1683,
+      "map50": 0.4386
+    },
+    "tiny_plume": {
+      "map5095": 0.0162,
+      "map50": 0.0653
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 146,
+      "false_alarm_rate": 0.0728,
+      "correctly_silent_rate": 0.9272,
+      "false_boxes_per_bg_image": 0.0823
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 143867,
+    "fingerprint": "06146437c8943289"
+  },
+  "ood_detail": null,
+  "notes": "XP6: 25% channels pruned + recovery, TensorRT FP16 @512px. This is the number to judge against the unpruned frontier (0.7776 mAP50, 474 img/s).",
+  "prune_meta": {
+    "method": "iterative",
+    "steps": 4,
+    "requested_channel_ratio": 0.25,
+    "params_m_before": 7.025,
+    "params_m_after": 4.5139,
+    "params_reduction": 0.3575,
+    "gmacs_before": 5.075,
+    "gmacs_after": 2.836,
+    "macs_reduction": 0.4413,
+    "per_step": [
+      {
+        "step": 1,
+        "params_m": 6.4118,
+        "gmacs": 4.439
+      },
+      {
+        "step": 2,
+        "params_m": 5.7622,
+        "gmacs": 3.84
+      },
+      {
+        "step": 3,
+        "params_m": 5.1392,
+        "gmacs": 3.32
+      },
+      {
+        "step": 4,
+        "params_m": 4.5139,
+        "gmacs": 2.836
+      }
+    ]
+  },
+  "train_meta": {
+    "epochs": 4,
+    "res": 512,
+    "batch": 8,
+    "hyp": {
+      "lr0": 0.0032,
+      "lrf": 0.12,
+      "momentum": 0.937,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 2.0,
+      "warmup_momentum": 0.5,
+      "warmup_bias_lr": 0.05,
+      "box": 0.05,
+      "cls": 0.012500000000000002,
+      "cls_pw": 1.0,
+      "obj": 0.6400000000000001,
+      "obj_pw": 1.0,
+      "iou_t": 0.2,
+      "anchor_t": 4.0,
+      "fl_gamma": 0.0,
+      "label_smoothing": 0.0,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4,
+      "degrees": 0.0,
+      "translate": 0.1,
+      "scale": 0.5,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "flipud": 0.0,
+      "fliplr": 0.5,
+      "mosaic": 0.5,
+      "mixup": 0.0,
+      "copy_paste": 0.0
+    },
+    "accumulate": 8,
+    "ema": true,
+    "total_minutes": 32.42,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 0.45924,
+        "minutes": 8.61
+      },
+      {
+        "epoch": 2,
+        "loss": 0.45523,
+        "minutes": 8.0
+      },
+      {
+        "epoch": 3,
+        "loss": 0.46029,
+        "minutes": 7.91
+      },
+      {
+        "epoch": 4,
+        "loss": 0.4337,
+        "minutes": 7.9
+      }
+    ],
+    "between_step_runs": [
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 8,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 7,
+        "ema": true,
+        "total_minutes": 18.0,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 0.50665,
+            "minutes": 9.37
+          },
+          {
+            "epoch": 2,
+            "loss": 0.36913,
+            "minutes": 8.62
+          }
+        ]
+      },
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 8,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 7,
+        "ema": true,
+        "total_minutes": 19.68,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 0.52331,
+            "minutes": 10.23
+          },
+          {
+            "epoch": 2,
+            "loss": 0.398,
+            "minutes": 9.45
+          }
+        ]
+      },
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 8,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 7,
+        "ema": true,
+        "total_minutes": 18.55,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 0.59619,
+            "minutes": 9.58
+          },
+          {
+            "epoch": 2,
+            "loss": 0.45892,
+            "minutes": 8.97
+          }
+        ]
+      },
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 8,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 7,
+        "ema": true,
+        "total_minutes": 16.59,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 0.60124,
+            "minutes": 8.6
+          },
+          {
+            "epoch": 2,
+            "loss": 0.48461,
+            "minutes": 7.98
+          }
+        ]
+      }
+    ],
+    "epochs_total": 12
+  }
+}
