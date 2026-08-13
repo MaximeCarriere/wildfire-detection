@@ -196,7 +196,10 @@ def fig_xp01(records) -> Path | None:
             ha="center", fontsize=9, color=style.INK_2)
     ax.text(5.55, 1.15, f"correctly silent\non the {n_bg:,} empty frames",
             ha="center", fontsize=9, color=style.INK_2)
-    ax.legend(loc="lower left", ncol=2, columnspacing=1.2)
+    # Legend below the axes, not inside them: at these bar heights every in-plot
+    # position overlaps data.
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=2,
+              columnspacing=2.0, handlelength=1.4)
     style.tidy(ax)
 
     # Panel 2 - cost, indexed to the small model so the multiple is the message.
