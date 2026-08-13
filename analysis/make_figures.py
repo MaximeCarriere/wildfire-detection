@@ -150,56 +150,57 @@ def fig_xp01(records) -> Path | None:
     if not (s_rec and l_rec):
         return None
 
-    fig, axes = plt.subplots(1, 3, figsize=(14.5, 4.3),
-                             gridspec_kw={"width_ratios": [2.1, 1.0, 1.5]})
+    def silent(r):
+        v = r.get("bg_correctly_silent_rate")
+        return v if v is not None else 1 - r["bg_false_alarm_rate"]
+
+    n_bg = ((s_rec.get("accuracy_detail") or {}).get("background") or {}).get(
+        "n_background_images", 2005)
+
+    # One axis, six groups. The first five are mAP50; the sixth is a rate, not an
+    # average precision, so it sits after a visible break and is labelled as a
+    # different measure. Both happen to live on 0-1, which is what makes a single
+    # axis honest here; a second y-axis would not be.
+    groups = [("overall", s_rec["map50_dfire_test"], l_rec["map50_dfire_test"]),
+              ("fire", s_rec["map50_fire_class"], l_rec["map50_fire_class"]),
+              ("smoke", s_rec["map50_smoke_class"], l_rec["map50_smoke_class"]),
+              ("small\nplumes", s_rec["map50_small_plume"], l_rec["map50_small_plume"]),
+              ("tiny\nplumes", s_rec["map50_tiny_plume"], l_rec["map50_tiny_plume"]),
+              ("no fire\npresent", silent(s_rec), silent(l_rec))]
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5),
+                             gridspec_kw={"width_ratios": [2.5, 1.3]})
     fig.suptitle("A 6.6x bigger model buys almost nothing", y=1.06)
     style.subtitle(fig, "The large model gains 1.4 accuracy points and costs 3.3x the "
                         "energy per frame. What it does buy is fewer false alarms.", y=1.0)
 
-    # Panel 1 - accuracy on frames that DO contain fire or smoke.
-    metrics = [("map50_dfire_test", "overall"), ("map50_fire_class", "fire"),
-               ("map50_smoke_class", "smoke"), ("map50_small_plume", "small\nplumes"),
-               ("map50_tiny_plume", "tiny\nplumes")]
-    x = np.arange(len(metrics))
-    w = 0.36
     ax = axes[0]
-    sv = [s_rec[k] or 0 for k, _ in metrics]
-    lv = [l_rec[k] or 0 for k, _ in metrics]
-    ax.bar(x - w/2, sv, w, label="YOLOv5s, 7.0 M params", color=style.BLUE, zorder=3)
-    ax.bar(x + w/2, lv, w, label="YOLOv5l, 46.1 M params", color=style.ORANGE, zorder=3)
-    for xi, (a, b) in enumerate(zip(sv, lv)):
-        style.annotate(ax, xi - w/2, a, f"{a:.2f}", dy=4, size=8.5, weight="normal")
-        style.annotate(ax, xi + w/2, b, f"{b:.2f}", dy=4, size=8.5, weight="normal")
-    ax.set_xticks(x); ax.set_xticklabels([n for _, n in metrics])
-    ax.set_ylabel("detection accuracy (mAP50)")
-    ax.set_ylim(0, 1.16)
-    ax.set_title("Frames that contain fire or smoke", fontsize=11.5, pad=8)
-    ax.legend(loc="upper center", ncol=2, columnspacing=1.2)
+    # A gap in the x positions marks where the metric changes.
+    xs = np.array([0, 1, 2, 3, 4, 5.55])
+    w = 0.36
+    sv = [g[1] or 0 for g in groups]
+    lv = [g[2] or 0 for g in groups]
+    ax.bar(xs - w/2, sv, w, label="YOLOv5s, 7.0 M params", color=style.BLUE, zorder=3)
+    ax.bar(xs + w/2, lv, w, label="YOLOv5l, 46.1 M params", color=style.ORANGE, zorder=3)
+    for x, a, b in zip(xs, sv, lv):
+        style.annotate(ax, x - w/2, a, f"{a:.2f}", dy=4, size=8.5, weight="normal")
+        style.annotate(ax, x + w/2, b, f"{b:.2f}", dy=4, size=8.5, weight="normal")
+
+    ax.axvline(4.78, color=style.GRID, linewidth=1.4, zorder=2)
+    ax.set_xticks(xs)
+    ax.set_xticklabels([g[0] for g in groups])
+    ax.set_ylabel("score (0 to 1)")
+    ax.set_ylim(0, 1.22)
+    ax.set_xlim(-0.75, 6.2)
+    ax.text(2.0, 1.15, f"detection accuracy (mAP50)\non the {4306 - n_bg:,} frames with fire or smoke",
+            ha="center", fontsize=9, color=style.INK_2)
+    ax.text(5.55, 1.15, f"correctly silent\non the {n_bg:,} empty frames",
+            ha="center", fontsize=9, color=style.INK_2)
+    ax.legend(loc="lower left", ncol=2, columnspacing=1.2)
     style.tidy(ax)
 
-    # Panel 2 - the other half of the test set: frames with nothing in them.
-    # Accuracy is undefined there (nothing to detect), so the right measure is how
-    # often the detector correctly stays quiet.
+    # Panel 2 - cost, indexed to the small model so the multiple is the message.
     ax = axes[1]
-    def silent(r):
-        v = r.get("bg_correctly_silent_rate")
-        return 100 * (v if v is not None else 1 - r["bg_false_alarm_rate"])
-    vals = [silent(s_rec), silent(l_rec)]
-    bars = ax.bar(["YOLOv5s", "YOLOv5l"], vals, color=[style.BLUE, style.ORANGE],
-                  width=0.55, zorder=3)
-    for b, v in zip(bars, vals):
-        style.annotate(ax, b.get_x() + b.get_width()/2, v, f"{v:.1f}%", dy=5)
-    n_bg = (s_rec.get("accuracy_detail", {}).get("background") or {}).get(
-        "n_background_images", 2005)
-    ax.set_ylabel("correctly silent (%)")
-    ax.set_ylim(90, 101)
-    ax.set_title(f"The {n_bg:,} empty frames", fontsize=11.5, pad=8)
-    ax.text(0.5, 0.06, "no fire, no smoke:\nthe right answer is nothing",
-            transform=ax.transAxes, ha="center", fontsize=9, color=style.INK_2)
-    style.tidy(ax)
-
-    # Panel 3 - cost, indexed to the small model so the multiple is the message.
-    ax = axes[2]
     names = ["energy\nper frame", "latency", "memory", "model\nsize"]
     ratios = [
         l_rec["jetson"]["energy_j_per_1000_frames"] / s_rec["jetson"]["energy_j_per_1000_frames"],
