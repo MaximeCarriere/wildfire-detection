@@ -54,13 +54,38 @@ FPS doesn't"); it fell out of XP6 for free.
 It also means **parameter count is the wrong axis to judge pruning on.** The 70%-pruned
 model is 11× smaller and 1.7× faster.
 
-## In progress
+## Result 3 — pruned, recovered and deployed, it still loses on every axis
 
-Recovery fine-tuning at 25% and 50% pruning, then export to TensorRT and measurement against
-the frontier. Recovery is ~20 min/epoch on this board (measured), so ~4 h per level.
+25% of channels removed, 12 epochs of recovery training, exported to a TensorRT engine so
+the speed number means something (XP9 showed PyTorch speed on this board is
+kernel-launch-bound and near-useless for comparing models):
 
-The verdict this experiment exists to deliver — **does a pruned, recovered, deployed model
-beat YOLOv5s at 512 px (0.7776 mAP50, 474 img/s, 52 J/1000 frames)?** — needs those runs.
+| | pruned + recovered | unpruned at 512 px |
+|---|---:|---:|
+| mAP50 | 0.7297 | **0.7776** |
+| tiny plumes | 0.0960 | **0.1376** |
+| throughput | 381 img/s | **474 img/s** |
+| energy / 1000 frames | 54.3 J | **52.1 J** |
+| parameters | 4.24 M | 7.03 M |
+
+**Less accurate, slower, and slightly more energy** — despite being 40% smaller. The
+recovery training worked (0.0 → 0.7297); it simply did not recover enough to pay for
+itself. And the speed loss is Result 2 again: 43% less arithmetic, but irregular channel
+counts that the GPU's kernels handle worse than the dense original.
+
+For the metric that matters most here, distant smoke, pruning costs a further **30%** on top
+(0.1376 → 0.0960).
+
+## In progress — one-shot vs iterative
+
+The above prunes 25% in a single operation, then retrains. The alternative is progressive:
+remove a slice, retrain briefly, repeat. The steepness of Result 1 — 9 points lost to a
+**2%** cut — is the classic signature of survivors never getting a chance to compensate, so
+this may be the wrong method rather than the wrong technique.
+
+Running now at the **same 25% target and the same 12-epoch budget**, differing only in when
+the training happens: 4 increments of ~7% with 2 epochs between, then 4 final epochs. Equal
+budget is what makes it a fair test.
 
 ## Limitations
 

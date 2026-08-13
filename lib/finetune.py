@@ -31,12 +31,20 @@ that must pass before any recovery number is believed.
 """
 from __future__ import annotations
 
+import gc
 import math
 import sys
 import time
 from pathlib import Path
 
 NOMINAL_BATCH = 64      # the batch size YOLOv5's hyper-parameters assume
+
+#: Dataloaders are cached and reused across calls. Iterative pruning calls
+#: :func:`finetune` once per increment, and a fresh loader each time means a fresh
+#: set of worker processes each time — on a board with 8 GB shared between CPU and
+#: GPU, the third round gets its workers killed by the OOM killer mid-epoch. That
+#: is exactly how XP6's first iterative attempt died.
+_LOADER_CACHE: dict = {}
 
 
 def _yolo_paths_file(split: str, out: Path) -> Path:
@@ -73,8 +81,12 @@ def base_hyp(nl: int, nc: int, res: int) -> dict:
 
 
 def build_loader(split: str, res: int, batch: int, repo: Path, hyp: dict, *,
-                 augment: bool, workers: int = 4):
+                 augment: bool, workers: int = 2):
     from lib import data as dataset
+
+    key = (split, res, batch, augment, workers)
+    if key in _LOADER_CACHE:
+        return _LOADER_CACHE[key]
 
     # Refuse to train against splits that do not match the frozen manifest. This
     # matters most when training moves to another machine: weights can be made
@@ -93,6 +105,7 @@ def build_loader(split: str, res: int, batch: int, repo: Path, hyp: dict, *,
         augment=augment, cache=None, rect=not augment, workers=workers,
         prefix=f"{split}: ", shuffle=augment,
     )
+    _LOADER_CACHE[key] = loader
     return loader
 
 
@@ -192,6 +205,15 @@ def finetune(model, *, repo: Path, epochs: int, res: int = 512, batch: int = 8,
     # Hand back the EMA weights — that is what YOLOv5 evaluates and publishes.
     model.load_state_dict(ema.ema.state_dict())
     model.eval()
+
+    # Release the training state explicitly. The EMA holds a second full copy of
+    # the model and the optimizer holds momentum buffers for every parameter;
+    # across repeated calls (iterative pruning) they accumulate and the board runs
+    # out of memory.
+    del ema, opt, compute_loss, scaler
+    gc.collect()
+    torch.cuda.empty_cache()
+
     return {"epochs": epochs, "res": res, "batch": batch, "hyp": hyp,
             "accumulate": accumulate, "ema": True,
             "total_minutes": round((time.perf_counter() - t_start) / 60, 2),

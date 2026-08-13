@@ -1,0 +1,190 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_pruned25_recovered",
+  "params_m": 4.2404,
+  "size_disk_mb": 17.455,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7298,
+  "map5095_dfire_test": 0.3775,
+  "map50_fire_class": 0.668,
+  "map50_smoke_class": 0.7917,
+  "map50_small_plume": 0.5525,
+  "map50_tiny_plume": 0.0963,
+  "bg_false_alarm_rate": 0.0474,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "latency_ms_median": 23.459,
+    "latency_ms_median_se": 0.0051,
+    "latency_ms_p95": 25.217,
+    "fps_batch1": 42.39,
+    "fps_se": 0.02,
+    "runs": 3,
+    "warmup_frames": 50,
+    "measured_frames": 1000,
+    "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+    "protocol_compliant": true,
+    "power_w_mean": 8.125,
+    "energy_j_per_1000_frames": 191.2,
+    "gpu_util_pct": 62.9,
+    "temp_c_peak": 56.562,
+    "batch": 16,
+    "fps_batched": 166.54,
+    "fps_batched_se": 0.031,
+    "ms_per_image_batched": 6.005,
+    "measured_images": 960,
+    "mem_mb": 702.1
+  },
+  "accuracy_detail": {
+    "map5095": 0.3775,
+    "map50": 0.7298,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.4401,
+        "map50": 0.7917
+      },
+      "fire": {
+        "map5095": 0.315,
+        "map50": 0.668
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2219,
+      "map50": 0.5525
+    },
+    "tiny_plume": {
+      "map5095": 0.0262,
+      "map50": 0.0963
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 95,
+      "false_alarm_rate": 0.0474,
+      "false_boxes_per_bg_image": 0.0539
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 70407,
+    "fingerprint": "4d9b34c3b8436bef"
+  },
+  "ood_detail": null,
+  "notes": "XP6: 25% channels pruned, 12-epoch recovery fine-tune at 512px. PyTorch runtime \u2014 speed here is kernel-launch-bound (see XP9) and is not the number to judge pruning by.",
+  "prune_meta": {
+    "requested_channel_ratio": 0.25,
+    "params_m_before": 7.025,
+    "params_m_after": 4.2404,
+    "params_reduction": 0.3964,
+    "gmacs_before": 5.075,
+    "gmacs_after": 2.89,
+    "macs_reduction": 0.4307
+  },
+  "train_meta": {
+    "epochs": 12,
+    "res": 512,
+    "batch": 8,
+    "hyp": {
+      "lr0": 0.0032,
+      "lrf": 0.12,
+      "momentum": 0.937,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 2.0,
+      "warmup_momentum": 0.5,
+      "warmup_bias_lr": 0.05,
+      "box": 0.05,
+      "cls": 0.012500000000000002,
+      "cls_pw": 1.0,
+      "obj": 0.6400000000000001,
+      "obj_pw": 1.0,
+      "iou_t": 0.2,
+      "anchor_t": 4.0,
+      "fl_gamma": 0.0,
+      "label_smoothing": 0.0,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4,
+      "degrees": 0.0,
+      "translate": 0.1,
+      "scale": 0.5,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "flipud": 0.0,
+      "fliplr": 0.5,
+      "mosaic": 0.5,
+      "mixup": 0.0,
+      "copy_paste": 0.0
+    },
+    "accumulate": 8,
+    "ema": true,
+    "total_minutes": 108.03,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 0.738,
+        "minutes": 10.11
+      },
+      {
+        "epoch": 2,
+        "loss": 0.49126,
+        "minutes": 8.95
+      },
+      {
+        "epoch": 3,
+        "loss": 0.46172,
+        "minutes": 8.85
+      },
+      {
+        "epoch": 4,
+        "loss": 0.44783,
+        "minutes": 8.85
+      },
+      {
+        "epoch": 5,
+        "loss": 0.4325,
+        "minutes": 8.85
+      },
+      {
+        "epoch": 6,
+        "loss": 0.42311,
+        "minutes": 8.85
+      },
+      {
+        "epoch": 7,
+        "loss": 0.41293,
+        "minutes": 8.85
+      },
+      {
+        "epoch": 8,
+        "loss": 0.4043,
+        "minutes": 8.85
+      },
+      {
+        "epoch": 9,
+        "loss": 0.39898,
+        "minutes": 8.86
+      },
+      {
+        "epoch": 10,
+        "loss": 0.39014,
+        "minutes": 8.85
+      },
+      {
+        "epoch": 11,
+        "loss": 0.38388,
+        "minutes": 9.32
+      },
+      {
+        "epoch": 12,
+        "loss": 0.37746,
+        "minutes": 8.84
+      }
+    ]
+  }
+}
