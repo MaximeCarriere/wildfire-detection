@@ -33,6 +33,11 @@ from lib.evaluator import PROTOCOL_VERSION       # noqa: E402
 RAW = REPO / "results" / "raw"
 FIGURES = REPO / "results" / "figures"
 
+#: Unpruned yolov5s FP16 @512 on the full test set, re-measured on the screening
+#: machine. Every extension figure draws this line so the comparison is never lost.
+UNPRUNED_MAP50 = 0.7764
+UNPRUNED_TINY = 0.1380
+
 
 # --------------------------------------------------------------------------
 # loading
@@ -559,7 +564,322 @@ def fig_xp06(records) -> Path | None:
     return save(fig, "xp06_pruning.png")
 
 
-BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10, fig_xp12]
+
+# --------------------------------------------------------------------------
+# XP6 extension — the four axes, measured
+# --------------------------------------------------------------------------
+
+def _side(name: str):
+    """Load one of the extension's non-record JSONs (sweeps, not single runs)."""
+    path = RAW / name
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def _stage(layer: str) -> int:
+    import re
+    m = re.match(r"model\.(\d+)\.", layer)
+    return int(m.group(1)) if m else -1
+
+
+def fig_xp06e1(records) -> Path | None:
+    """Where pruning damage is cheap, and where it is fatal."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.colors import LinearSegmentedColormap
+
+    d = _side("xp06e1_sensitivity.json")
+    if not d:
+        return None
+
+    rows = [r for r in d["rows"] if "retained" in r]
+    layers, ratios = [], sorted({r["ratio"] for r in rows})
+    for r in rows:
+        if r["layer"] not in layers:
+            layers.append(r["layer"])
+    layers.sort(key=lambda n: (_stage(n), n))
+
+    grid = np.full((len(ratios), len(layers)), np.nan)
+    for r in rows:
+        grid[ratios.index(r["ratio"]), layers.index(r["layer"])] = min(1.0, r["retained"])
+
+    # Sequential, one hue: pale means the layer was destroyed, deep means it
+    # shrugged the cut off. Retention is a magnitude, so it never gets a rainbow.
+    cmap = LinearSegmentedColormap.from_list(
+        "retained", ["#fdf3ee", "#f6c9ae", "#8ec9b4", "#1baf7a", "#0d5f43"])
+
+    fig, ax = plt.subplots(figsize=(14, 3.9))
+    fig.suptitle("Every layer pruned on its own: the fragile ones are the ones "
+                 "that save nothing", y=1.16)
+    style.subtitle(fig, "Each cell prunes ONE layer and leaves the rest alone. Early layers "
+                        "collapse and free almost no parameters; deep layers absorb heavy "
+                        "cuts and free far more.", y=1.07)
+
+    im = ax.imshow(grid, aspect="auto", cmap=cmap, vmin=0, vmax=1,
+                   interpolation="nearest")
+    ax.set_yticks(range(len(ratios)))
+    ax.set_yticklabels([f"{r:.0%}" for r in ratios])
+    ax.set_ylabel("cut applied\nto that layer")
+
+    # Label stage boundaries rather than 57 layer names, which would be unreadable.
+    stages, seen = [], set()
+    for i, n in enumerate(layers):
+        st = _stage(n)
+        if st not in seen:
+            seen.add(st)
+            stages.append((i, st))
+    # Label every other boundary when they crowd: adjacent stages can be one
+    # layer apart and their numbers collide.
+    keep = [(i, st) for k, (i, st) in enumerate(stages)
+            if k == 0 or i - stages[k - 1][0] > 1 or k % 2 == 0]
+    ax.set_xticks([i for i, _ in keep])
+    ax.set_xticklabels([str(s) for _, s in keep], fontsize=8.5)
+    ax.set_xlabel("layer, in order through the network (YOLOv5 stage number)")
+    for i, _ in stages[1:]:
+        ax.axvline(i - 0.5, color="white", linewidth=0.8, alpha=0.55)
+
+    cb = fig.colorbar(im, ax=ax, pad=0.012, fraction=0.028)
+    cb.set_label("accuracy retained", fontsize=10)
+    cb.outline.set_visible(False)
+
+    worst = min(rows, key=lambda r: r["retained"])
+    ax.annotate(f"{worst['layer'].replace('model.','')} at {worst['ratio']:.0%}\n"
+                f"keeps {worst['retained']:.0%} of accuracy,\n"
+                f"frees {worst['params_reduction']:.2%} of the model",
+                xy=(layers.index(worst["layer"]), ratios.index(worst["ratio"])),
+                xytext=(150, 26), textcoords="offset points", fontsize=9.5,
+                color="white", fontweight="bold", va="center",
+                arrowprops=dict(arrowstyle="->", color="white", linewidth=1.4))
+    ax.tick_params(length=0)
+    fig.tight_layout()
+    return save(fig, "xp06e1_sensitivity.png")
+
+
+def fig_xp06e2(records) -> Path | None:
+    """Which channels you choose matters more than anyone assumed."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp06e2_criteria_damage.json")
+    if not d:
+        return None
+    base = d["baseline"]["val_map50"]
+
+    order = ["l1", "fpgm", "taylor", "lamp", "hessian", "l2", "bn", "random"]
+    pretty = {"l1": "L1", "l2": "L2", "bn": "BN scale", "taylor": "Taylor",
+              "hessian": "Hessian", "fpgm": "FPGM", "lamp": "LAMP", "random": "random"}
+    cells = {(r["criterion"], r["ratio"]): r for r in d["rows"] if "val_map50" in r}
+    shown = [c for c in order if (c, 0.05) in cells]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.6))
+    fig.suptitle("The importance criterion decides whether pruning is survivable", y=1.06)
+    style.subtitle(fig, "At a 5% cut one criterion keeps 99% of the accuracy and another "
+                        "keeps 12%. They differ by one character of code.", y=1.0)
+
+    ax = axes[0]
+    vals = [cells[(c, 0.05)]["val_map50"] for c in shown]
+    # Colour encodes the outcome, not the name: a criterion that lost most of the
+    # accuracy is marked as failed, and the control is neutral grey.
+    colours = [style.MUTED if c == "random" else
+               (style.RED if cells[(c, 0.05)]["val_map50"] < 0.5 * base else style.AQUA)
+               for c in shown]
+    bars = ax.bar(range(len(shown)), vals, color=colours, width=0.68, zorder=3)
+    ax.axhline(base, color=style.INK_2, linestyle=":", linewidth=1.6, zorder=2)
+    ax.text(len(shown) - 0.4, base + 0.02, "unpruned", fontsize=9.5,
+            color=style.INK_2, ha="right")
+    for i, (b, v) in enumerate(zip(bars, vals)):
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.018, f"{v:.2f}",
+                ha="center", fontsize=9.5, fontweight="bold",
+                color=style.INK if v > 0.3 else style.RED)
+    ax.set_xticks(range(len(shown)))
+    ax.set_xticklabels([pretty[c] for c in shown], rotation=30, ha="right")
+    ax.set_ylabel("accuracy after a 5% cut (mAP50)")
+    ax.set_ylim(0, 1.05)
+    ax.set_title("5% of channels removed, no retraining", fontsize=11.5, pad=8)
+    style.tidy(ax)
+
+    # Panel 2: after retraining the criteria converge on the easy cases and stay
+    # far apart on the hard ones, which is the finding that matters here.
+    ax = axes[1]
+    rec = {}
+    for r in records:
+        if r.get("experiment") == "xp06e2" or "_recovered" in r["model_id"]:
+            for c in order:
+                if f"_{c}_recovered" in r["model_id"]:
+                    rec[c] = r
+    if rec:
+        names = [c for c in order if c in rec]
+        x = np.arange(len(names))
+        # Both series as a FRACTION of the unpruned model, so they share one
+        # honest scale. Plotting raw mAP50 beside raw tiny-plume mAP50 would need
+        # either two y-axes or a fudge factor, and both of those lie.
+        overall = [rec[c]["map50_dfire_test"] / UNPRUNED_MAP50 for c in names]
+        tiny = [(rec[c]["map50_tiny_plume"] or 0) / UNPRUNED_TINY for c in names]
+        ax.bar(x - 0.19, overall, width=0.36, color=style.BLUE,
+               label="overall accuracy kept", zorder=3)
+        ax.bar(x + 0.19, tiny, width=0.36, color=style.ORANGE,
+               label="tiny-plume accuracy kept", zorder=3)
+        for i, (o, t) in enumerate(zip(overall, tiny)):
+            ax.text(i - 0.19, o + 0.014, f"{o:.0%}", ha="center", fontsize=9)
+            ax.text(i + 0.19, t + 0.014, f"{t:.0%}", ha="center", fontsize=9,
+                    fontweight="bold")
+        ax.axhline(1.0, color=style.INK_2, linestyle=":", linewidth=1.4, zorder=2)
+        ax.set_xticks(x)
+        ax.set_xticklabels([pretty[c] for c in names], rotation=30, ha="right")
+        ax.set_ylim(0, 1.18)
+        ax.set_ylabel("fraction of the unpruned model kept")
+        ax.set_title("After retraining, the gap moves to the hard cases",
+                     fontsize=11.5, pad=8)
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)
+        style.tidy(ax)
+    else:
+        ax.axis("off")
+
+    fig.tight_layout()
+    return save(fig, "xp06e2_criteria.png")
+
+
+def fig_xp06e5(records) -> Path | None:
+    """Capacity was never the problem. Structure was."""
+    import matplotlib.pyplot as plt
+
+    fine = sorted([r for r in records if r.get("granularity") == "unstructured"],
+                  key=lambda r: r["prune_meta"]["requested_sparsity"])
+    chan = sorted([r for r in records if "_nofinetune" in r["model_id"]
+                   and r.get("prune_meta", {}).get("requested_channel_ratio") is not None],
+                  key=lambda r: r["prune_meta"]["requested_channel_ratio"])
+    if not fine or not chan:
+        return None
+
+    fig, ax = plt.subplots(figsize=(8.4, 5.0))
+    fig.suptitle("The same network survives losing half its weights and dies "
+                 "losing 5% of its channels", y=1.05)
+    style.subtitle(fig, "Both lines remove capacity with no retraining. Only the SHAPE of "
+                        "the removal differs, and that is what the detector cannot absorb.",
+                   y=0.985)
+
+    cx = [100 * r["prune_meta"]["requested_channel_ratio"] for r in chan]
+    cy = [r["map50_dfire_test"] for r in chan]
+    ax.plot(cx, cy, "o-", color=style.RED, linewidth=2.2, markersize=8,
+            label="whole channels removed", zorder=4)
+
+    fx = [100 * r["prune_meta"]["requested_sparsity"] for r in fine]
+    fy = [r["prune_meta"].get("map50_before_recovery") for r in fine]
+    if all(v is not None for v in fy):
+        ax.plot(fx, fy, "s-", color=style.AQUA, linewidth=2.2, markersize=8,
+                label="individual weights removed", zorder=5)
+
+    base = UNPRUNED_MAP50
+    ax.axhline(base, color=style.MUTED, linestyle=":", linewidth=1.6, zorder=2)
+    ax.text(97, base + 0.02, "unpruned", fontsize=9.5, color=style.INK_2, ha="right")
+
+    ax.annotate("5% of channels:\naccuracy is gone", xy=(5, cy[min(2, len(cy)-1)]),
+                xytext=(16, 0.30), textcoords="data", fontsize=9.5,
+                color=style.RED, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=style.RED, linewidth=1.2))
+    if all(v is not None for v in fy):
+        ax.annotate("50% of weights:\nbarely a scratch", xy=(50, fy[1] if len(fy) > 1 else fy[0]),
+                    xytext=(40, 0.90), textcoords="data", fontsize=9.5,
+                    color=style.AQUA, fontweight="bold",
+                    arrowprops=dict(arrowstyle="->", color=style.AQUA, linewidth=1.2))
+
+    ax.set_xlabel("capacity removed (%)")
+    ax.set_ylabel("detection accuracy (mAP50), no retraining")
+    ax.set_xlim(-3, 100)
+    ax.set_ylim(-0.04, 0.95)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2)
+    style.tidy(ax)
+    fig.text(0.5, -0.20, "Removing individual weights has no speed benefit on this "
+                         "hardware: irregular zeros sit in a full-size tensor and the GPU "
+                         "does the same work.\nThe comparison is about what the network can "
+                         "tolerate, not about what runs faster.",
+             ha="center", fontsize=9, color=style.MUTED)
+    fig.tight_layout()
+    return save(fig, "xp06e5_granularity.png")
+
+
+def fig_xp06e6(records) -> Path | None:
+    """Same amount removed, three ways of choosing where."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    arms = {r.get("allocation"): r for r in records if r.get("experiment") == "xp06e6"}
+    if len(arms) < 2:
+        return None
+    order = [a for a in ("global", "uniform", "sensitivity") if a in arms]
+
+    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    fig.suptitle("Where the cut lands matters as much as how big it is", y=1.05)
+    style.subtitle(fig, "All three models are the same size, pruned with the same criterion. "
+                        "Only the per-layer distribution differs.", y=0.985)
+
+    metrics = [("map50_dfire_test", "overall", style.BLUE),
+               ("map50_small_plume", "small plumes", style.ORANGE),
+               ("map50_tiny_plume", "tiny plumes", style.AQUA)]
+    x = np.arange(len(order))
+    w = 0.26
+    for i, (key, label, colour) in enumerate(metrics):
+        vals = [arms[a].get(key) or 0 for a in order]
+        ax.bar(x + (i - 1) * w, vals, width=w - 0.02, color=colour, label=label, zorder=3)
+        for xi, v in zip(x + (i - 1) * w, vals):
+            ax.text(xi, v + 0.012, f"{v:.3f}", ha="center", fontsize=8.5)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{a}\n{arms[a]['params_m']:.2f} M params" for a in order])
+    ax.set_ylabel("accuracy (mAP50)")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3)
+    style.tidy(ax)
+    fig.tight_layout()
+    return save(fig, "xp06e6_allocation.png")
+
+
+def fig_xp06e7(records) -> Path | None:
+    """The one-shot versus iterative comparison, with the confound removed."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fair = {r.get("arm"): r for r in records if r.get("experiment") == "xp06e7"}
+    if len(fair) < 2:
+        return None
+    old = {("iterative" if "_iter_" in r["model_id"] else "oneshot"): r
+           for r in records if "_recovered_trt" in r["model_id"]}
+
+    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    fig.suptitle("Iterative pruning still loses once both arms train equally", y=1.05)
+    style.subtitle(fig, "The published comparison gave iterative only 4 epochs in its final "
+                        "shape against one-shot's 12. Here the post-cut budget is equal.",
+                   y=0.985)
+
+    arms = [a for a in ("oneshot", "iterative") if a in fair]
+    x = np.arange(len(arms))
+    w = 0.34
+    old_vals = [(old.get(a) or {}).get("map50_dfire_test") for a in arms]
+    new_vals = [fair[a]["map50_dfire_test"] for a in arms]
+
+    if all(v is not None for v in old_vals):
+        ax.bar(x - w / 2, old_vals, width=w - 0.02, color=style.MUTED,
+               label="as published (unequal post-cut epochs)", zorder=3)
+        for xi, v in zip(x - w / 2, old_vals):
+            ax.text(xi, v + 0.012, f"{v:.3f}", ha="center", fontsize=9)
+    ax.bar(x + w / 2, new_vals, width=w - 0.02, color=style.BLUE,
+           label="equal epochs after the final cut", zorder=3)
+    for xi, v in zip(x + w / 2, new_vals):
+        ax.text(xi, v + 0.012, f"{v:.3f}", ha="center", fontsize=9, fontweight="bold")
+
+    ax.axhline(UNPRUNED_MAP50, color=style.INK_2, linestyle=":", linewidth=1.6, zorder=2)
+    ax.text(len(arms) - 0.55, UNPRUNED_MAP50 + 0.012, "unpruned", fontsize=9.5,
+            color=style.INK_2, ha="right")
+    ax.set_xticks(x)
+    ax.set_xticklabels(["one-shot", "iterative"][:len(arms)])
+    ax.set_ylabel("accuracy (mAP50)")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2)
+    style.tidy(ax)
+    fig.tight_layout()
+    return save(fig, "xp06e7_fair_rerun.png")
+
+
+BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e5, fig_xp06e6,
+            fig_xp06e7]
 
 
 def main() -> None:

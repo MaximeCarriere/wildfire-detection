@@ -1,0 +1,242 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_alloc_sensitivity",
+  "params_m": 4.211,
+  "size_disk_mb": 17.342,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7522,
+  "map5095_dfire_test": 0.398,
+  "map50_fire_class": 0.6877,
+  "map50_smoke_class": 0.8167,
+  "map50_small_plume": 0.5902,
+  "map50_tiny_plume": 0.1122,
+  "bg_false_alarm_rate": 0.0264,
+  "bg_correctly_silent_rate": 0.9736,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": null,
+  "accuracy_detail": {
+    "map5095": 0.398,
+    "map50": 0.7522,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.4575,
+        "map50": 0.8167
+      },
+      "fire": {
+        "map5095": 0.3384,
+        "map50": 0.6877
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2456,
+      "map50": 0.5902
+    },
+    "tiny_plume": {
+      "map5095": 0.031,
+      "map50": 0.1122
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 53,
+      "false_alarm_rate": 0.0264,
+      "correctly_silent_rate": 0.9736,
+      "false_boxes_per_bg_image": 0.0284
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 43055,
+    "fingerprint": "7386fe6913deb521"
+  },
+  "ood_detail": null,
+  "notes": "XP6 E6: ratio allocation 'sensitivity' with the l1 criterion, matched to 40.1% parameter reduction across all three arms so only the per-layer distribution varies. Unpruned reference on this machine: 0.7764 mAP50 at 7.025 M. 3090 SCREENING MEASUREMENT, off-device: accuracy only. No latency, throughput or energy is recorded here because a TensorRT engine is compiled per GPU architecture and a 3090 figure says nothing about a 15 W Orin. torch 2.13.0+cu126, batch 32, 12 epochs at 512px.",
+  "prune_meta": {
+    "requested_channel_ratio": 0.0,
+    "importance": "l1",
+    "round_to": 1,
+    "global_pruning": false,
+    "per_layer_ratios": true,
+    "params_m_before": 7.025,
+    "params_m_after": 4.211,
+    "params_reduction": 0.40058,
+    "gmacs_before": 5.075,
+    "gmacs_after": 3.368,
+    "macs_reduction": 0.33647,
+    "allocation": "sensitivity",
+    "scale": 0.5109,
+    "protected_layers": [
+      "model.2.cv1.conv",
+      "model.2.m.0.cv2.conv"
+    ],
+    "per_layer_ratio": {
+      "model.0.conv": 0.0511,
+      "model.1.conv": 0.0511,
+      "model.2.cv2.conv": 0.1022,
+      "model.2.cv3.conv": 0.0511,
+      "model.2.m.0.cv1.conv": 0.1022,
+      "model.3.conv": 0.1022,
+      "model.4.cv1.conv": 0.1022,
+      "model.4.cv2.conv": 0.1533,
+      "model.4.cv3.conv": 0.1533,
+      "model.4.m.0.cv1.conv": 0.1533,
+      "model.4.m.0.cv2.conv": 0.1022,
+      "model.4.m.1.cv1.conv": 0.1022,
+      "model.4.m.1.cv2.conv": 0.1022,
+      "model.5.conv": 0.1533,
+      "model.6.cv1.conv": 0.1022,
+      "model.6.cv2.conv": 0.3577,
+      "model.6.cv3.conv": 0.1533,
+      "model.6.m.0.cv1.conv": 0.3577,
+      "model.6.m.0.cv2.conv": 0.1022,
+      "model.6.m.1.cv1.conv": 0.3577,
+      "model.6.m.1.cv2.conv": 0.1022,
+      "model.6.m.2.cv1.conv": 0.3577,
+      "model.6.m.2.cv2.conv": 0.1022,
+      "model.7.conv": 0.1533,
+      "model.8.cv1.conv": 0.1533,
+      "model.8.cv2.conv": 0.3577,
+      "model.8.cv3.conv": 0.1533,
+      "model.8.m.0.cv1.conv": 0.3577,
+      "model.8.m.0.cv2.conv": 0.1533,
+      "model.9.cv1.conv": 0.0511,
+      "model.9.cv2.conv": 0.1533,
+      "model.10.conv": 0.2555,
+      "model.13.cv1.conv": 0.3577,
+      "model.13.cv2.conv": 0.3577,
+      "model.13.cv3.conv": 0.2555,
+      "model.13.m.0.cv1.conv": 0.3577,
+      "model.13.m.0.cv2.conv": 0.2555,
+      "model.14.conv": 0.3577,
+      "model.17.cv1.conv": 0.2555,
+      "model.17.cv2.conv": 0.3577,
+      "model.17.cv3.conv": 0.0511,
+      "model.17.m.0.cv1.conv": 0.3577,
+      "model.17.m.0.cv2.conv": 0.1533,
+      "model.18.conv": 0.3577,
+      "model.20.cv1.conv": 0.3577,
+      "model.20.cv2.conv": 0.3577,
+      "model.20.cv3.conv": 0.2555,
+      "model.20.m.0.cv1.conv": 0.3577,
+      "model.20.m.0.cv2.conv": 0.3577,
+      "model.21.conv": 0.3577,
+      "model.23.cv1.conv": 0.3577,
+      "model.23.cv2.conv": 0.3577,
+      "model.23.cv3.conv": 0.2555,
+      "model.23.m.0.cv1.conv": 0.2555,
+      "model.23.m.0.cv2.conv": 0.3577
+    }
+  },
+  "train_meta": {
+    "epochs": 12,
+    "res": 512,
+    "batch": 32,
+    "hyp": {
+      "lr0": 0.0032,
+      "lrf": 0.12,
+      "momentum": 0.937,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 2.0,
+      "warmup_momentum": 0.5,
+      "warmup_bias_lr": 0.05,
+      "box": 0.05,
+      "cls": 0.012500000000000002,
+      "cls_pw": 1.0,
+      "obj": 0.6400000000000001,
+      "obj_pw": 1.0,
+      "iou_t": 0.2,
+      "anchor_t": 4.0,
+      "fl_gamma": 0.0,
+      "label_smoothing": 0.0,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4,
+      "degrees": 0.0,
+      "translate": 0.1,
+      "scale": 0.5,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "flipud": 0.0,
+      "fliplr": 0.5,
+      "mosaic": 0.5,
+      "mixup": 0.0,
+      "copy_paste": 0.0
+    },
+    "accumulate": 2,
+    "ema": true,
+    "total_minutes": 27.3,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 2.16827,
+        "minutes": 2.02
+      },
+      {
+        "epoch": 2,
+        "loss": 1.52942,
+        "minutes": 2.11
+      },
+      {
+        "epoch": 3,
+        "loss": 1.5825,
+        "minutes": 2.02
+      },
+      {
+        "epoch": 4,
+        "loss": 1.56456,
+        "minutes": 2.19
+      },
+      {
+        "epoch": 5,
+        "loss": 1.53091,
+        "minutes": 2.54
+      },
+      {
+        "epoch": 6,
+        "loss": 1.51183,
+        "minutes": 2.09
+      },
+      {
+        "epoch": 7,
+        "loss": 1.47327,
+        "minutes": 2.07
+      },
+      {
+        "epoch": 8,
+        "loss": 1.45482,
+        "minutes": 2.29
+      },
+      {
+        "epoch": 9,
+        "loss": 1.42518,
+        "minutes": 2.48
+      },
+      {
+        "epoch": 10,
+        "loss": 1.41531,
+        "minutes": 2.07
+      },
+      {
+        "epoch": 11,
+        "loss": 1.39057,
+        "minutes": 2.37
+      },
+      {
+        "epoch": 12,
+        "loss": 1.36326,
+        "minutes": 3.05
+      }
+    ]
+  },
+  "machine": "rtx3090_screening",
+  "experiment": "xp06e6",
+  "allocation": "sensitivity",
+  "criterion": "l1",
+  "target_params_reduction": 0.40138
+}
