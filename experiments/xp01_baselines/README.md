@@ -60,18 +60,57 @@ Jetson Orin Nano Super · PyTorch FP16 · 640×640 · full 4,306-image test set.
 
 ## What this means
 
-**6.6× the parameters for 1.4 accuracy points**, at 3.3× the energy. Distillation works by
-transferring what a large model knows that a small one doesn't; here that surplus is thin,
-so the planned distillation phase starts from a much weaker premise than assumed. (Caveat:
-a small accuracy gap makes a large distillation gain unlikely, not impossible — soft targets
-carry information beyond accuracy alone.)
+1. **The big model isn't worth it** — 6.6× the size for +1.4 accuracy points.
+2. **Fire is harder to detect than smoke** — the opposite of what the plan assumed.
+3. **What the big model actually buys is fewer false alarms**, not accuracy.
 
-**Fire is the harder class, not smoke** (0.72 vs 0.82). The project plan asserted the
-opposite as a core assumption. It is now an open question.
+---
 
-**What the big model actually buys is restraint** — a 30% lower false-alarm rate on empty
-landscape. For a camera watching nothing all day that may be worth more than the accuracy
-points, and it is invisible in every metric the plan originally specified.
+**1. The big model isn't worth it.** 46 M parameters against 7 M, for 1.4 mAP50 points and
+3.3× the energy per frame. This matters beyond the table: the plan plans to use the large
+model as a *teacher* to train smaller ones (distillation), which works by transferring what
+the big model knows that the small one doesn't. Here that surplus is thin, so Phase 1 starts
+from a much weaker premise than assumed. *Caveat: a small accuracy gap makes a large
+distillation gain unlikely, not impossible — a teacher's uncertainty carries information
+beyond its own score.*
+
+**2. Fire is harder to detect than smoke.** 0.72 vs 0.82 mAP50, and scaling the model up
+6.6× improves smoke by 2.7 points and fire by 0.05. PLAN.md asserts the opposite —
+"smoke degrades before fire" — as a core assumption. It is now an open question, and the
+per-class split stays mandatory in every result precisely so it can be settled with data.
+
+**3. What the big model actually buys is restraint.** On the 2,005 empty-landscape frames it
+stays correctly silent **97.8%** of the time against the small model's 96.9% — a 30% lower
+false-alarm rate. For a camera watching nothing all day, that may be worth more than the
+accuracy points. It is also invisible in every metric the plan originally specified, which
+is why the background false-alarm rate was added to the schema.
+
+## Are these numbers right?
+
+Cross-checked against **YOLOv5's own evaluator** (`val.py`), same weights, same 4,306 images,
+same thresholds:
+
+| | this harness | YOLOv5 `val.py` |
+|---|---:|---:|
+| mAP50 (all) | 0.7708 | 0.7850 |
+| mAP50-95 | 0.4233 | 0.4420 |
+| smoke | 0.8210 | 0.8360 |
+| fire | 0.7206 | 0.7340 |
+
+We read **~1.4 points lower, consistently**, and the gap is accounted for: YOLOv5 silently
+discards 17 ground-truth boxes that we keep (four of them are **zero-area** — degenerate
+labels in D-Fire itself, impossible to detect, counted against us), and the two use
+different average-precision interpolation. Reading conservatively is the safe direction for
+a repo whose whole purpose is measuring what compression costs.
+
+**Against the dataset authors' own published numbers: not verified.** Their 2022 paper is
+paywalled and their code repository publishes no metrics table, so there is nothing to
+compare to directly. For context, a 2024 paper reports an *improved* YOLOv8n reaching
+mAP@0.5 = 0.794 on D-Fire; stock YOLOv5s/l at 0.771/0.785 sits where baselines should
+relative to that.
+
+Per-class ordering is identical in both tools — smoke ahead of fire by ~10 points — so
+finding 2 above does not depend on our implementation.
 
 ## What nearly went wrong
 
