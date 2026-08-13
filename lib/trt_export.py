@@ -267,11 +267,22 @@ def export_onnx_from_model(model, onnx_path: Path, *, res: int = 512,
 
     axes = {"images": {0: "batch", 2: "height", 3: "width"},
             "output0": {0: "batch", 1: "anchors"}} if dynamic else None
+    # dynamo=False forces the legacy TorchScript exporter. torch 2.11 defaults to
+    # the dynamo path, which on this graph fails its ONNX version conversion for
+    # Resize and writes a 0.5 MB stub instead of the model — a *silent* corruption
+    # that only shows up as a nonsense file size. The legacy path is what YOLOv5's
+    # own export.py uses and it handles this graph correctly.
     torch.onnx.export(
         model, dummy, str(onnx_path), verbose=False, opset_version=13,
         do_constant_folding=True, input_names=["images"], output_names=["output0"],
-        dynamic_axes=axes,
+        dynamic_axes=axes, dynamo=False,
     )
+    size_mb = onnx_path.stat().st_size / 1e6
+    params_mb = sum(p.numel() for p in model.parameters()) * 4 / 1e6
+    if size_mb < 0.5 * params_mb:
+        raise RuntimeError(
+            f"{onnx_path.name} is {size_mb:.2f} MB but the model holds "
+            f"{params_mb:.1f} MB of weights — the export produced a stub, not a model.")
     return onnx_path
 
 

@@ -101,6 +101,65 @@ def prune_channels(model, ratio: float, *, res: int = 640, device: str = "cuda:0
     }
 
 
+def prune_iterative(model, ratio: float, *, steps: int, recover, res: int = 640,
+                    device: str = "cuda:0", importance: str = "group_norm") -> dict:
+    """Reach ``ratio`` in ``steps`` increments, retraining between each.
+
+    One-shot pruning removes everything in a single operation and only then lets
+    the network train. Iterative pruning removes a slice, gives the survivors a
+    chance to redistribute the work, and repeats. The literature generally finds
+    the second preserves far more accuracy at the same final sparsity, and XP6's
+    damage curve suggests why it should matter here: this model loses 9 mAP50
+    points to a **2%** one-shot cut and 88% to a 5% cut, which is far steeper than
+    typical published curves — the signature of survivors never getting a chance
+    to compensate.
+
+    ``recover`` is called as ``recover(model)`` after each cut. Splitting the same
+    total training budget across the steps is what makes the comparison to
+    one-shot fair: the two arms differ in *when* the training happens, not in how
+    much of it there is.
+    """
+    import torch
+    import torch_pruning as tp
+
+    example = torch.randn(1, 3, res, res, device=device)
+    before = model_stats(model, res, device)
+
+    imp = {"group_norm": tp.importance.GroupMagnitudeImportance(p=2),
+           "magnitude": tp.importance.MagnitudeImportance(p=2)}[importance]
+
+    model.eval()
+    pruner = tp.pruner.MetaPruner(
+        model, example, importance=imp, pruning_ratio=ratio,
+        iterative_steps=steps, ignored_layers=detect_head_convs(model),
+        global_pruning=True,
+    )
+
+    per_step = []
+    for i in range(steps):
+        pruner.step()
+        mid = model_stats(model, res, device)
+        print(f"  iterative step {i+1}/{steps}: {mid['params_m']:.3f} M params, "
+              f"{mid['gmacs']:.2f} GMACs", flush=True)
+        recover(model)                      # let the survivors redistribute
+        per_step.append({"step": i + 1, "params_m": round(mid["params_m"], 4),
+                         "gmacs": round(mid["gmacs"], 3)})
+
+    after = model_stats(model, res, device)
+    return {
+        "method": "iterative",
+        "steps": steps,
+        "requested_channel_ratio": ratio,
+        "params_m_before": round(before["params_m"], 4),
+        "params_m_after": round(after["params_m"], 4),
+        "params_reduction": round(1 - after["params_m"] / before["params_m"], 4),
+        "gmacs_before": round(before["gmacs"], 3),
+        "gmacs_after": round(after["gmacs"], 3),
+        "macs_reduction": round(1 - after["gmacs"] / before["gmacs"], 4),
+        "per_step": per_step,
+    }
+
+
 def save_pruned(model, path: Path, meta: dict | None = None) -> Path:
     """Save the whole model object, not a state_dict.
 
@@ -116,4 +175,5 @@ def save_pruned(model, path: Path, meta: dict | None = None) -> Path:
     return path
 
 
-__all__ = ["load_yolov5", "detect_head_convs", "model_stats", "prune_channels", "save_pruned"]
+__all__ = ["load_yolov5", "detect_head_convs", "model_stats", "prune_channels",
+           "prune_iterative", "save_pruned"]

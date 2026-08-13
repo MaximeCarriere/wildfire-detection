@@ -30,7 +30,7 @@ from lib import data as dataset            # noqa: E402
 from lib import evaluator                  # noqa: E402
 from lib.detectors import YOLOV5_REPO      # noqa: E402
 from lib.prune_utils import (load_yolov5, prune_channels,   # noqa: E402
-                             save_pruned)
+                             prune_iterative, save_pruned)
 from lib.trt_export import (build_fp16_engine,              # noqa: E402
                             export_onnx_from_model)
 
@@ -71,30 +71,55 @@ def measure(detector, tag: str, fmt: str, params_m: float, size_mb: float,
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ratio", type=float, required=True)
-    ap.add_argument("--epochs", type=int, default=15)
+    ap.add_argument("--epochs", type=int, default=15,
+                    help="total training budget, split across steps when iterative")
+    ap.add_argument("--mode", choices=["oneshot", "iterative"], default="oneshot")
+    ap.add_argument("--steps", type=int, default=4,
+                    help="iterative only: number of prune-then-recover increments")
     args = ap.parse_args()
 
     from lib.detectors import TRTDetector, Yolov5Detector
     from lib.finetune import finetune
 
     pct = int(args.ratio * 100)
-    log(f"=== prune {pct}% channels -> recover {args.epochs} epochs -> TensorRT ===")
+    suffix = "" if args.mode == "oneshot" else "_iter"
+    log(f"=== {args.mode} prune {pct}% -> {args.epochs} epochs total -> TensorRT ===")
 
     model = load_yolov5(WEIGHTS / f"{BASE}.pt", YOLOV5_REPO)
-    meta = prune_channels(model, args.ratio, res=RES)
-    log(f"  params {meta['params_m_before']} -> {meta['params_m_after']} M "
-        f"({meta['params_reduction']:.1%}) · MACs -{meta['macs_reduction']:.1%}")
 
-    train_meta = finetune(model, repo=YOLOV5_REPO, epochs=args.epochs, res=RES, batch=8)
-    log(f"  recovery: {train_meta['total_minutes']} min, "
-        f"final loss {train_meta['history'][-1]['loss']}")
+    if args.mode == "oneshot":
+        meta = prune_channels(model, args.ratio, res=RES)
+        meta["method"] = "oneshot"
+        log(f"  params {meta['params_m_before']} -> {meta['params_m_after']} M "
+            f"({meta['params_reduction']:.1%}) · MACs -{meta['macs_reduction']:.1%}")
+        train_meta = finetune(model, repo=YOLOV5_REPO, epochs=args.epochs, res=RES, batch=8)
+    else:
+        # Split the SAME total budget across the increments, so the two arms
+        # differ in when the training happens, not in how much there is.
+        between = max(1, args.epochs // (args.steps + 1))
+        final = max(1, args.epochs - between * args.steps)
+        log(f"  {args.steps} increments x {between} epochs, then {final} final epochs")
+        histories = []
 
-    pt_path = save_pruned(model, WEIGHTS / f"{BASE}_pruned{pct}_recovered.pt", meta)
+        def recover(m):
+            histories.append(finetune(m, repo=YOLOV5_REPO, epochs=between,
+                                      res=RES, batch=8, log_every=400))
+
+        meta = prune_iterative(model, args.ratio, steps=args.steps, recover=recover, res=RES)
+        log(f"  params {meta['params_m_before']} -> {meta['params_m_after']} M "
+            f"({meta['params_reduction']:.1%}) · MACs -{meta['macs_reduction']:.1%}")
+        train_meta = finetune(model, repo=YOLOV5_REPO, epochs=final, res=RES, batch=8)
+        train_meta["between_step_runs"] = histories
+        train_meta["epochs_total"] = between * args.steps + final
+
+    log(f"  recovery: final loss {train_meta['history'][-1]['loss']}")
+
+    pt_path = save_pruned(model, WEIGHTS / f"{BASE}_pruned{pct}{suffix}_recovered.pt", meta)
 
     # PyTorch measurement — accuracy is what matters here; the speed number is
     # kept only so the PyTorch-vs-engine gap stays visible.
     det = Yolov5Detector(pt_path, input_res=RES, half=True)
-    measure(det, f"dfire_{BASE}_pruned{pct}_recovered", "pt",
+    measure(det, f"dfire_{BASE}_pruned{pct}{suffix}_recovered", "pt",
             meta["params_m_after"], pt_path.stat().st_size / 1e6, meta, train_meta,
             f"XP6: {pct}% channels pruned, {args.epochs}-epoch recovery fine-tune at {RES}px. "
             f"PyTorch runtime — speed here is kernel-launch-bound (see XP9) and is not the "
@@ -102,16 +127,16 @@ def main() -> None:
     del det
 
     log("  exporting to ONNX and building a TensorRT FP16 engine …")
-    onnx = export_onnx_from_model(model, WEIGHTS / f"{BASE}_pruned{pct}.onnx",
+    onnx = export_onnx_from_model(model, WEIGHTS / f"{BASE}_pruned{pct}{suffix}.onnx",
                                   res=RES, repo=YOLOV5_REPO)
     del model
-    engine = build_fp16_engine(onnx, WEIGHTS / f"{BASE}_pruned{pct}_fp16_{RES}.engine",
+    engine = build_fp16_engine(onnx, WEIGHTS / f"{BASE}_pruned{pct}{suffix}_fp16_{RES}.engine",
                                res=RES)
     log(f"  engine: {engine.name} ({engine.stat().st_size/1e6:.1f} MB)")
 
     trt_det = TRTDetector(engine, input_res=RES, fmt="trt_fp16",
                           params_m=meta["params_m_after"])
-    rec = measure(trt_det, f"dfire_{BASE}_pruned{pct}_recovered_trt", "trt_fp16",
+    rec = measure(trt_det, f"dfire_{BASE}_pruned{pct}{suffix}_recovered_trt", "trt_fp16",
                   meta["params_m_after"], engine.stat().st_size / 1e6, meta, train_meta,
                   f"XP6: {pct}% channels pruned + recovery, TensorRT FP16 @{RES}px. This is "
                   f"the number to judge against the unpruned frontier "
@@ -119,7 +144,7 @@ def main() -> None:
 
     j = rec["jetson"]
     log("")
-    log(f"=== verdict for {pct}% pruning ===")
+    log(f"=== verdict for {pct}% {args.mode} pruning ===")
     log(f"  pruned+recovered TRT : {rec['map50_dfire_test']:.4f} mAP50 · "
         f"{j['fps_batched']:.1f} fps · {j.get('energy_j_per_1000_frames')} J/1k")
     log(f"  unpruned frontier    : 0.7776 mAP50 · 474.0 fps · 52.1 J/1k")
