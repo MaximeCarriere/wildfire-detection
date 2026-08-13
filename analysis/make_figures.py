@@ -481,66 +481,78 @@ def fig_xp12(records) -> Path | None:
 # --------------------------------------------------------------------------
 
 def fig_xp06(records) -> Path | None:
-    """Two things pruning does on this board, neither of them what you'd hope."""
+    """Two things pruning does on this board, neither of them what you would hope."""
     import matplotlib.pyplot as plt
 
     raw = sorted([r for r in records if "_nofinetune" in r["model_id"]],
                  key=lambda r: r["prune_meta"]["macs_reduction"])
     if len(raw) < 3:
         return None
-    rec = sorted([r for r in records if "_recovered_trt" in r["model_id"]],
-                 key=lambda r: r["prune_meta"]["macs_reduction"])
+    rec = {("iterative" if "_iter_" in r["model_id"] else "one-shot"): r
+           for r in records if "_recovered_trt" in r["model_id"]}
 
-    # The unpruned reference, measured under the same runtime as each series.
     base_pt = by_id(records, "dfire_yolov5s_published@512")
-    base_trt = by_id(records, "dfire_yolov5s_trt_fp16@512")
+    base_fps = base_pt["jetson"]["fps_batched"] if base_pt else raw[0]["jetson"]["fps_batched"]
+    base_acc = base_pt["map50_dfire_test"] if base_pt else None
 
-    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.4))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6))
     fig.suptitle("Pruning: the damage is immediate, the speed-up is not", y=1.06)
-    style.subtitle(fig, "Cutting channels destroys accuracy long before it buys speed. "
-                        "Recovery training is not an optional refinement here.", y=1.0)
+    style.subtitle(fig, "Cutting channels destroys accuracy long before it buys speed, and "
+                        "retraining does not win the loss back.", y=1.0)
 
     ax = axes[0]
     xs = [100 * r["prune_meta"]["macs_reduction"] for r in raw]
     ys = [r["map50_dfire_test"] for r in raw]
     ax.plot(xs, ys, "o-", color=style.ORANGE, linewidth=2, markersize=7,
-            label="pruned, no recovery", zorder=3)
-    if rec:
-        rxs = [100 * r["prune_meta"]["macs_reduction"] for r in rec]
-        rys = [r["map50_dfire_test"] for r in rec]
-        ax.plot(rxs, rys, "s-", color=style.AQUA, linewidth=2, markersize=8,
-                label="pruned + recovery training", zorder=4)
-        for x, y in zip(rxs, rys):
-            style.annotate(ax, x, y, f"{y:.2f}", dy=8, color=style.AQUA)
-    if base_pt:
-        ax.axhline(base_pt["map50_dfire_test"], color=style.MUTED, linestyle=":", zorder=2)
-        ax.text(2, base_pt["map50_dfire_test"] + 0.012, "unpruned model",
-                fontsize=9, color=style.INK_2)
+            label="pruned, no retraining", zorder=3)
+
+    # The two recovery arms sit at almost the same x (43.1% and 44.1% of MACs), so
+    # they are drawn as separate markers with labels placed apart, never joined by
+    # a line: two points at one x is not a trend.
+    marks = [("one-shot", "s", style.AQUA, (10, 14)),
+             ("iterative", "D", style.BLUE, (10, -20))]
+    for name, marker, colour, offset in marks:
+        r = rec.get(name)
+        if not r:
+            continue
+        x = 100 * r["prune_meta"]["macs_reduction"]
+        y = r["map50_dfire_test"]
+        ax.plot([x], [y], marker, color=colour, markersize=10, zorder=5)
+        ax.annotate(f"{name} + retraining\n{y:.2f}", (x, y), xytext=offset,
+                    textcoords="offset points", fontsize=9.5, color=colour,
+                    fontweight="bold", ha="left")
+
+    if base_acc:
+        ax.axhline(base_acc, color=style.MUTED, linestyle=":", linewidth=1.6, zorder=2)
+        ax.text(88, base_acc + 0.02, "unpruned model", fontsize=9.5,
+                color=style.INK_2, ha="right")
     ax.set_xlabel("arithmetic removed (% of MACs)")
     ax.set_ylabel("detection accuracy (mAP50)")
-    ax.set_ylim(-0.03, 0.9)
+    ax.set_ylim(-0.04, 0.95)
+    ax.set_xlim(-3, 95)
     ax.set_title("Accuracy collapses at ~10% of the arithmetic", fontsize=11.5, pad=8)
-    ax.legend(loc="upper right")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.17))
     style.tidy(ax)
 
-    # Panel 2 — the FLOPs-vs-speed reality check.
+    # Panel 2 - the arithmetic-versus-speed reality check.
     ax = axes[1]
     fps = [r["jetson"]["fps_batched"] for r in raw]
-    base_fps = base_pt["jetson"]["fps_batched"] if base_pt else fps[0]
-    ideal = [100 / (100 - x) for x in xs]                 # if speed tracked arithmetic
+    ideal = [100 / (100 - x) for x in xs]
     actual = [f / base_fps for f in fps]
     ax.plot(xs, ideal, "--", color=style.MUTED, linewidth=1.8,
             label="if speed tracked arithmetic", zorder=3)
     ax.plot(xs, actual, "o-", color=style.BLUE, linewidth=2, markersize=7,
             label="measured", zorder=4)
-    style.annotate(ax, xs[-1], actual[-1], f"{actual[-1]:.1f}x", dy=-18, color=style.BLUE)
-    style.annotate(ax, xs[-1], ideal[-1], f"{ideal[-1]:.1f}x expected", dx=-42, dy=-4,
+    style.annotate(ax, xs[-1], actual[-1], f"{actual[-1]:.1f}x", dx=-14, dy=-20,
+                   color=style.BLUE)
+    style.annotate(ax, xs[-1], ideal[-1], f"{ideal[-1]:.1f}x expected", dx=-44, dy=-6,
                    color=style.INK_2, weight="normal", size=9)
     ax.set_xlabel("arithmetic removed (% of MACs)")
     ax.set_ylabel("speed-up vs the unpruned model")
+    ax.set_xlim(-3, 95)
     ax.set_title(f"Removing {xs[-1]:.0f}% of the maths buys {actual[-1]:.1f}x",
                  fontsize=11.5, pad=8)
-    ax.legend(loc="upper left")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.17))
     style.tidy(ax)
 
     fig.tight_layout()
