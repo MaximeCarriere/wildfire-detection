@@ -1,0 +1,82 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_published@160",
+  "params_m": 7.025,
+  "size_disk_mb": 14.37,
+  "format": "pt",
+  "input_res": 160,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.4578,
+  "map5095_dfire_test": 0.211,
+  "map50_fire_class": 0.3657,
+  "map50_smoke_class": 0.5498,
+  "map50_small_plume": 0.0757,
+  "map50_tiny_plume": 0.0,
+  "bg_false_alarm_rate": 0.0643,
+  "bg_correctly_silent_rate": 0.9357,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": {
+    "power_mode": "MAXN_SUPER",
+    "latency_ms_median": 23.258,
+    "latency_ms_median_se": 0.0555,
+    "latency_ms_p95": 25.021,
+    "fps_batch1": 42.68,
+    "fps_se": 0.165,
+    "runs": 3,
+    "warmup_frames": 50,
+    "measured_frames": 1000,
+    "timing_scope": "batch-1 forward + NMS, CUDA-synchronized; decode/letterbox excluded",
+    "protocol_compliant": true,
+    "power_w_mean": 6.315,
+    "energy_j_per_1000_frames": 147.32,
+    "gpu_util_pct": 44.8,
+    "temp_c_peak": 52.5,
+    "batch": 16,
+    "fps_batched": 696.52,
+    "fps_batched_se": 2.134,
+    "ms_per_image_batched": 1.436,
+    "measured_images": 960,
+    "mem_mb": 83.4
+  },
+  "accuracy_detail": {
+    "map5095": 0.211,
+    "map50": 0.4578,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.2776,
+        "map50": 0.5498
+      },
+      "fire": {
+        "map5095": 0.1444,
+        "map50": 0.3657
+      }
+    },
+    "small_plume": {
+      "map5095": 0.0199,
+      "map50": 0.0757
+    },
+    "tiny_plume": {
+      "map5095": 0.0,
+      "map50": 0.0
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 129,
+      "false_alarm_rate": 0.0643,
+      "correctly_silent_rate": 0.9357,
+      "false_boxes_per_bg_image": 0.0743
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 39624,
+    "fingerprint": "6d0625cd9079b898"
+  },
+  "ood_detail": null,
+  "notes": "XP2 inference-resolution arm: published D-Fire weights evaluated at 160px without retraining. Params and disk size are unchanged by resolution \u2014 the speed comes entirely from the smaller input."
+}

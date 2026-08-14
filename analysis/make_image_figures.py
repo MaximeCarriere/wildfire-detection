@@ -131,18 +131,18 @@ def dataset_examples(samples) -> Path:
                key=lambda s: stats[s.rel]["std"], default=None)
     empty = next(s for s in pool if s.is_background)
 
-    picks = [(biggest("fire"), "large fire — the easy case"),
+    picks = [(biggest("fire"), "large fire, the easy case"),
              (biggest("smoke"), "large smoke plume"),
-             (in_band(0.002, 0.01), "small plume — under 1% of the frame"),
-             (in_band(0.0, 0.001), "tiny plume — under 0.1% of the frame"),
+             (in_band(0.002, 0.01), "small plume, under 1% of the frame"),
+             (in_band(0.0, 0.001), "tiny plume, under 0.1% of the frame"),
              (night or hazy, "night: most of the frame is black"),
-             (empty, "empty landscape — 47% of the test set")]
+             (empty, "empty landscape, 47% of the test set")]
     picks = [(s, c) for s, c in picks if s is not None]
 
     fig, axes = plt.subplots(2, 3, figsize=(13.5, 5.6))
     fig.suptitle("What the detector is looking at", y=1.04, fontsize=14, fontweight="bold")
-    style.subtitle(fig, "Ground-truth boxes shown. Fixed cameras watching terrain — the "
-                        "deployment case — not drone footage. Frames chosen by rule.", y=1.0)
+    style.subtitle(fig, "Ground-truth boxes shown. Fixed cameras watching terrain, the "
+                        "deployment case, not drone footage. Frames chosen by rule.", y=1.0)
     for ax, (s, caption) in zip(axes.ravel(), picks):
         im = _load_rgb(s.image)
         h, w = im.shape[:2]
@@ -356,7 +356,7 @@ def resolution_visual(samples) -> Path | None:
                     if iou((gx0, gy0, gx1, gy1), d.xyxy[i]) >= 0.3], default=0.0)
         colour = style.INK if found_small else "#d03b3b"
         ax.set_title(f"{res} × {res} px input\n"
-                     + (f"target found — confidence {best:.2f}" if found_small
+                     + (f"target found, confidence {best:.2f}" if found_small
                         else "target MISSED"),
                      fontsize=11, color=colour, fontweight="bold", pad=6)
         ax.set_xticks([]); ax.set_yticks([])

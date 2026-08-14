@@ -251,9 +251,9 @@ def fig_xp02(records) -> Path | None:
         return None
 
     fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.4))
-    fig.suptitle("Shrinking the input is free speed — until it blinds the detector", y=1.06)
-    style.subtitle(fig, "512 pixels is more accurate AND 1.6× faster than 640. Push further "
-                        "and overall accuracy barely moves while distant smoke disappears.", y=1.0)
+    fig.suptitle("Shrinking the input is free speed, until it blinds the detector", y=1.06)
+    style.subtitle(fig, "512 pixels is more accurate AND 1.6× faster than 640. Below 320 the "
+                        "bargain ends: distant smoke goes first, then everything else.", y=1.0)
 
     ax = axes[0]
     for rows, colour, name in ((l, style.ORANGE, "YOLOv5l (46 M)"),
@@ -264,18 +264,31 @@ def fig_xp02(records) -> Path | None:
         ys = [r["map50_dfire_test"] for r in rows]
         ax.plot(xs, ys, "o-", color=colour, linewidth=2, markersize=7,
                 label=name, zorder=3)
-        for r, xx, yy in zip(rows, xs, ys):
-            ax.annotate(f"{r['input_res']}", (xx, yy), xytext=(0, -15),
+        # The low-resolution points are far apart in speed and the high-resolution
+        # ones are packed together, so a fixed label offset collides at the slow
+        # end. Alternate above and below along each line instead.
+        for i, (r, xx, yy) in enumerate(zip(rows, xs, ys)):
+            ax.annotate(f"{r['input_res']}", (xx, yy),
+                        xytext=(0, 9 if i % 2 else -16),
                         textcoords="offset points", ha="center", fontsize=9,
-                        color=style.INK_2)
+                        color=style.INK_2, zorder=4)
     best = max(s, key=lambda r: r["map50_dfire_test"])
     ax.scatter([best["jetson"]["fps_batched"]], [best["map50_dfire_test"]],
                s=260, facecolors="none", edgecolors=style.INK, linewidths=1.6, zorder=5)
+    # Well to the right, level with the marked point: the curve falls away from
+    # here, so this strip is empty, and staying level keeps clear of the title.
     ax.annotate("best of both:\nmore accurate, faster, cooler",
                 (best["jetson"]["fps_batched"], best["map50_dfire_test"]),
-                xytext=(30, -30), textcoords="offset points", fontsize=9.5,
-                color=style.INK, fontweight="bold",
+                xytext=(118, -4), textcoords="offset points", fontsize=9.5,
+                color=style.INK, fontweight="bold", ha="left", va="center",
                 arrowprops=dict(arrowstyle="-", color=style.MUTED, lw=1))
+
+    # Headroom so the fastest point's label does not land on the axis, and a
+    # little below the slowest so its label has somewhere to sit.
+    all_x = [r["jetson"]["fps_batched"] for r in s + l]
+    all_y = [r["map50_dfire_test"] for r in s + l]
+    ax.set_xlim(min(all_x) - 30, max(all_x) * 1.10)
+    ax.set_ylim(min(all_y) - 0.035, max(all_y) + 0.02)
     ax.set_xlabel("images per second (higher is better)")
     ax.set_ylabel("detection accuracy (mAP50)")
     ax.set_title("The speed/accuracy frontier", fontsize=11.5, pad=8)
