@@ -673,12 +673,13 @@ def fig_xp06e2(records) -> Path | None:
     cells = {(r["criterion"], r["ratio"]): r for r in d["rows"] if "val_map50" in r}
     shown = [c for c in order if (c, 0.05) in cells]
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.6))
+    fig, axes = plt.subplots(1, 2, figsize=(15.2, 4.8),
+                             gridspec_kw={"width_ratios": [1, 1.35]})
     fig.suptitle("The importance criterion decides whether pruning is survivable", y=1.06)
-    style.subtitle(fig, "Left: at a 5% cut one rule keeps 99% of the accuracy and another keeps "
-                        "12%. Right: a DIFFERENT, deeper 25% cut, after retraining.\n"
-                        "The panels use different cuts on purpose: at 25% nothing survives "
-                        "without retraining, so a damage panel there would rank nothing.",
+    style.subtitle(fig, "Left: a 5% cut, no retraining. Right: a DIFFERENT, deeper 25% cut, "
+                        "after 12 epochs. Same eight rules in both.\nThe cuts differ on "
+                        "purpose: at 25% almost nothing survives untrained, so a damage panel "
+                        "there would rank nothing.",
                    y=1.02)
 
     ax = axes[0]
@@ -692,10 +693,14 @@ def fig_xp06e2(records) -> Path | None:
     ax.axhline(base, color=style.INK_2, linestyle=":", linewidth=1.6, zorder=2)
     ax.text(len(shown) - 0.4, base + 0.02, "unpruned", fontsize=9.5,
             color=style.INK_2, ha="right")
-    for i, (b, v) in enumerate(zip(bars, vals)):
-        ax.text(b.get_x() + b.get_width() / 2, v + 0.018, f"{v:.2f}",
-                ha="center", fontsize=9.5, fontweight="bold",
-                color=style.INK if v > 0.3 else style.RED)
+    for b, v in zip(bars, vals):
+        x = b.get_x() + b.get_width() / 2
+        if v > 0.25:                      # tall enough to hold the label inside
+            ax.text(x, v - 0.03, f"{v:.2f}", ha="center", va="top",
+                    fontsize=9.5, fontweight="bold", color="white")
+        else:                             # short bar: sit above it, clear of the line
+            ax.text(x, v + 0.02, f"{v:.2f}", ha="center", va="bottom",
+                    fontsize=9.5, fontweight="bold", color=style.RED)
     ax.set_xticks(range(len(shown)))
     ax.set_xticklabels([pretty[c] for c in shown], rotation=30, ha="right")
     ax.set_ylabel("accuracy after a 5% cut (mAP50)")
@@ -731,9 +736,12 @@ def fig_xp06e2(records) -> Path | None:
         ax.bar(x + 0.19, tiny, width=0.36, color=style.ORANGE,
                label="tiny-plume accuracy kept", zorder=3)
         for i, (o, t) in enumerate(zip(overall, tiny)):
-            ax.text(i - 0.19, o + 0.014, f"{o:.0%}", ha="center", fontsize=9)
-            ax.text(i + 0.19, t + 0.014, f"{t:.0%}", ha="center", fontsize=9,
-                    fontweight="bold")
+            # Inside the bars: the 1.0 reference line runs exactly where an
+            # above-bar label would sit.
+            ax.text(i - 0.19, o - 0.03, f"{o:.0%}", ha="center", va="top",
+                    fontsize=8, fontweight="bold", color="white")
+            ax.text(i + 0.19, t - 0.03, f"{t:.0%}", ha="center", va="top",
+                    fontsize=8, fontweight="bold", color="white")
         ax.axhline(1.0, color=style.INK_2, linestyle=":", linewidth=1.4, zorder=2)
         ax.set_xticks(x)
         ax.set_xticklabels([pretty[c] for c in names], rotation=30, ha="right")
@@ -743,8 +751,9 @@ def fig_xp06e2(records) -> Path | None:
                      fontsize=11.5, pad=8)
         # Say why this panel is a subset: recovery costs ~20 min per arm against
         # seconds for damage, so only the leaders plus the control were paid for.
-        ax.text(0.5, -0.42, "Only these were retrained: recovery costs ~20 min per arm against "
-                            "seconds for damage.",
+        ax.text(0.5, -0.42, "Retraining is a great leveller: the same eight rules span 0.94 to "
+                            "0.00 before it and 0.754 to 0.709 after.\nThe ranking survives "
+                            "only on tiny plumes, which is where the detector earns its keep.",
                 transform=ax.transAxes, ha="center", va="top",
                 fontsize=8.5, color=style.MUTED)
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)

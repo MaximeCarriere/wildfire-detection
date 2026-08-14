@@ -188,10 +188,9 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 - **No speed number exists for anything new here.** It all needs the board.
 - **Equal cut ratio is not equal size or equal compute.** At 25%, LAMP lands at 3.91 M
   parameters while removing 20.1% of the arithmetic; FPGM lands at 4.55 M while removing 33.5%.
-- **Seven of the eight rules were retrained.** Only BN scale was left, since its damage number
-  was never a fair test of it (see above). Taylor and Hessian were added after the first four to
-  check whether the initial selection, made on the ranking at a 25% cut, had excluded a winner.
-  Neither had.
+- **Damage is a poor guide to a retrained model.** It separates the good tier from the bad tier
+  reliably, but not the order within a tier: BN scale has the worst damage of all eight and
+  still finishes above Hessian.
 - **A 25% cut does not mean the same size for every rule.** It is a channel target, so what it
   actually removes depends on which channels get picked: Hessian lands at 3.83 M parameters and
   FPGM at 4.55 M from the same nominal setting. Compare rules at similar sizes, not by the
