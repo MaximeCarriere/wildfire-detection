@@ -59,18 +59,34 @@ Each section below is one experiment. The unpruned model is the top row of every
 
 ## E1. Which layers can be cut
 
-Prune one layer, leave the rest alone, measure, move on. 57 layers x 5 depths, on the
-**validation** split, since its output chooses a configuration and test has to stay clean.
+Prune one layer, leave the other 56 alone, measure, put it back, move on. 57 layers x 5 depths
+of cut, on the **validation** split, since the result chooses a configuration and test has to
+stay clean.
 
 ![Every layer pruned on its own](../../results/figures/xp06e1_sensitivity.png)
 
-**The layers that break first are the ones that save the least.** Halving the first convolution
-costs 84% of the accuracy and frees 0.16% of the model; halving `model.21.conv` costs 0.9% and
-frees 5.13%. Early layers keep 59% of accuracy under a 50% cut, late layers keep 94%.
+**How to read it.** On the left, every column is one layer and every row is how hard that single
+layer was cut. Dark green means the network barely noticed, pale means it fell over. The black
+line separates the early layers from the deeper ones. On the right, each dot is one layer
+halved: how much of the model that freed, against how much accuracy survived. **Good cuts are
+top-right. Bottom-left means you destroyed the detector and saved nothing.**
 
-A single global threshold ranks channels by size and cannot see any of this, so part of its
-budget lands where the trade is catastrophic. That is the mechanism behind the original
-collapse.
+Two things jump out, and the second is the useful one.
+
+**Fragility follows depth.** Early layers go pale as soon as you cut them; deeper layers stay
+dark green even at 70%. Stages 0 to 4 keep 59% of accuracy under a 50% cut, stages 6 to 23 keep
+94%.
+
+**The fragile layers are also the ones with nothing to give.** Every red dot is jammed against
+the left edge of the right-hand panel: halving the first convolution frees **0.16%** of the
+model and costs **84%** of the accuracy. Halving `model.21.conv` costs **0.9%** and frees
+**5.13%**. That is fifty times the saving for a hundredth of the damage.
+
+**Conclusion.** There is no reason to ever cut the early layers of this detector. They are the
+most expensive place to take damage and the least profitable place to save. A single global
+threshold ranks channels by weight size and knows none of this, so part of its budget lands
+exactly there, which is what produced the original collapse. E6 tests whether acting on this map
+is enough to fix it.
 
 ## E2. Which channels to pick
 

@@ -598,7 +598,7 @@ def _stage(layer: str) -> int:
 
 
 def fig_xp06e1(records) -> Path | None:
-    """Where pruning damage is cheap, and where it is fatal."""
+    """Where pruning damage is cheap, where it is fatal, and what each cut buys."""
     import matplotlib.pyplot as plt
     import numpy as np
     from matplotlib.colors import LinearSegmentedColormap
@@ -608,64 +608,75 @@ def fig_xp06e1(records) -> Path | None:
         return None
 
     rows = [r for r in d["rows"] if "retained" in r]
-    layers, ratios = [], sorted({r["ratio"] for r in rows})
-    for r in rows:
-        if r["layer"] not in layers:
-            layers.append(r["layer"])
-    layers.sort(key=lambda n: (_stage(n), n))
+    ratios = sorted({r["ratio"] for r in rows})
+    layers = sorted({r["layer"] for r in rows}, key=lambda n: (_stage(n), n))
 
     grid = np.full((len(ratios), len(layers)), np.nan)
     for r in rows:
         grid[ratios.index(r["ratio"]), layers.index(r["layer"])] = min(1.0, r["retained"])
 
-    # Sequential, one hue: pale means the layer was destroyed, deep means it
-    # shrugged the cut off. Retention is a magnitude, so it never gets a rainbow.
+    # Sequential, one hue: retention is a magnitude, so it never gets a rainbow.
     cmap = LinearSegmentedColormap.from_list(
         "retained", ["#fdf3ee", "#f6c9ae", "#8ec9b4", "#1baf7a", "#0d5f43"])
 
-    fig, ax = plt.subplots(figsize=(14, 3.9))
-    fig.suptitle("Every layer pruned on its own: the fragile ones are the ones "
-                 "that save nothing", y=1.16)
-    style.subtitle(fig, "Each cell prunes ONE layer and leaves the rest alone. Early layers "
-                        "collapse and free almost no parameters; deep layers absorb heavy "
-                        "cuts and free far more.", y=1.07)
+    fig, axes = plt.subplots(1, 2, figsize=(15.5, 4.6),
+                             gridspec_kw={"width_ratios": [1.55, 1]})
+    fig.suptitle("The layers that break first are the layers that save the least", y=1.10)
+    style.subtitle(fig, "Each cell prunes ONE layer and leaves the rest alone. Left: the map. "
+                        "Right: what each cut actually buys you.", y=1.015)
 
+    # ---- panel 1: the map ------------------------------------------------
+    ax = axes[0]
     im = ax.imshow(grid, aspect="auto", cmap=cmap, vmin=0, vmax=1,
                    interpolation="nearest")
     ax.set_yticks(range(len(ratios)))
     ax.set_yticklabels([f"{r:.0%}" for r in ratios])
-    ax.set_ylabel("cut applied\nto that layer")
+    ax.set_ylabel("how much of that\nlayer was cut")
+    ax.set_xlabel("layer, in order through the network")
 
-    # Label stage boundaries rather than 57 layer names, which would be unreadable.
-    stages, seen = [], set()
-    for i, n in enumerate(layers):
-        st = _stage(n)
-        if st not in seen:
-            seen.add(st)
-            stages.append((i, st))
-    # Label every other boundary when they crowd: adjacent stages can be one
-    # layer apart and their numbers collide.
-    keep = [(i, st) for k, (i, st) in enumerate(stages)
-            if k == 0 or i - stages[k - 1][0] > 1 or k % 2 == 0]
-    ax.set_xticks([i for i, _ in keep])
-    ax.set_xticklabels([str(s) for _, s in keep], fontsize=8.5)
-    ax.set_xlabel("layer, in order through the network (YOLOv5 stage number)")
-    for i, _ in stages[1:]:
-        ax.axvline(i - 0.5, color="white", linewidth=0.8, alpha=0.55)
-
-    cb = fig.colorbar(im, ax=ax, pad=0.012, fraction=0.028)
-    cb.set_label("accuracy retained", fontsize=10)
+    # A single boundary is easier to read than 24 stage numbers: everything left
+    # of it is the early backbone, everything right of it is deeper.
+    split = next(i for i, n in enumerate(layers) if _stage(n) >= 6)
+    ax.axvline(split - 0.5, color=style.INK, linewidth=2)
+    ax.set_xticks([split / 2, split + (len(layers) - split) / 2])
+    ax.set_xticklabels(["early layers\n(stages 0-4)", "deeper layers (stages 6-23)"],
+                       fontsize=10)
+    ax.tick_params(length=0)
+    cb = fig.colorbar(im, ax=ax, pad=0.012, fraction=0.03)
+    cb.set_label("accuracy kept", fontsize=10)
     cb.outline.set_visible(False)
 
-    worst = min(rows, key=lambda r: r["retained"])
-    ax.annotate(f"{worst['layer'].replace('model.','')} at {worst['ratio']:.0%}\n"
-                f"keeps {worst['retained']:.0%} of accuracy,\n"
-                f"frees {worst['params_reduction']:.2%} of the model",
-                xy=(layers.index(worst["layer"]), ratios.index(worst["ratio"])),
-                xytext=(150, 26), textcoords="offset points", fontsize=9.5,
-                color="white", fontweight="bold", va="center",
-                arrowprops=dict(arrowstyle="->", color="white", linewidth=1.4))
-    ax.tick_params(length=0)
+    # ---- panel 2: the trade-off, which is the actual conclusion ----------
+    ax = axes[1]
+    half = [r for r in rows if abs(r["ratio"] - 0.5) < 1e-9]
+    early = [r for r in half if _stage(r["layer"]) <= 4]
+    deep = [r for r in half if _stage(r["layer"]) >= 6]
+    for grp, colour, label in ((early, style.RED, "early layers (stages 0-4)"),
+                               (deep, style.AQUA, "deeper layers (stages 6-23)")):
+        ax.scatter([100 * r["params_reduction"] for r in grp],
+                   [100 * min(1, r["retained"]) for r in grp],
+                   s=52, color=colour, alpha=0.85, edgecolor=style.SURFACE,
+                   linewidth=1.2, label=label, zorder=4)
+
+    worst = min(half, key=lambda r: r["retained"])
+    best = max(half, key=lambda r: r["params_reduction"])
+    for r, dx, dy, ha in ((worst, 16, 10, "left"), (best, -14, -26, "right")):
+        ax.annotate(f"{r['layer'].replace('model.', '')}\n"
+                    f"keeps {r['retained']:.0%}, frees {r['params_reduction']:.1%}",
+                    (100 * r["params_reduction"], 100 * min(1, r["retained"])),
+                    xytext=(dx, dy), textcoords="offset points", fontsize=9,
+                    color=style.INK, fontweight="bold", ha=ha,
+                    arrowprops=dict(arrowstyle="->", color=style.INK, linewidth=1.1))
+
+    ax.set_xlabel("parameters freed by that cut (%)")
+    ax.set_ylabel("accuracy kept (%)")
+    ax.set_title("Every layer halved: bottom-left destroys accuracy and saves nothing",
+                 fontsize=11, pad=10)
+    ax.set_xlim(-0.5, 100 * max(r["params_reduction"] for r in half) * 1.22)
+    ax.set_ylim(-6, 114)
+    ax.legend(loc="center right", fontsize=9.5)
+    style.tidy(ax)
+
     fig.tight_layout()
     return save(fig, "xp06e1_sensitivity.png")
 
