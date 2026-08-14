@@ -63,7 +63,7 @@ fact about **L2**, the one selection rule that had been tried.
 **At a 5% cut, L1 keeps 99% of the accuracy where L2 keeps 12%.** In code the difference is
 `p=2` against `p=1`. After 12 epochs of recovery at a 25% cut:
 
-| selection rule | params | mAP50 | small plumes | tiny plumes |
+| selection rule (all at a **25% channel cut**, 12 epochs) | params left | mAP50 | small plumes | tiny plumes |
 |---|---:|---:|---:|---:|
 | **none (unpruned)** | 7.03 M | **0.7764** | 0.6038 | 0.1380 |
 | LAMP | **3.91 M** | 0.7543 | 0.5783 | 0.1294 |
@@ -191,10 +191,14 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 - **Damage is a poor guide to a retrained model.** It separates the good tier from the bad tier
   reliably, but not the order within a tier: BN scale has the worst damage of all eight and
   still finishes above Hessian.
-- **A 25% cut does not mean the same size for every rule.** It is a channel target, so what it
-  actually removes depends on which channels get picked: Hessian lands at 3.83 M parameters and
-  FPGM at 4.55 M from the same nominal setting. Compare rules at similar sizes, not by the
-  label.
+- **A 25% cut does not mean the same size for every rule**, which is why the parameter column
+  above is not constant. The cut is a *channel* target, and channels are not equal in cost: one
+  in the first layer carries about 100 weights, one deep in the network about 2,300. Each rule
+  ranks channels differently, so a rule that concentrates its cuts in the wide late layers
+  strips far more parameters than one nibbling at narrow early ones. From the identical setting,
+  LAMP removes 44.4% of the parameters and FPGM 35.3%, leaving 3.91 M against 4.55 M. **Compare
+  rules at similar sizes, not by the label they share** (it is also why the allocation
+  experiment below matches its three arms by measured size rather than by ratio).
 - **BN scale scored worse than random, which is not a verdict on it.** It assumes training used
   a penalty that spreads the batch-norm scales apart. These weights had none, so the signal it
   reads does not exist. An unmet prerequisite, not a failure.
