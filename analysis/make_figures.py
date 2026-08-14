@@ -740,9 +740,9 @@ def fig_xp06e2(records) -> Path | None:
                      fontsize=11.5, pad=8)
         # Say why this panel is a subset: recovery costs ~20 min per arm against
         # seconds for damage, so only the leaders plus the control were paid for.
-        ax.text(0.5, -0.42, "Only these were retrained: recovery costs ~20 min per arm.\n"
-                            "Chosen by the ranking at a 25% cut, which is why Taylor is "
-                            "absent despite leading at 5%.",
+        ax.text(0.5, -0.42, "Only these were retrained: recovery costs ~20 min per arm against "
+                            "seconds for damage.\nHessian and BN scale were left untested after "
+                            "recovery.",
                 transform=ax.transAxes, ha="center", va="top",
                 fontsize=8.5, color=style.MUTED)
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)
