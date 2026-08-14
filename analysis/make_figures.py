@@ -675,12 +675,12 @@ def fig_xp06e2(records) -> Path | None:
 
     fig, axes = plt.subplots(1, 2, figsize=(15.2, 4.8),
                              gridspec_kw={"width_ratios": [1, 1.35]})
-    fig.suptitle("The importance criterion decides whether pruning is survivable", y=1.06)
+    fig.suptitle("The importance criterion decides whether pruning is survivable", y=1.13)
     style.subtitle(fig, "Left: a 5% cut, no retraining. Right: a DIFFERENT, deeper 25% cut, "
                         "after 12 epochs. Same eight rules in both.\nThe cuts differ on "
                         "purpose: at 25% almost nothing survives untrained, so a damage panel "
                         "there would rank nothing.",
-                   y=1.02)
+                   y=1.07)
 
     ax = axes[0]
     vals = [cells[(c, 0.05)]["val_map50"] for c in shown]
@@ -690,9 +690,10 @@ def fig_xp06e2(records) -> Path | None:
                (style.RED if cells[(c, 0.05)]["val_map50"] < 0.5 * base else style.AQUA)
                for c in shown]
     bars = ax.bar(range(len(shown)), vals, color=colours, width=0.68, zorder=3)
-    ax.axhline(base, color=style.INK_2, linestyle=":", linewidth=1.6, zorder=2)
-    ax.text(len(shown) - 0.4, base + 0.02, "unpruned", fontsize=9.5,
-            color=style.INK_2, ha="right")
+    ax.axhline(base, color=style.INK_2, linestyle=":", linewidth=1.6, zorder=2,
+               xmax=0.80)
+    ax.text(len(shown) - 0.35, base, "unpruned", fontsize=9.5, color=style.INK_2,
+            ha="left", va="center")
     for b, v in zip(bars, vals):
         x = b.get_x() + b.get_width() / 2
         if v > 0.25:                      # tall enough to hold the label inside
@@ -705,7 +706,7 @@ def fig_xp06e2(records) -> Path | None:
     ax.set_xticklabels([pretty[c] for c in shown], rotation=30, ha="right")
     ax.set_ylabel("accuracy after a 5% cut (mAP50)")
     ax.set_ylim(0, 1.05)
-    ax.set_title("A 5% cut, no retraining", fontsize=11.5, pad=8)
+    ax.set_title("A 5% cut, no retraining", fontsize=11.5, pad=12)
     style.tidy(ax)
 
     # Panel 2: after retraining the criteria converge on the easy cases and stay
@@ -742,13 +743,16 @@ def fig_xp06e2(records) -> Path | None:
                     fontsize=8, fontweight="bold", color="white")
             ax.text(i + 0.19, t - 0.03, f"{t:.0%}", ha="center", va="top",
                     fontsize=8, fontweight="bold", color="white")
-        ax.axhline(1.0, color=style.INK_2, linestyle=":", linewidth=1.4, zorder=2)
+        ax.axhline(1.0, color=style.INK_2, linestyle=":", linewidth=1.4, zorder=2,
+                   xmax=0.86)
+        ax.text(len(names) - 0.42, 1.0, "unpruned", fontsize=9.5, color=style.INK_2,
+                ha="left", va="center")
         ax.set_xticks(x)
         ax.set_xticklabels([pretty[c] for c in names], rotation=30, ha="right")
-        ax.set_ylim(0, 1.18)
-        ax.set_ylabel("fraction of the unpruned model kept")
+        ax.set_ylim(0, 1.12)
+        ax.set_ylabel("share of unpruned kept")
         ax.set_title("A 25% cut, after 12 epochs of retraining",
-                     fontsize=11.5, pad=8)
+                     fontsize=11.5, pad=12)
         # Say why this panel is a subset: recovery costs ~20 min per arm against
         # seconds for damage, so only the leaders plus the control were paid for.
         ax.text(0.5, -0.42, "Retraining is a great leveller: the same eight rules span 0.94 to "
