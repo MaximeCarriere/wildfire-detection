@@ -93,20 +93,27 @@ is enough to fix it.
 This page used to say a 5% cut costs 88% of the accuracy. That is mostly a fact about **L2**,
 the one selection rule that had ever been tried.
 
+**Every rule is a different theory of what makes a channel worth keeping.** Each scores every
+channel, and the lowest scores are deleted. $w$ is a channel's weights, $g$ its gradients,
+$\gamma$ its batch-norm scale.
+
+| rule | score | why you would use it | why you might not |
+|---|---|---|---|
+| **L1** | $\sum_i \lvert w_i \rvert$ | free, needs no data, treats every weight equally | blind to layer scale, so it over-cuts layers whose weights are globally small |
+| **L2** | $\sqrt{\sum_i w_i^2}$ | the usual default, equally free | squaring lets **one** large weight rescue an otherwise-dead channel. On this model that was catastrophic |
+| **LAMP** | $w_i^2 \big/ \sum_{j\ge i} w_j^2$ | layer-adaptive for free: layers compete on their own terms, so narrow critical layers survive | still pure magnitude, still ignores the data |
+| **FPGM** | $\sum_j \lVert W_i - W_j \rVert_2$ | catches **redundancy** magnitude cannot: two large but near-identical channels | costs a pairwise distance per layer, the slowest of the cheap rules |
+| **Taylor** | $\lvert g_i w_i \rvert$ | actually estimates the loss change, and is the only family that looks at the data | needs a backward pass over calibration data, and the loss is dominated by common cases, so rare ones get under-weighted |
+| **Hessian** | $\tfrac{1}{2} h_{ii} w_i^2$ | the most principled on paper (Optimal Brain Damage) | assumes training converged and that weights are independent, both shaky for a fine-tuned detector. Worst real rule here |
+| **BN scale** | $\lvert \gamma_c \rvert$ | free, reuses a number the network already learned | **requires** training with a penalty that spreads the scales apart. Without it the signal does not exist |
+| **random** | $\sim U(0,1)$ | the control that proves the others are doing work | no signal, by construction |
+
+The short version of the trade-off: **magnitude rules are free but data-blind, gradient rules see
+the data but cost a backward pass and over-weight the common case, and FPGM is the only one
+asking a different question entirely.** On this detector the free layer-adaptive rule beat every
+expensive one.
+
 ![The importance criterion decides whether pruning is survivable](../../results/figures/xp06e2_criteria.png)
-
-**Every rule is a different theory of what makes a channel worth keeping.**
-
-| rule | what it measures |
-|---|---|
-| **L1** | adds up the channel's weights, ignoring sign. Small total, remove it |
-| **L2** | adds up the *squares*, then square-roots. Squaring exaggerates big values, so one large weight can rescue a channel whose others are near zero |
-| **LAMP** | magnitude again, but scored *within each layer*, so layers compete on equal terms instead of one layer's weights being globally smaller |
-| **FPGM** | not "which is smallest" but **"which is most redundant"**: the channel closest to the average of its neighbours is duplicating work |
-| **Taylor** | uses gradients: how far would the error move if this channel vanished? The only family that looks at data rather than weights |
-| **Hessian** | the second-order version of the same idea (Optimal Brain Damage) |
-| **BN scale** | reuses the multiplier batch norm already learned for each channel, on the theory that the network has been telling you which ones it turns down |
-| **random** | the control |
 
 **At a 5% cut, L1 keeps 99% of the accuracy where L2 keeps 12%.** In code the difference is
 `p=2` against `p=1`.
