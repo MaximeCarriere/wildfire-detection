@@ -40,6 +40,19 @@ named method is one combination of those four. The results below change one at a
 
 Bold is new on this page.
 
+> **What a "channel" is, since most of this page turns on it.** A layer is one processing step;
+> a **channel is one of that layer's outputs**, a single 2D map of "how strongly does my pattern
+> appear here". The image arrives with 3 channels (red, green, blue), layer 0 turns those into
+> 32 learned pattern detectors, and by layer 8 there are 512 of them. So a channel is not a
+> colour and not a whole layer, it is one detector inside a layer. **Pruning channels makes
+> layers narrower; no layer was ever deleted here.** Deleting a channel also forces every layer
+> downstream to drop the matching input, which is why it is structural surgery rather than
+> setting numbers to zero.
+>
+> This vocabulary is specific to **convolutional** networks. The four choices above are not:
+> a transformer has the same problem with attention heads and feed-forward widths in place of
+> channels, and the same split between removing whole units and thinning weights inside them.
+
 ## 1. The collapse was mostly a bad setting
 
 This page used to say that cutting 5% of channels costs 88% of the accuracy. That is mostly a
