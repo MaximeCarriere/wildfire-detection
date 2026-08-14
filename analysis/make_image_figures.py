@@ -30,9 +30,20 @@ from lib import evaluator               # noqa: E402
 from lib.detectors import YOLOV5_REPO as YOLOV5_REPO_PATH   # noqa: E402
 
 FIGURES = REPO / "results" / "figures"
-RESOLUTIONS = [640, 512, 416, 320]
+
+#: Panels in the resolution figure. Four, because five is too wide to read on a
+#: README page, and these four carry the whole story: the trained resolution, the
+#: one this project deploys at, the aggressive setting, and a level where the
+#: detector plainly fails. XP2's accuracy curve sweeps more finely (it also
+#: measures 416 and 256); this figure is the picture, not the measurement.
+RESOLUTIONS = [640, 512, 320, 160]
 
 FIRE, SMOKE = "#e34948", "#2a78d6"      # box colours: fire warm, smoke cool
+
+#: Confidence a detection needs to count as found. Used by both the frame
+#: selection and the drawing below, so a frame is never chosen as a "miss" and
+#: then drawn with a box on it, or the reverse.
+PANEL_CONF = 0.35
 
 
 
@@ -235,30 +246,55 @@ def resolution_visual(samples) -> Path | None:
         return abs(float(inner.mean()) - outer)
 
     def conf_on_target(det, s):
-        """Best confidence the detector assigns to the labelled target."""
+        """Best confidence the detector assigns to the labelled target.
+
+        Thresholded at :data:`PANEL_CONF` so that "confidence 0" here means
+        exactly what "target MISSED" means in the panel below. A sub-threshold
+        box is not a detection; counting it as one would let a frame be selected
+        as a miss and then drawn as a hit.
+        """
         import cv2
         im = cv2.imread(str(s.image))
         h, w = im.shape[:2]
         gt = min(s.boxes, key=lambda b: b.area_frac).to_xyxy(w, h)
         d = det.predict([s.image])[0]
-        hits = [sc for xy, sc in zip(d.xyxy, d.scores) if iou(gt, xy) >= 0.3]
+        hits = [sc for xy, sc in zip(d.xyxy, d.scores)
+                if sc >= PANEL_CONF and iou(gt, xy) >= 0.3]
         return max(hits) if hits else 0.0
 
-    # Rank on: clearly visible to a human, AND confidence that falls as resolution
-    # falls. Requiring an outright miss kept selecting marginal, ugly frames; a
-    # monotonic decline tells the same story and stays legible.
-    scored = []
-    for s in bright[:60]:
+    # The figure's job is to show the failure XP2 measured, so the frame has to
+    # actually fail: solidly found at full resolution, outright gone at the
+    # smallest. An earlier version ranked on a *decline* in confidence instead,
+    # because demanding a miss at 320 px kept selecting marginal, barely visible
+    # frames. At 160 px that trade disappears — the failure is easy to provoke on
+    # targets a reader can see unaided — so the strict condition is back, and
+    # among the frames that satisfy it we take the most visible one.
+    scored, declining = [], []
+    for s in bright[:80]:
         confs = [conf_on_target(dets[r], s) for r in RESOLUTIONS]
         if confs[0] < 0.5:                       # must be solidly found at full res
             continue
-        decline = confs[0] - confs[-1]
-        scored.append((visibility(s) / 255 * 0.5 + decline, s, confs))
+        if confs[-1] == 0.0:                     # and outright missed at the smallest
+            scored.append((visibility(s), s, confs))
+        else:
+            declining.append((confs[0] - confs[-1], s, confs))
+
     if scored:
         scored.sort(key=lambda t: -t[0])
         _, chosen, chosen_confs = scored[0]
-        print(f"  picked {chosen.rel}: confidence {[round(c,2) for c in chosen_confs]} "
-              f"across {RESOLUTIONS}, contrast {visibility(chosen):.0f}/255", flush=True)
+        print(f"  picked {chosen.rel}: found→lost, confidence "
+              f"{[round(c, 2) for c in chosen_confs]} across {RESOLUTIONS}, "
+              f"contrast {visibility(chosen):.0f}/255", flush=True)
+    elif declining:
+        # No frame is found-then-lost. Say so rather than quietly drawing a frame
+        # that makes the opposite point, and fall back to the steepest decline.
+        declining.sort(key=lambda t: -t[0])
+        _, chosen, chosen_confs = declining[0]
+        print(f"  WARNING: no frame is found at {RESOLUTIONS[0]} and missed at "
+              f"{RESOLUTIONS[-1]}; falling back to the steepest confidence decline. "
+              f"Check the caption still matches the figure.", flush=True)
+        print(f"  picked {chosen.rel}: confidence "
+              f"{[round(c, 2) for c in chosen_confs]}", flush=True)
     else:
         chosen = bright[0] if bright else cands[0]
     print(f"  resolution_visual frame: {chosen.rel} "
@@ -289,8 +325,9 @@ def resolution_visual(samples) -> Path | None:
                                  stride=32, auto=False)
     _side_min = max((gx1 - gx0) * _ratio_min[0], (gy1 - gy0) * _ratio_min[1])
     style.subtitle(fig, "Top: the network input at each resolution. Bottom: the target "
-                        f"magnified. Fewer pixels reach the model each step — at "
-                        f"{min(RESOLUTIONS)} px the target is ~{_side_min:.0f} px across.",
+                        f"magnified. Fewer pixels reach the model each step, until at "
+                        f"{min(RESOLUTIONS)} px the target is ~{_side_min:.0f} px across "
+                        f"and the detector loses it entirely.",
                    y=0.975)
 
     for col, res in enumerate(RESOLUTIONS):
@@ -302,7 +339,7 @@ def resolution_visual(samples) -> Path | None:
         side = max(bx1 - bx0, by1 - by0)
 
         d = dets[res].predict([chosen.image])[0]
-        keep = [i for i, sc in enumerate(d.scores) if sc >= 0.35]
+        keep = [i for i, sc in enumerate(d.scores) if sc >= PANEL_CONF]
         found_small = any(iou((gx0, gy0, gx1, gy1), d.xyxy[i]) >= 0.3 for i in keep)
 
         ax = axes[0, col]

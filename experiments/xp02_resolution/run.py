@@ -44,7 +44,11 @@ MODELS = {
     "s": {"weights": "yolov5s.pt", "model_id": "dfire_yolov5s_published"},
     "l": {"weights": "yolov5l.pt", "model_id": "dfire_yolov5l_published"},
 }
-RESOLUTIONS = [640, 512, 416, 320]
+# 160 px is deliberately past the point of usefulness. The sweep from 640 down to
+# 320 shows a knob worth turning; without a level where the detector plainly fails,
+# a reader can reasonably ask whether the curve ever bends. It does, and 160 px is
+# where. All values are multiples of 32, the network's output stride.
+RESOLUTIONS = [640, 512, 416, 320, 256, 160]
 
 
 def log(msg: str) -> None:
