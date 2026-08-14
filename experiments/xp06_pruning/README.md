@@ -71,8 +71,22 @@ fact about **L2**, the one selection rule that had been tried.
 | Taylor | 4.45 M | 0.7460 | 0.5784 | 0.1102 |
 | FPGM | 4.55 M | 0.7438 | 0.5701 | 0.1190 |
 | **L2, as first published** | 4.24 M | 0.7298 | 0.5525 | 0.0963 |
+| BN scale | 4.15 M | 0.7153 | 0.5160 | 0.0739 |
 | Hessian | 3.83 M | 0.7111 | 0.5152 | 0.0810 |
 | random (the control) | 4.45 M | 0.7093 | 0.4812 | 0.0676 |
+
+All eight rules are in that table, and the spread is the story. **Before retraining they
+range from 0.94 to 0.00; after it, from 0.754 to 0.709.** Retraining is a great leveller,
+which is why damage measured without it is a poor guide to a deployed model: BN scale has
+the worst damage of all and still finishes above Hessian.
+
+**BN scale scored near random, and the reason is measurable.** It ranks channels by the scale
+factor batch norm already learned, which works only if training pushed some of those scales
+toward zero to mark channels as dead. In these weights **not one of the 9,504 channels has a
+scale below 0.1**: they sit tightly around 1.0 with a floor at 0.166. The signal the method
+reads does not exist here, so it selects almost arbitrarily. That is an unmet prerequisite, not
+a failed method, and it is the clearest lesson in the set: **a technique can be sound and still
+be inapplicable to the weights you were handed.**
 
 **Random pruning is in that table on purpose.** Without it you cannot tell whether a rule is
 clever or whether any cut plus retraining lands in the same place. It answers the question

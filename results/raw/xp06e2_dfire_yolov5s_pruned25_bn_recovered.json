@@ -1,0 +1,176 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_pruned25_bn_recovered",
+  "params_m": 4.1488,
+  "size_disk_mb": 17.09,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7153,
+  "map5095_dfire_test": 0.3614,
+  "map50_fire_class": 0.652,
+  "map50_smoke_class": 0.7785,
+  "map50_small_plume": 0.516,
+  "map50_tiny_plume": 0.0739,
+  "bg_false_alarm_rate": 0.0559,
+  "bg_correctly_silent_rate": 0.9441,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": null,
+  "accuracy_detail": {
+    "map5095": 0.3614,
+    "map50": 0.7153,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.4212,
+        "map50": 0.7785
+      },
+      "fire": {
+        "map5095": 0.3016,
+        "map50": 0.652
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2039,
+      "map50": 0.516
+    },
+    "tiny_plume": {
+      "map5095": 0.02,
+      "map50": 0.0739
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 112,
+      "false_alarm_rate": 0.0559,
+      "correctly_silent_rate": 0.9441,
+      "false_boxes_per_bg_image": 0.0668
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 86185,
+    "fingerprint": "d4ff4b8aa274848a"
+  },
+  "ood_detail": null,
+  "notes": "XP6 E2: 25% channels pruned one-shot with the 'bn' importance criterion, 12-epoch recovery at 512px, batch 32. 3090 SCREENING MEASUREMENT, off-device: accuracy only. No latency, throughput or energy number is recorded here because a TensorRT engine is compiled per GPU architecture and a 3090 figure says nothing about a 15 W Orin. torch 2.13.0+cu126.",
+  "prune_meta": {
+    "requested_channel_ratio": 0.25,
+    "importance": "bn",
+    "round_to": 1,
+    "global_pruning": true,
+    "per_layer_ratios": false,
+    "params_m_before": 7.025,
+    "params_m_after": 4.1488,
+    "params_reduction": 0.4094,
+    "gmacs_before": 5.075,
+    "gmacs_after": 2.666,
+    "macs_reduction": 0.4748,
+    "method": "oneshot"
+  },
+  "train_meta": {
+    "epochs": 12,
+    "res": 512,
+    "batch": 32,
+    "hyp": {
+      "lr0": 0.0032,
+      "lrf": 0.12,
+      "momentum": 0.937,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 2.0,
+      "warmup_momentum": 0.5,
+      "warmup_bias_lr": 0.05,
+      "box": 0.05,
+      "cls": 0.012500000000000002,
+      "cls_pw": 1.0,
+      "obj": 0.6400000000000001,
+      "obj_pw": 1.0,
+      "iou_t": 0.2,
+      "anchor_t": 4.0,
+      "fl_gamma": 0.0,
+      "label_smoothing": 0.0,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4,
+      "degrees": 0.0,
+      "translate": 0.1,
+      "scale": 0.5,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "flipud": 0.0,
+      "fliplr": 0.5,
+      "mosaic": 0.5,
+      "mixup": 0.0,
+      "copy_paste": 0.0
+    },
+    "accumulate": 2,
+    "ema": true,
+    "total_minutes": 17.65,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 3.69793,
+        "minutes": 1.55
+      },
+      {
+        "epoch": 2,
+        "loss": 2.60828,
+        "minutes": 1.44
+      },
+      {
+        "epoch": 3,
+        "loss": 2.20899,
+        "minutes": 1.46
+      },
+      {
+        "epoch": 4,
+        "loss": 2.05663,
+        "minutes": 1.45
+      },
+      {
+        "epoch": 5,
+        "loss": 1.95634,
+        "minutes": 1.47
+      },
+      {
+        "epoch": 6,
+        "loss": 1.90147,
+        "minutes": 1.46
+      },
+      {
+        "epoch": 7,
+        "loss": 1.83828,
+        "minutes": 1.46
+      },
+      {
+        "epoch": 8,
+        "loss": 1.79392,
+        "minutes": 1.47
+      },
+      {
+        "epoch": 9,
+        "loss": 1.75356,
+        "minutes": 1.46
+      },
+      {
+        "epoch": 10,
+        "loss": 1.71959,
+        "minutes": 1.46
+      },
+      {
+        "epoch": 11,
+        "loss": 1.69083,
+        "minutes": 1.47
+      },
+      {
+        "epoch": 12,
+        "loss": 1.64375,
+        "minutes": 1.49
+      }
+    ]
+  },
+  "machine": "rtx3090_screening"
+}
