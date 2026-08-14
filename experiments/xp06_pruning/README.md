@@ -171,6 +171,11 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 - **No speed number exists for anything new here.** It all needs the board.
 - **Equal cut ratio is not equal size or equal compute.** At 25%, LAMP lands at 3.91 M
   parameters while removing 20.1% of the arithmetic; FPGM lands at 4.55 M while removing 33.5%.
+- **Only five of the eight rules were retrained**, because recovery costs about 20 minutes per
+  arm against seconds for damage. The three retrained on merit were picked by their ranking at a
+  25% cut, and that ranking is not stable: **Taylor leads at 5% and would have displaced LAMP**,
+  so its absence from the recovered table is a consequence of where the ranking was taken, not
+  evidence that it is worse.
 - **BN scale scored worse than random, which is not a verdict on it.** It assumes training used
   a penalty that spreads the batch-norm scales apart. These weights had none, so the signal it
   reads does not exist. An unmet prerequisite, not a failure.

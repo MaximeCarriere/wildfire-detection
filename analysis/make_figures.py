@@ -709,6 +709,12 @@ def fig_xp06e2(records) -> Path | None:
             for c in order:
                 if f"_{c}_recovered" in r["model_id"]:
                     rec[c] = r
+    # L2 was retrained too, as the originally published arm, under a model_id
+    # that predates this naming. Including it keeps the arm this page corrects
+    # visible in the same panel rather than only in a table.
+    l2 = by_id(records, "dfire_yolov5s_pruned25_recovered")
+    if l2:
+        rec["l2"] = l2
     if rec:
         names = [c for c in order if c in rec]
         x = np.arange(len(names))
@@ -732,6 +738,13 @@ def fig_xp06e2(records) -> Path | None:
         ax.set_ylabel("fraction of the unpruned model kept")
         ax.set_title("After retraining, the gap moves to the hard cases",
                      fontsize=11.5, pad=8)
+        # Say why this panel is a subset: recovery costs ~20 min per arm against
+        # seconds for damage, so only the leaders plus the control were paid for.
+        ax.text(0.5, -0.42, "Only these were retrained: recovery costs ~20 min per arm.\n"
+                            "Chosen by the ranking at a 25% cut, which is why Taylor is "
+                            "absent despite leading at 5%.",
+                transform=ax.transAxes, ha="center", va="top",
+                fontsize=8.5, color=style.MUTED)
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)
         style.tidy(ax)
     else:
