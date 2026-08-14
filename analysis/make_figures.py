@@ -675,8 +675,11 @@ def fig_xp06e2(records) -> Path | None:
 
     fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.6))
     fig.suptitle("The importance criterion decides whether pruning is survivable", y=1.06)
-    style.subtitle(fig, "At a 5% cut one criterion keeps 99% of the accuracy and another "
-                        "keeps 12%. They differ by one character of code.", y=1.0)
+    style.subtitle(fig, "Left: at a 5% cut one rule keeps 99% of the accuracy and another keeps "
+                        "12%. Right: a DIFFERENT, deeper 25% cut, after retraining.\n"
+                        "The panels use different cuts on purpose: at 25% nothing survives "
+                        "without retraining, so a damage panel there would rank nothing.",
+                   y=1.02)
 
     ax = axes[0]
     vals = [cells[(c, 0.05)]["val_map50"] for c in shown]
@@ -697,7 +700,7 @@ def fig_xp06e2(records) -> Path | None:
     ax.set_xticklabels([pretty[c] for c in shown], rotation=30, ha="right")
     ax.set_ylabel("accuracy after a 5% cut (mAP50)")
     ax.set_ylim(0, 1.05)
-    ax.set_title("5% of channels removed, no retraining", fontsize=11.5, pad=8)
+    ax.set_title("A 5% cut, no retraining", fontsize=11.5, pad=8)
     style.tidy(ax)
 
     # Panel 2: after retraining the criteria converge on the easy cases and stay
@@ -736,13 +739,12 @@ def fig_xp06e2(records) -> Path | None:
         ax.set_xticklabels([pretty[c] for c in names], rotation=30, ha="right")
         ax.set_ylim(0, 1.18)
         ax.set_ylabel("fraction of the unpruned model kept")
-        ax.set_title("After retraining, the gap moves to the hard cases",
+        ax.set_title("A 25% cut, after 12 epochs of retraining",
                      fontsize=11.5, pad=8)
         # Say why this panel is a subset: recovery costs ~20 min per arm against
         # seconds for damage, so only the leaders plus the control were paid for.
         ax.text(0.5, -0.42, "Only these were retrained: recovery costs ~20 min per arm against "
-                            "seconds for damage.\nHessian and BN scale were left untested after "
-                            "recovery.",
+                            "seconds for damage.",
                 transform=ax.transAxes, ha="center", va="top",
                 fontsize=8.5, color=style.MUTED)
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)
