@@ -881,7 +881,7 @@ def fig_xp06e7(records) -> Path | None:
     old = {("iterative" if "_iter_" in r["model_id"] else "oneshot"): r
            for r in records if "_recovered_trt" in r["model_id"]}
 
-    fig, ax = plt.subplots(figsize=(8.6, 4.8))
+    fig, ax = plt.subplots(figsize=(7.8, 4.6))
     fig.suptitle("Iterative pruning still loses once both arms train equally", y=1.05)
     style.subtitle(fig, "The published comparison gave iterative only 4 epochs in its final "
                         "shape against one-shot's 12. Here the post-cut budget is equal.",
@@ -889,7 +889,7 @@ def fig_xp06e7(records) -> Path | None:
 
     arms = [a for a in ("oneshot", "iterative") if a in fair]
     x = np.arange(len(arms))
-    w = 0.34
+    w = 0.30
     old_vals = [(old.get(a) or {}).get("map50_dfire_test") for a in arms]
     new_vals = [fair[a]["map50_dfire_test"] for a in arms]
 
@@ -897,15 +897,22 @@ def fig_xp06e7(records) -> Path | None:
         ax.bar(x - w / 2, old_vals, width=w - 0.02, color=style.MUTED,
                label="as published (unequal post-cut epochs)", zorder=3)
         for xi, v in zip(x - w / 2, old_vals):
-            ax.text(xi, v + 0.012, f"{v:.3f}", ha="center", fontsize=9)
+            ax.text(xi, v - 0.02, f"{v:.3f}", ha="center", va="top", fontsize=9,
+                    color="white")
     ax.bar(x + w / 2, new_vals, width=w - 0.02, color=style.BLUE,
            label="equal epochs after the final cut", zorder=3)
     for xi, v in zip(x + w / 2, new_vals):
-        ax.text(xi, v + 0.012, f"{v:.3f}", ha="center", fontsize=9, fontweight="bold")
+        ax.text(xi, v - 0.02, f"{v:.3f}", ha="center", va="top", fontsize=9,
+                fontweight="bold", color="white")
 
-    ax.axhline(UNPRUNED_MAP50, color=style.INK_2, linestyle=":", linewidth=1.6, zorder=2)
-    ax.text(len(arms) - 0.55, UNPRUNED_MAP50 + 0.012, "unpruned", fontsize=9.5,
-            color=style.INK_2, ha="right")
+    # Stop the line short and sit the label in the gap, so the dots cannot run
+    # through the word whatever the figure size.
+    ax.axhline(UNPRUNED_MAP50, color=style.INK_2, linestyle=":", linewidth=1.6,
+               zorder=2, xmax=0.82)
+    ax.text(len(arms) - 0.52, UNPRUNED_MAP50, "unpruned", fontsize=9.5,
+            color=style.INK_2, ha="left", va="center")
+    ax.set_xlim(-0.55, len(arms) - 0.15)
+    ax.set_ylim(0, UNPRUNED_MAP50 * 1.16)
     ax.set_xticks(x)
     ax.set_xticklabels(["one-shot", "iterative"][:len(arms)])
     ax.set_ylabel("accuracy (mAP50)")

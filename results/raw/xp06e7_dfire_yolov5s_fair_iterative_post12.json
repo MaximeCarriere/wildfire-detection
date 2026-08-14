@@ -1,0 +1,419 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_fair_iterative_post12",
+  "params_m": 4.5259,
+  "size_disk_mb": 18.607,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7262,
+  "map5095_dfire_test": 0.3804,
+  "map50_fire_class": 0.6549,
+  "map50_smoke_class": 0.7976,
+  "map50_small_plume": 0.5316,
+  "map50_tiny_plume": 0.0812,
+  "bg_false_alarm_rate": 0.0394,
+  "bg_correctly_silent_rate": 0.9606,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": null,
+  "accuracy_detail": {
+    "map5095": 0.3804,
+    "map50": 0.7262,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.4488,
+        "map50": 0.7976
+      },
+      "fire": {
+        "map5095": 0.3121,
+        "map50": 0.6549
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2095,
+      "map50": 0.5316
+    },
+    "tiny_plume": {
+      "map5095": 0.0216,
+      "map50": 0.0812
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 79,
+      "false_alarm_rate": 0.0394,
+      "correctly_silent_rate": 0.9606,
+      "false_boxes_per_bg_image": 0.0449
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 65972,
+    "fingerprint": "2fcdbf4bbec03cdc"
+  },
+  "ood_detail": null,
+  "notes": "XP6 E7: iterative pruning at 25% with the l2 criterion, given 12 epochs AFTER the final cut. This is the confound fix: XP6 gave both arms 12 total epochs, but iterative's final architecture existed for only 4 of them while one-shot trained all 12 in its final shape. Here the post-cut budget is equal and iterative additionally keeps its 8 between-step epochs, so it receives MORE total training (20) than one-shot, not less. Unpruned reference 0.7764 mAP50 at 7.025 M. 3090 SCREENING MEASUREMENT, off-device: accuracy only. No latency, throughput or energy is recorded here because a TensorRT engine is compiled per GPU architecture and a 3090 figure says nothing about a 15 W Orin. torch 2.13.0+cu126, batch 32, 12 epochs at 512px.",
+  "prune_meta": {
+    "method": "iterative",
+    "steps": 4,
+    "requested_channel_ratio": 0.25,
+    "importance": "l2",
+    "round_to": 1,
+    "global_pruning": true,
+    "equal_post_cut_budget": false,
+    "params_m_before": 7.025,
+    "params_m_after": 4.5259,
+    "params_reduction": 0.3557,
+    "gmacs_before": 5.075,
+    "gmacs_after": 2.831,
+    "macs_reduction": 0.4421,
+    "per_step": [
+      {
+        "step": 1,
+        "params_m": 6.4118,
+        "gmacs": 4.439,
+        "recovery": "between"
+      },
+      {
+        "step": 2,
+        "params_m": 5.7611,
+        "gmacs": 3.838,
+        "recovery": "between"
+      },
+      {
+        "step": 3,
+        "params_m": 5.142,
+        "gmacs": 3.315,
+        "recovery": "between"
+      },
+      {
+        "step": 4,
+        "params_m": 4.5259,
+        "gmacs": 2.831,
+        "recovery": "between"
+      }
+    ],
+    "between_epochs_each": 2,
+    "between_epochs_total": 8,
+    "post_cut_epochs": 12,
+    "total_epochs": 20,
+    "between_step_runs": [
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 32,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 1,
+        "ema": true,
+        "total_minutes": 3.04,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 2.0172,
+            "minutes": 1.53
+          },
+          {
+            "epoch": 2,
+            "loss": 1.44192,
+            "minutes": 1.51
+          }
+        ]
+      },
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 32,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 1,
+        "ema": true,
+        "total_minutes": 3.26,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 2.06013,
+            "minutes": 1.65
+          },
+          {
+            "epoch": 2,
+            "loss": 1.57342,
+            "minutes": 1.6
+          }
+        ]
+      },
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 32,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 1,
+        "ema": true,
+        "total_minutes": 3.24,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 2.37754,
+            "minutes": 1.64
+          },
+          {
+            "epoch": 2,
+            "loss": 1.8018,
+            "minutes": 1.59
+          }
+        ]
+      },
+      {
+        "epochs": 2,
+        "res": 512,
+        "batch": 32,
+        "hyp": {
+          "lr0": 0.0032,
+          "lrf": 0.12,
+          "momentum": 0.937,
+          "weight_decay": 0.0005,
+          "warmup_epochs": 2.0,
+          "warmup_momentum": 0.5,
+          "warmup_bias_lr": 0.05,
+          "box": 0.05,
+          "cls": 0.012500000000000002,
+          "cls_pw": 1.0,
+          "obj": 0.6400000000000001,
+          "obj_pw": 1.0,
+          "iou_t": 0.2,
+          "anchor_t": 4.0,
+          "fl_gamma": 0.0,
+          "label_smoothing": 0.0,
+          "hsv_h": 0.015,
+          "hsv_s": 0.7,
+          "hsv_v": 0.4,
+          "degrees": 0.0,
+          "translate": 0.1,
+          "scale": 0.5,
+          "shear": 0.0,
+          "perspective": 0.0,
+          "flipud": 0.0,
+          "fliplr": 0.5,
+          "mosaic": 0.5,
+          "mixup": 0.0,
+          "copy_paste": 0.0
+        },
+        "accumulate": 1,
+        "ema": true,
+        "total_minutes": 3.27,
+        "history": [
+          {
+            "epoch": 1,
+            "loss": 2.44385,
+            "minutes": 1.66
+          },
+          {
+            "epoch": 2,
+            "loss": 1.90909,
+            "minutes": 1.61
+          }
+        ]
+      }
+    ]
+  },
+  "train_meta": {
+    "epochs": 12,
+    "res": 512,
+    "batch": 32,
+    "hyp": {
+      "lr0": 0.0032,
+      "lrf": 0.12,
+      "momentum": 0.937,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 2.0,
+      "warmup_momentum": 0.5,
+      "warmup_bias_lr": 0.05,
+      "box": 0.05,
+      "cls": 0.012500000000000002,
+      "cls_pw": 1.0,
+      "obj": 0.6400000000000001,
+      "obj_pw": 1.0,
+      "iou_t": 0.2,
+      "anchor_t": 4.0,
+      "fl_gamma": 0.0,
+      "label_smoothing": 0.0,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4,
+      "degrees": 0.0,
+      "translate": 0.1,
+      "scale": 0.5,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "flipud": 0.0,
+      "fliplr": 0.5,
+      "mosaic": 0.5,
+      "mixup": 0.0,
+      "copy_paste": 0.0
+    },
+    "accumulate": 2,
+    "ema": true,
+    "total_minutes": 18.53,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 1.80563,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 2,
+        "loss": 1.80348,
+        "minutes": 1.65
+      },
+      {
+        "epoch": 3,
+        "loss": 1.85823,
+        "minutes": 1.63
+      },
+      {
+        "epoch": 4,
+        "loss": 1.78885,
+        "minutes": 1.61
+      },
+      {
+        "epoch": 5,
+        "loss": 1.7441,
+        "minutes": 1.58
+      },
+      {
+        "epoch": 6,
+        "loss": 1.68988,
+        "minutes": 1.58
+      },
+      {
+        "epoch": 7,
+        "loss": 1.65575,
+        "minutes": 1.49
+      },
+      {
+        "epoch": 8,
+        "loss": 1.62466,
+        "minutes": 1.47
+      },
+      {
+        "epoch": 9,
+        "loss": 1.59902,
+        "minutes": 1.46
+      },
+      {
+        "epoch": 10,
+        "loss": 1.56988,
+        "minutes": 1.46
+      },
+      {
+        "epoch": 11,
+        "loss": 1.53576,
+        "minutes": 1.47
+      },
+      {
+        "epoch": 12,
+        "loss": 1.5041,
+        "minutes": 1.49
+      }
+    ]
+  },
+  "machine": "rtx3090_screening",
+  "experiment": "xp06e7",
+  "arm": "iterative",
+  "criterion": "l2",
+  "post_cut_epochs": 12,
+  "total_epochs": 20,
+  "fixes_confound": "equal epochs after the final cut"
+}

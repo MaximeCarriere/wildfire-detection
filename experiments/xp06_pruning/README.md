@@ -29,39 +29,58 @@ fault of one badly chosen setting.
 
 **What shape** you delete in (single weights, or whole channels), **which parts** you pick,
 **how much** comes out of each layer, and **what retraining** repairs the damage. Almost every
-named method is one combination of those four. The results below change one at a time.
-
-| Axis | Tested | Still open |
-|---|---|---|
-| Shape | channel, **single weights**, **2:4** | vector, kernel |
-| Choice | L2, **L1, BN scale, Taylor, Hessian, FPGM, LAMP, random** | regression-based, APoZ |
-| Amount per layer | global, **uniform, sensitivity driven** | automated search |
-| Retraining | one-shot, iterative | **equal post-cut budget (unfinished)**, LR rewind |
-
-Bold is new on this page.
+named method is one combination of those four. Each experiment below changes exactly one.
 
 > **What a "channel" is, since most of this page turns on it.** A layer is one processing step;
 > a **channel is one of that layer's outputs**, a single 2D map of "how strongly does my pattern
 > appear here". The image arrives with 3 channels (red, green, blue), layer 0 turns those into
 > 32 learned pattern detectors, and by layer 8 there are 512 of them. So a channel is not a
 > colour and not a whole layer, it is one detector inside a layer. **Pruning channels makes
-> layers narrower; no layer was ever deleted here.** Deleting a channel also forces every layer
-> downstream to drop the matching input, which is why it is structural surgery rather than
-> setting numbers to zero.
+> layers narrower; no layer was ever deleted here.** This network has no fully-connected layers
+> at all, so the channel is also what a "neuron" would be.
 >
-> This vocabulary is specific to **convolutional** networks. The four choices above are not:
-> a transformer has the same problem with attention heads and feed-forward widths in place of
-> channels, and the same split between removing whole units and thinning weights inside them.
+> The vocabulary is specific to **convolutional** networks. The four choices are not: a
+> transformer has the same problem with attention heads and feed-forward widths.
 
-## 1. The collapse was mostly a bad setting
+## The experiments
 
-This page used to say that cutting 5% of channels costs 88% of the accuracy. That is mostly a
-fact about **L2**, the one selection rule that had been tried.
+| | axis it changes | question | outcome |
+|---|---|---|---|
+| **E1** | ratio | which layers can be cut at all? | ✅ fragile layers are the ones that free the least |
+| **E2** | criterion | which channels to pick, and does it beat random? | ✅ decides everything: 99% kept vs 12% |
+| **E3** | shape regularity | does rounding channel counts recover the missing speed? | ❌ **not run**, and needs the board |
+| **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **speed needs the board** |
+| **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
+| **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ helps, but far less than E2 |
+| **E7** | retraining | does iterative still lose when both arms train equally? | ✅ yes, it still loses |
+| **E8** | criterion | pick channels by reconstructing the layer's output | ❌ **not attempted** |
+
+Each section below is one experiment. The unpruned model is the top row of every table.
+
+## E1. Which layers can be cut
+
+Prune one layer, leave the rest alone, measure, move on. 57 layers x 5 depths, on the
+**validation** split, since its output chooses a configuration and test has to stay clean.
+
+![Every layer pruned on its own](../../results/figures/xp06e1_sensitivity.png)
+
+**The layers that break first are the ones that save the least.** Halving the first convolution
+costs 84% of the accuracy and frees 0.16% of the model; halving `model.21.conv` costs 0.9% and
+frees 5.13%. Early layers keep 59% of accuracy under a 50% cut, late layers keep 94%.
+
+A single global threshold ranks channels by size and cannot see any of this, so part of its
+budget lands where the trade is catastrophic. That is the mechanism behind the original
+collapse.
+
+## E2. Which channels to pick
+
+This page used to say a 5% cut costs 88% of the accuracy. That is mostly a fact about **L2**,
+the one selection rule that had ever been tried.
 
 ![The importance criterion decides whether pruning is survivable](../../results/figures/xp06e2_criteria.png)
 
 **At a 5% cut, L1 keeps 99% of the accuracy where L2 keeps 12%.** In code the difference is
-`p=2` against `p=1`. After 12 epochs of recovery at a 25% cut:
+`p=2` against `p=1`.
 
 | selection rule (all at a **25% channel cut**, 12 epochs) | params left | mAP50 | small plumes | tiny plumes |
 |---|---:|---:|---:|---:|
@@ -75,26 +94,22 @@ fact about **L2**, the one selection rule that had been tried.
 | Hessian | 3.83 M | 0.7111 | 0.5152 | 0.0810 |
 | random (the control) | 4.45 M | 0.7093 | 0.4812 | 0.0676 |
 
-All eight rules are in that table, and the spread is the story. **Before retraining they
-range from 0.94 to 0.00; after it, from 0.754 to 0.709.** Retraining is a great leveller,
-which is why damage measured without it is a poor guide to a deployed model: BN scale has
-the worst damage of all and still finishes above Hessian.
+**Before retraining these rules range from 0.94 to 0.00; after it, from 0.754 to 0.709.**
+Retraining is a great leveller, which is why damage measured without it is a poor guide to a
+deployed model.
 
 **BN scale scored near random, and the reason is measurable.** It ranks channels by the scale
-factor batch norm already learned, which works only if training pushed some of those scales
-toward zero to mark channels as dead. In these weights **not one of the 9,504 channels has a
-scale below 0.1**: they sit tightly around 1.0 with a floor at 0.166. The signal the method
-reads does not exist here, so it selects almost arbitrarily. That is an unmet prerequisite, not
-a failed method, and it is the clearest lesson in the set: **a technique can be sound and still
-be inapplicable to the weights you were handed.**
+batch norm already learned, which works only if training pushed some of those scales toward zero
+to mark channels as dead. In these weights **not one of the 9,504 channels has a scale below
+0.1**. The signal does not exist, so it selects almost arbitrarily. An unmet prerequisite, not a
+failed method.
 
-**Random pruning is in that table on purpose.** Without it you cannot tell whether a rule is
-clever or whether any cut plus retraining lands in the same place. It answers the question
-twice over: on overall accuracy the good rules beat it by 4.5 points, but **on tiny plumes they
-beat it by nearly double**. The choice barely matters for easy cases and matters enormously for
-distant smoke, which is the entire point of the detector.
+**Random is in the table on purpose.** Without it you cannot tell whether a rule is clever or
+whether any cut plus retraining lands in the same place. On overall accuracy the good rules beat
+it by 4.5 points, but **on tiny plumes by nearly double**. The choice barely matters for easy
+cases and matters enormously for distant smoke.
 
-## 2. The capacity was always spare
+## E5. Channels versus individual weights
 
 Deleting individual weights removes the same capacity without removing any structure.
 
@@ -114,9 +129,9 @@ weights. The detector was never short of capacity; what it cannot survive is los
 That is also why pruning keeps losing here. The redundancy is real and provable, and no kernel
 on this board can turn it into a single extra frame per second.
 
-## 3. The one pattern the hardware understands
+## E4. The one pattern the hardware understands
 
-**2:4 sparsity** is the version of that idea Ampere GPUs can actually accelerate: of every four
+**2:4 sparsity** is the version of that idea Ampere GPUs can accelerate: of every four
 neighbouring weights, exactly two must be zero. The Orin's GPU is Ampere class.
 
 | | non-zero weights | mAP50 | tiny plumes |
@@ -134,35 +149,51 @@ Whether the board's compiler actually uses sparse kernels is a separate question
 answer. If it does, this is the most promising candidate in the study: channel-pruning accuracy
 at half the weights. See [`HANDOFF_TO_JETSON.md`](HANDOFF_TO_JETSON.md).
 
-## 4. Where you cut matters less than what you cut
+## E6. How to spread the cut
 
-Pruning one layer at a time maps where damage is cheap and where it is fatal.
-
-![Every layer pruned on its own](../../results/figures/xp06e1_sensitivity.png)
-
-**The layers that break first are the ones that save the least.** Halving the first convolution
-costs 84% of the accuracy and frees 0.16% of the model; halving `model.21.conv` costs 0.9% and
-frees 5.13%. Early layers keep 59% of accuracy under a 50% cut, late layers keep 94%. A single
-global threshold ranks channels by size and cannot see any of this, which is how the original
-collapse happened.
+Using E1's map, protect the fragile layers and cut hard where there is slack. All three arms are
+matched to the same measured size by search, so only the distribution varies.
 
 ![Where the cut lands](../../results/figures/xp06e6_allocation.png)
 
-Acting on that map helps less than expected. With all three arms cut to the same size,
-**protecting the fragile layers wins by 0.4 accuracy points, where changing the selection rule
-was worth 4.5.** It does buy one thing: correct silence on empty frames returns to the unpruned
-97.4%, undoing the extra false alarms pruning otherwise causes.
+**Sensitivity-driven allocation wins by 0.4 accuracy points. Choosing a better rule (E2) was
+worth 4.5.** The map is correct and acting on it is second-order. It does buy one thing: correct
+silence on empty frames returns to the unpruned 97.4%, undoing the extra false alarms pruning
+otherwise causes.
 
-## 5. Removing arithmetic is still not gaining speed
+## E7. One-shot versus iterative, fairly
+
+The original comparison was confounded: both arms got 12 epochs, but the iterative model's final
+shape existed for only 4 of them while one-shot trained all 12 in its final shape. Here both get
+**12 epochs after their final cut**, and iterative additionally keeps its 8 between-step epochs,
+so it gets *more* total training, not less.
+
+![Iterative pruning still loses once both arms train equally](../../results/figures/xp06e7_fair_rerun.png)
+
+| | params | epochs after final cut | total epochs | mAP50 | small plumes | tiny plumes |
+|---|---:|---:|---:|---:|---:|---:|
+| **none (unpruned)** | 7.03 M | - | - | **0.7764** | 0.6038 | 0.1380 |
+| one-shot | 4.24 M | 12 | 12 | **0.7403** | 0.5617 | 0.0923 |
+| iterative | 4.53 M | 12 | **20** | 0.7262 | 0.5316 | 0.0812 |
+
+**The confound was real, and fixing it does not change the answer.** The published gap between
+the two arms was 5.4 accuracy points (0.7298 against 0.6763); on equal footing it is **1.4**. So
+roughly three quarters of iterative's apparent deficit was the shorter training in its final
+shape, exactly as the limitation on this page always suspected.
+
+**But iterative still loses**, and it loses while holding every advantage: more total training
+(20 epochs against 12) and a larger model (4.53 M against 4.24 M). The textbook expectation is
+that gradual pruning preserves more accuracy at the same sparsity. On this detector it does not,
+and that is now a clean result rather than a budgeting artefact.
+
+## Speed: removing arithmetic is still not gaining it
 
 ![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
 
 On the board, removing **88.9% of the multiply-adds bought 1.7x the throughput**, not the ~9x
 the arithmetic implies. Pruned layers land on awkward widths (47 channels instead of 64) and GPU
-kernels are written for regular sizes. The sharpest version: the iterative model kept *more*
-parameters than the one-shot model and ran **18% faster**.
-
-Parameter counts and MAC counts are structural facts here, never performance claims.
+kernels are written for regular sizes. Parameter counts and MAC counts are structural facts
+here, never performance claims.
 
 ## Verdict
 
@@ -175,33 +206,29 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 
 ## What was not finished
 
-- **The regularity test never ran.** [`e3_regularity.py`](e3_regularity.py) is ready. It is the
-  only direct test of why a larger pruned model ran faster than a smaller one.
-- **The fair one-shot versus iterative rerun is half done.** Both arms were meant to get equal
-  training *after* their final cut, fixing a confound this page has always flagged. One-shot
-  completed; iterative was stopped part way. One arm is not a comparison, so no verdict.
-- **Two sparsity levels have damage numbers only** (50% and 70%), after two runs were lost to a
-  GPU out-of-memory error.
+- **E3, the regularity test, never ran.** [`e3_regularity.py`](e3_regularity.py) is ready. It is
+  the only direct test of why a larger pruned model ran faster than a smaller one.
+- **E8, regression-based selection, was not attempted.** The most implementation-heavy item, and
+  deliberately last.
+- **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
+  to a GPU out-of-memory error.
 
 ## Limitations
 
 - **No speed number exists for anything new here.** It all needs the board.
-- **Equal cut ratio is not equal size or equal compute.** At 25%, LAMP lands at 3.91 M
-  parameters while removing 20.1% of the arithmetic; FPGM lands at 4.55 M while removing 33.5%.
+- **A 25% cut does not mean the same size for every rule**, which is why E2's parameter column is
+  not constant. The cut is a *channel* target, and channels are not equal in cost: one in the
+  first layer carries about 100 weights, one deep in the network about 2,300. A rule that
+  concentrates its cuts in the wide late layers strips far more parameters than one nibbling at
+  narrow early ones. LAMP removes 44.4% of the parameters and FPGM 35.3% from the identical
+  setting. **Compare rules at similar sizes, not by the label they share**, which is why E6
+  matches its arms by measured size.
+- **Nothing is matched on arithmetic.** LAMP is the smallest model but cuts only 20.1% of the
+  MACs where L1 cuts 38.7%. On hardware where speed tracks neither, that is a third axis nobody
+  here controlled for.
 - **Damage is a poor guide to a retrained model.** It separates the good tier from the bad tier
   reliably, but not the order within a tier: BN scale has the worst damage of all eight and
   still finishes above Hessian.
-- **A 25% cut does not mean the same size for every rule**, which is why the parameter column
-  above is not constant. The cut is a *channel* target, and channels are not equal in cost: one
-  in the first layer carries about 100 weights, one deep in the network about 2,300. Each rule
-  ranks channels differently, so a rule that concentrates its cuts in the wide late layers
-  strips far more parameters than one nibbling at narrow early ones. From the identical setting,
-  LAMP removes 44.4% of the parameters and FPGM 35.3%, leaving 3.91 M against 4.55 M. **Compare
-  rules at similar sizes, not by the label they share** (it is also why the allocation
-  experiment below matches its three arms by measured size rather than by ratio).
-- **BN scale scored worse than random, which is not a verdict on it.** It assumes training used
-  a penalty that spreads the batch-norm scales apart. These weights had none, so the signal it
-  reads does not exist. An unmet prerequisite, not a failure.
 - **Recovery is 12 epochs**, what the board allows overnight; **one dataset, one architecture.**
   "Early layers are fragile" is a claim about this network.
 
@@ -222,12 +249,13 @@ sparsity never reached it. Sparsity is now verified after training rather than a
 ## Reproduce
 
 ```bash
-python experiments/xp06_pruning/e1_sensitivity.py                       # layer map
-python experiments/xp06_pruning/e2_criteria.py --stage damage           # selection rules
+python experiments/xp06_pruning/e1_sensitivity.py                       # E1 layer map
+python experiments/xp06_pruning/e2_criteria.py --stage damage           # E2 selection rules
 python experiments/xp06_pruning/e2_criteria.py --stage recover --criteria lamp l1 fpgm random
-python experiments/xp06_pruning/e5_finegrained.py --sparsity 0.90       # single weights
-python experiments/xp06_pruning/e4_sparsity24.py                        # 2:4
-python experiments/xp06_pruning/e6_allocation.py --plan                 # then --arm <name>
+python experiments/xp06_pruning/e4_sparsity24.py                        # E4 2:4
+python experiments/xp06_pruning/e5_finegrained.py --sparsity 0.90       # E5 single weights
+python experiments/xp06_pruning/e6_allocation.py --plan                 # E6, then --arm <name>
+python experiments/xp06_pruning/e7_fair_rerun.py --mode iterative --post-epochs 12  # E7
 
 python analysis/make_figures.py     # every figure, from the committed JSON
 python analysis/xp06_tables.py      # every table, from the same JSON
