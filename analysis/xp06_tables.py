@@ -232,8 +232,54 @@ def t_e4() -> None:
               f"{f(r['map50_small_plume'])} | {f(r['map50_tiny_plume'])} |")
 
 
+def t_e2_where() -> None:
+    """Where each rule spent its budget, measured from the pruned checkpoints.
+
+    Recomputed rather than hardcoded: the numbers in the README's 'where each
+    rule cut' table come from comparing surviving channel counts against the
+    original, so they cannot drift from the checkpoints they describe.
+    """
+    import re
+    import sys
+    try:
+        import torch
+        import torch.nn as nn
+    except ImportError:
+        return
+    sys.path.insert(0, str(REPO))
+    from lib.prune_utils import load_yolov5
+    from pathlib import Path as _P
+
+    weights = REPO / "weights"
+    if not (weights / "yolov5s.pt").exists():
+        return
+    base = load_yolov5(weights / "yolov5s.pt", _P.home() / "yolov5", device="cpu")
+    ref = {n: m.out_channels for n, m in base.named_modules() if isinstance(m, nn.Conv2d)}
+
+    def stage(n):
+        m = re.match(r"model\.(\d+)\.", n)
+        return int(m.group(1)) if m else -1
+
+    head("E2. Where each rule spent its budget")
+    print("One global threshold across the whole network, so each rule decides for itself")
+    print("where the damage lands.\n")
+    print("| rule | early (0-4) | mid (5-9) | deep (10-23) |")
+    print("|---|---:|---:|---:|")
+    for p in sorted(weights.glob("yolov5s_pruned25_*_recovered.pt")):
+        name = p.name.split("pruned25_")[1].replace("_recovered.pt", "")
+        cur = {n: m.out_channels for n, m in
+               torch.load(p, map_location="cpu", weights_only=False)["model"]
+               .named_modules() if isinstance(m, nn.Conv2d)}
+        cells = []
+        for lo, hi in ((0, 4), (5, 9), (10, 23)):
+            keys = [k for k in ref if lo <= stage(k) <= hi and k in cur]
+            tot = sum(ref[k] for k in keys)
+            cells.append(1 - sum(cur[k] for k in keys) / tot if tot else 0)
+        print(f"| {name} | " + " | ".join(f"{c:.1%}" for c in cells) + " |")
+
+
 TABLES = {"e1": t_e1, "e2": t_e2, "e3": t_e3, "e4": t_e4,
-          "e5": t_e5, "e6": t_e6, "e7": t_e7}
+          "e5": t_e5, "e6": t_e6, "e7": t_e7, "e2where": t_e2_where}
 
 
 def main() -> None:
@@ -247,3 +293,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

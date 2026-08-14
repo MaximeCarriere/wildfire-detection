@@ -95,8 +95,46 @@ the one selection rule that had ever been tried.
 
 ![The importance criterion decides whether pruning is survivable](../../results/figures/xp06e2_criteria.png)
 
+**Every rule is a different theory of what makes a channel worth keeping.**
+
+| rule | what it measures |
+|---|---|
+| **L1** | adds up the channel's weights, ignoring sign. Small total, remove it |
+| **L2** | adds up the *squares*, then square-roots. Squaring exaggerates big values, so one large weight can rescue a channel whose others are near zero |
+| **LAMP** | magnitude again, but scored *within each layer*, so layers compete on equal terms instead of one layer's weights being globally smaller |
+| **FPGM** | not "which is smallest" but **"which is most redundant"**: the channel closest to the average of its neighbours is duplicating work |
+| **Taylor** | uses gradients: how far would the error move if this channel vanished? The only family that looks at data rather than weights |
+| **Hessian** | the second-order version of the same idea (Optimal Brain Damage) |
+| **BN scale** | reuses the multiplier batch norm already learned for each channel, on the theory that the network has been telling you which ones it turns down |
+| **random** | the control |
+
 **At a 5% cut, L1 keeps 99% of the accuracy where L2 keeps 12%.** In code the difference is
 `p=2` against `p=1`.
+
+### Where each rule actually cut
+
+The cut is one **global** threshold across the whole network, not a per-layer quota, so each rule
+decides for itself where the damage lands. That turns out to explain the ranking.
+
+| rule | early (0-4) | mid (5-9) | deep (10-23) | mAP50 |
+|---|---:|---:|---:|---:|
+| **LAMP** | **0.1%** | 28.8% | 22.9% | **0.7543** |
+| L1 | 18.3% | 16.1% | 32.6% | 0.7531 |
+| Taylor | 22.1% | 11.5% | 35.5% | 0.7460 |
+| FPGM | 12.8% | 8.5% | 40.4% | 0.7438 |
+| BN scale | 33.2% | 18.5% | 29.0% | 0.7153 |
+| Hessian | 22.3% | 33.2% | 15.8% | 0.7111 |
+| **random** | **48.5%** | 18.6% | 25.6% | **0.7093** |
+
+**LAMP barely touches the early layers and wins; random hammers them and loses.** Across the
+seven rules, the correlation between how much of the early network they cut and their final
+accuracy is **r = -0.79**.
+
+That is E1's prediction confirmed by a completely separate experiment. E1 measured layers one at
+a time and concluded the early ones must be protected; E2 never used that map, yet the rules that
+happened to protect them are the rules that won. Two independent routes to the same mechanism,
+which is much stronger than either alone. (Seven points, so treat the coefficient as direction
+rather than a precise effect size.)
 
 | selection rule (all at a **25% channel cut**, 12 epochs) | params left | mAP50 | small plumes | tiny plumes |
 |---|---:|---:|---:|---:|
