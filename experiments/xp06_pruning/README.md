@@ -170,30 +170,20 @@ whether any cut plus retraining lands in the same place. On overall accuracy the
 it by 4.5 points, but **on tiny plumes by nearly double**. The choice barely matters for easy
 cases and matters enormously for distant smoke.
 
-## E5. Channels versus individual weights
-
-Deleting individual weights removes the same capacity without removing any structure.
-
-![The same network survives losing half its weights and dies losing 5% of its channels](../../results/figures/xp06e5_granularity.png)
-
-| what was removed | weights left | mAP50 |
-|---|---:|---:|
-| **nothing** | 7.03 M | **0.7764** |
-| 25% of individual weights | 5.28 M | 0.7552 |
-| **90% of individual weights** | **0.74 M** | **0.7425** |
-| 5% of *channels*, no retraining | 6.53 M | 0.0956 |
-
-**Nine tenths of this network can go.** At 90% sparsity it holds 96% of its accuracy on 0.74 M
-weights. The detector was never short of capacity; what it cannot survive is losing whole
-**channels**, because everything downstream is shaped around them.
-
-That is also why pruning keeps losing here. The redundancy is real and provable, and no kernel
-on this board can turn it into a single extra frame per second.
-
 ## E4. The one pattern the hardware understands
 
-**2:4 sparsity** is the version of that idea Ampere GPUs can accelerate: of every four
-neighbouring weights, exactly two must be zero. The Orin's GPU is Ampere class.
+**2:4 sparsity is a middle ground between deleting whole channels and deleting scattered
+weights**, and the only one current hardware can actually exploit. The rule: of every four
+neighbouring weights, exactly two must be zero. Half the numbers go, but *where* they go is
+constrained.
+
+That constraint is the point. Ampere GPUs have circuitry that skips those zeros for up to twice
+the throughput, and the Orin's GPU is Ampere class. Scattered zeros (E5 below) get no such
+support; whole channels need none.
+
+Like E5 and unlike channel pruning, the weights here are **masked, not removed**: the model
+still stores 7.03 M numbers, of which 3.53 M are non-zero. On this hardware it is only faster if
+the compiler selects sparse kernels, which is exactly the open question.
 
 | | non-zero weights | mAP50 | tiny plumes |
 |---|---:|---:|---:|
@@ -202,13 +192,54 @@ neighbouring weights, exactly two must be zero. The Orin's GPU is Ampere class.
 | 2:4, after 12 epochs | 3.53 M | **0.7527** | 0.1249 |
 
 Retraining wins it all back, to 97% of the unpruned model, matching what NVIDIA reports for
-detection. But note the untrained row: free choice at the same 50% sparsity scores 0.7622, and
-forcing the identical amount into a fixed pattern scores zero. **It is not how much you remove,
+detection. But note the untrained row against E5's: removing 50% of the weights **freely** costs
+almost nothing (0.7622), and removing the same 50% **in a fixed pattern** scores zero. **It is not how much you remove,
 it is whether the removal has to follow a shape.**
 
 Whether the board's compiler actually uses sparse kernels is a separate question with a separate
 answer. If it does, this is the most promising candidate in the study: channel-pruning accuracy
 at half the weights. See [`HANDOFF_TO_JETSON.md`](HANDOFF_TO_JETSON.md).
+
+## E5. Whole channels versus individual weights
+
+Everything up to here removed **whole channels**. This removes **individual weights** instead,
+and the difference is the most important distinction on the page.
+
+A convolution's weights are a grid: `[output channels, input channels, height, width]`.
+
+- **Channel pruning deletes an entire slice of that grid.** One whole detector disappears, every
+  layer downstream loses its matching input, and the network genuinely becomes narrower. 7.03 M
+  parameters really do become 4.2 M. It gets smaller on disk, in memory, and in arithmetic.
+- **Weight pruning sets scattered individual numbers to zero.** Every channel is still there,
+  still computed, still producing its feature map. The grid keeps its exact shape and only has
+  holes in it.
+
+**This is why the two columns below are not comparable as sizes.** A 90% weight-pruned model
+still stores and loads 7.03 M numbers; 0.74 M of them are non-zero. It is *not* a 0.74 M model,
+and on this hardware it is not one byte smaller or one microsecond faster. Scattered zeros have
+no matching kernels, so the GPU multiplies the full-size grid exactly as before.
+
+So this experiment cannot produce a deployable model. It exists to answer one question that
+channel pruning cannot: **is this detector short of capacity, or short of structure?**
+
+![The same network survives losing half its weights and dies losing 5% of its channels](../../results/figures/xp06e5_granularity.png)
+
+| what was removed | model size | non-zero weights | mAP50 |
+|---|---|---:|---:|
+| **nothing** | 7.03 M | 7.03 M | **0.7764** |
+| 25% of individual weights | still 7.03 M | 5.28 M | 0.7552 |
+| **90% of individual weights** | **still 7.03 M** | **0.74 M** | **0.7425** |
+| 5% of *channels* | genuinely 6.53 M | 6.53 M | 0.0956 |
+
+**Nine tenths of the numbers in this network can be set to zero and it still works.** Meanwhile
+deleting 5% of its channels destroys it.
+
+Same network, same amount of capacity taken away, opposite outcome. **The capacity was never the
+constraint; the structure is.** A channel is a unit everything downstream is built around, so
+removing one forces a change on every layer that follows. A weight is not.
+
+That is also the reason pruning keeps losing here. The redundancy is real and provable, and no
+kernel on this board can convert it into a single extra frame per second.
 
 ## E6. How to spread the cut
 
