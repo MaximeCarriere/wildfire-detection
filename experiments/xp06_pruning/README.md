@@ -185,6 +185,13 @@ Like E5 and unlike channel pruning, the weights here are **masked, not removed**
 still stores 7.03 M numbers, of which 3.53 M are non-zero. On this hardware it is only faster if
 the compiler selects sparse kernels, which is exactly the open question.
 
+![What 2:4 sparsity is, and what constraining the pattern costs](../../results/figures/xp06e4_sparsity24.png)
+
+**Read the two grids on the left.** Both delete exactly half the weights. The top one may put
+its zeros anywhere. The bottom one must place exactly two in every group of four, marked by the
+black lines. Same quantity, different freedom, and the bars on the right show what that freedom
+was worth.
+
 | | non-zero weights | mAP50 | tiny plumes |
 |---|---:|---:|---:|
 | **unpruned** | 7.03 M | **0.7764** | 0.1380 |

@@ -793,6 +793,94 @@ def fig_xp06e2(records) -> Path | None:
     return save(fig, "xp06e2_criteria.png")
 
 
+def fig_xp06e4(records) -> Path | None:
+    """What 2:4 sparsity is, and what constraining the pattern costs."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.patches import Rectangle
+
+    rec = next((r for r in records if r.get("granularity") == "2:4"), None)
+    if not rec:
+        return None
+    m = rec["prune_meta"]
+
+    fig = plt.figure(figsize=(13.6, 5.6))
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.15, 1], hspace=0.55, wspace=0.28)
+    fig.suptitle("2:4 sparsity: same number of weights removed, but the pattern is fixed",
+                 y=1.06)
+    style.subtitle(fig, "Both patterns below delete half the weights. Only the lower one can be "
+                        "accelerated by the hardware, and only it needs retraining to survive.",
+                   y=1.0)
+
+    ROWS, COLS = 6, 12
+    def draw(ax, mask, title, note):
+        """mask[r][c] True means the weight was removed."""
+        for r in range(ROWS):
+            for c in range(COLS):
+                ax.add_patch(Rectangle((c, ROWS - 1 - r), 0.9, 0.9,
+                                       facecolor="#dfe3e4" if mask[r][c] else style.AQUA,
+                                       edgecolor="none"))
+        ax.set_xlim(-0.2, COLS + 0.1)
+        ax.set_ylim(-2.6, ROWS + 0.1)      # room for the caption inside the axes
+        ax.set_aspect("equal")
+        ax.axis("off")
+        ax.set_title(title, fontsize=11, pad=6, loc="left")
+        ax.text(0, -0.7, note, fontsize=9, color=style.INK_2, va="top", wrap=True)
+
+    # Free choice: any half of the weights, no constraint. Deterministic scatter.
+    rng = np.random.default_rng(0)
+    free = np.zeros((ROWS, COLS), bool)
+    flat = rng.permutation(ROWS * COLS)[: ROWS * COLS // 2]
+    for i in flat:
+        free[i // COLS][i % COLS] = True
+
+    # 2:4: exactly two of every four neighbouring weights, chosen within the group.
+    nm = np.zeros((ROWS, COLS), bool)
+    for r in range(ROWS):
+        for g in range(0, COLS, 4):
+            for d in ((r + g) % 4, (r + g + 2) % 4):
+                nm[r][g + d] = True
+
+    ax = fig.add_subplot(gs[0, 0])
+    draw(ax, free, "Free choice (E5): delete any half",
+         "No rule about where they land.\nHighest compression, but nothing on this\n"
+         "board can skip scattered zeros.")
+
+    ax = fig.add_subplot(gs[1, 0])
+    draw(ax, nm, "2:4 (E4): exactly two of every four",
+         "The same 50% removed. This regular pattern\nis what Ampere sparse tensor cores can\n"
+         "actually skip.")
+    for g in range(0, COLS + 1, 4):          # show the groups of four
+        ax.plot([g - 0.05, g - 0.05], [-0.1, ROWS], color=style.INK, linewidth=1.6, zorder=5)
+
+    # ---- results -------------------------------------------------------
+    ax = fig.add_subplot(gs[:, 1])
+    bars = [("unpruned", UNPRUNED_MAP50, style.MUTED),
+            ("50% free,\nno retraining", 0.7622, style.AQUA),
+            ("50% as 2:4,\nno retraining", m.get("map50_before_recovery", 0.0), style.RED),
+            ("50% as 2:4,\nafter 12 epochs", rec["map50_dfire_test"], style.BLUE)]
+    xs = range(len(bars))
+    ax.bar(xs, [b[1] for b in bars], color=[b[2] for b in bars], width=0.66, zorder=3)
+    for i, (_, v, _c) in enumerate(bars):
+        if v > 0.1:
+            ax.text(i, v - 0.025, f"{v:.4f}", ha="center", va="top", fontsize=9.5,
+                    fontweight="bold", color="white")
+        else:
+            ax.text(i, 0.02, f"{v:.4f}", ha="center", va="bottom", fontsize=9.5,
+                    fontweight="bold", color=style.RED)
+    ax.axhline(UNPRUNED_MAP50, color=style.INK_2, linestyle=":", linewidth=1.5,
+               zorder=2, xmax=0.93)
+    ax.set_xticks(list(xs))
+    ax.set_xticklabels([b[0] for b in bars], fontsize=9.5)
+    ax.set_ylabel("accuracy (mAP50)")
+    ax.set_ylim(0, UNPRUNED_MAP50 * 1.2)
+    ax.set_title("The pattern costs everything, until you retrain", fontsize=11.5, pad=10)
+    style.tidy(ax)
+
+    fig.subplots_adjust(bottom=0.14, top=0.86)
+    return save(fig, "xp06e4_sparsity24.png")
+
+
 def fig_xp06e5(records) -> Path | None:
     """Capacity was never the problem. Structure was."""
     import matplotlib.pyplot as plt
@@ -947,7 +1035,7 @@ def fig_xp06e7(records) -> Path | None:
 
 
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e5, fig_xp06e6,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e5, fig_xp06e6,
             fig_xp06e7]
 
 
