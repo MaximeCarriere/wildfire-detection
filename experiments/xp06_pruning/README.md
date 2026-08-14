@@ -71,6 +71,7 @@ fact about **L2**, the one selection rule that had been tried.
 | Taylor | 4.45 M | 0.7460 | 0.5784 | 0.1102 |
 | FPGM | 4.55 M | 0.7438 | 0.5701 | 0.1190 |
 | **L2, as first published** | 4.24 M | 0.7298 | 0.5525 | 0.0963 |
+| Hessian | 3.83 M | 0.7111 | 0.5152 | 0.0810 |
 | random (the control) | 4.45 M | 0.7093 | 0.4812 | 0.0676 |
 
 **Random pruning is in that table on purpose.** Without it you cannot tell whether a rule is
@@ -173,11 +174,14 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 - **No speed number exists for anything new here.** It all needs the board.
 - **Equal cut ratio is not equal size or equal compute.** At 25%, LAMP lands at 3.91 M
   parameters while removing 20.1% of the arithmetic; FPGM lands at 4.55 M while removing 33.5%.
-- **Six of the eight rules were retrained**, because recovery costs about 20 minutes per arm
-  against seconds for damage. Hessian and BN scale were not, and BN scale's damage number was
-  never a fair test of it anyway (see above). The selection was made on the ranking at a 25%
-  cut, which is not the same ranking as at 5%; Taylor was added afterwards to check whether that
-  choice had excluded a winner, and it had not.
+- **Seven of the eight rules were retrained.** Only BN scale was left, since its damage number
+  was never a fair test of it (see above). Taylor and Hessian were added after the first four to
+  check whether the initial selection, made on the ranking at a 25% cut, had excluded a winner.
+  Neither had.
+- **A 25% cut does not mean the same size for every rule.** It is a channel target, so what it
+  actually removes depends on which channels get picked: Hessian lands at 3.83 M parameters and
+  FPGM at 4.55 M from the same nominal setting. Compare rules at similar sizes, not by the
+  label.
 - **BN scale scored worse than random, which is not a verdict on it.** It assumes training used
   a penalty that spreads the batch-norm scales apart. These weights had none, so the signal it
   reads does not exist. An unmet prerequisite, not a failure.
