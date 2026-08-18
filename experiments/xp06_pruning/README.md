@@ -62,7 +62,7 @@ fault of one badly chosen setting.
 |---|---|---|---|
 | **E1** | ratio | which layers can be cut at all? | ✅ fragile layers are the ones that free the least |
 | **E2** | criterion | which channels to pick, and does it beat random? | ✅ decides everything: 99% kept vs 12% |
-| **E3** | shape regularity | does rounding channel counts recover the missing speed? | ⏳ accuracy done (costs nothing); **speed pending the board** |
+| **E3** | channel widths | round the surviving widths (47 to 48) so kernels run better? | ⏳ accuracy done (costs nothing); **speed pending the board** |
 | **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **the compiler refuses the sparse kernels** |
 | **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
 | **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ helps, but far less than E2 |
@@ -196,11 +196,14 @@ cases and matters enormously for distant smoke.
 
 ## E3. Does regular channel shape recover the missing speed?
 
-> **Axis:** shape regularity &nbsp;·&nbsp; **Asks:** does rounding channel counts recover the missing speed? &nbsp;·&nbsp; **Answer:** accuracy costs nothing; speed still pending the board
+> **Axis:** channel widths &nbsp;·&nbsp; **Asks:** does rounding awkward widths (47) up to round ones (48) run faster? &nbsp;·&nbsp; **Answer:** accuracy costs nothing; speed still pending the board
 
-XP6 saw a *larger* pruned model run *faster* than a smaller one. The suspected cause: pruning
-leaves layers at awkward widths like 47, and GPU kernels are written for regular tile sizes.
-`round_to` forces surviving channel counts onto a multiple of 8, 16 or 32 to test it.
+**What we round is the number of channels each layer keeps.** Pruning a layer of 64 channels by
+27% leaves 47, an odd number. GPUs process channels in fixed-size blocks of 8, 16 or 32, so a
+layer left with 47 wastes most of a block while 48 fills exactly three. `round_to` rounds each
+layer's surviving channel count *up* to the nearest multiple (47 becomes 48), keeping a few extra
+channels so the shape is tidy. XP6 even saw a *larger* pruned model run *faster* than a smaller
+one, which points at exactly this. The test: do the tidy widths run faster?
 
 ![Rounding channel counts reshapes the model for almost no accuracy](../../results/figures/xp06e3_regularity.png)
 
