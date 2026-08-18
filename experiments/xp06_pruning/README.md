@@ -308,39 +308,24 @@ measurement order reproduced the ranking, so it belongs to the engine, but "repr
 
 ## E5. Whole channels versus individual weights
 
-E1, E2, E6 and E7 all removed **whole channels**. E4 was the first to remove **individual
-weights**, but under a rule about where the zeros may sit. This removes individual weights with
-no rule at all, and the channel-versus-weight distinction is the most important one on the page.
+E1, E2, E6 and E7 deleted **whole channels**. E4 zeroed **individual weights** under a pattern.
+This zeros them with no pattern at all. A convolution's weights are a grid
+`[out, in, height, width]`:
 
-A convolution's weights are a grid: `[output channels, input channels, height, width]`.
+- **Channel pruning deletes a whole slice.** The network genuinely narrows: 7.03 M parameters
+  really do become 4.2 M, smaller on disk, in memory and in arithmetic.
+- **Weight pruning punches holes.** Every channel still exists and is still computed. The grid
+  keeps its exact shape.
 
-- **Channel pruning deletes an entire slice of that grid.** One whole detector disappears, every
-  layer downstream loses its matching input, and the network genuinely becomes narrower. 7.03 M
-  parameters really do become 4.2 M. It gets smaller on disk, in memory, and in arithmetic.
-- **Weight pruning sets scattered individual numbers to zero.** Every channel is still there,
-  still computed, still producing its feature map. The grid keeps its exact shape and only has
-  holes in it.
+> **Why zeroing 90% of the weights leaves the file the same size.** A zero occupies the same two
+> bytes as any other number. Shrinking the file needs a **sparse storage format** that keeps only
+> the non-zeros plus indices saying where they belong, and nothing here uses one: PyTorch, ONNX
+> and TensorRT are all dense. Indices are not free either, since a naive one costs more than the
+> value it points to. **2:4 is the exception**, because two-of-four positions fit in a couple of
+> bits, which is why [E4](#e4-the-one-pattern-the-hardware-understands) is its own experiment.
 
-**This is why the two columns below are not comparable as sizes.** A 90% weight-pruned model
-still stores and loads 7.03 M numbers; 0.74 M of them are non-zero. It is *not* a 0.74 M model.
-
-> **Why zeroing 90% of the weights leaves the file the same size.** Setting a weight to zero does
-> not delete it. The weights sit in a dense rectangular array, and a zero occupies exactly the
-> same two bytes as any other number in it. Shrinking the file would need a **sparse storage
-> format**, which keeps only the non-zeros plus indices recording where each one belongs. Such
-> formats exist and are decades old, but nothing in this pipeline uses one: PyTorch saves dense
-> tensors, ONNX carries dense initialisers, and TensorRT compiles kernels that multiply every
-> position in the grid. So the file is byte-for-byte the same size, and the GPU performs the same
-> number of multiplications as before, most of them now by zero.
->
-> Indices are not free either. At 50% sparsity you would store half the values plus a location for
-> each survivor, and a naive index costs more than the value it points to. **2:4 is the exception
-> that proves the rule**: because exactly two of every four survive, their positions fit in a
-> couple of bits per group, and Ampere has circuitry that reads that encoding directly. That is
-> the whole reason [E4](#e4-the-one-pattern-the-hardware-understands) is a separate experiment.
-
-So this experiment cannot produce a deployable model. It exists to answer one question that
-channel pruning cannot: **is this detector short of capacity, or short of structure?**
+So this cannot produce a deployable model. It answers the one question channel pruning cannot:
+**is this detector short of capacity, or short of structure?**
 
 ![The same network survives losing half its weights and dies losing 5% of its channels](../../results/figures/xp06e5_granularity.png)
 
@@ -351,23 +336,16 @@ channel pruning cannot: **is this detector short of capacity, or short of struct
 | **90% of individual weights** | **still 7.03 M** | **0.74 M** | **0.7425** |
 | 5% of *channels* | genuinely 6.53 M | 6.53 M | 0.0956 |
 
-**Nine tenths of the numbers in this network can be set to zero and it still works.** Meanwhile
-deleting 5% of its channels destroys it.
-
-Same network, same amount of capacity taken away, opposite outcome. **The capacity was never the
-constraint; the structure is.** A channel is a unit everything downstream is built around, so
-removing one forces a change on every layer that follows. A weight is not.
-
-That is also the reason pruning keeps losing here. The redundancy is real and provable, and no
-kernel on this board can convert it into a single extra frame per second.
+- **Nine tenths of the numbers can be zeroed and it still works**: 0.7425.
+- **Deleting 5% of the channels destroys it**: 0.0956.
+- Same capacity removed, opposite outcome. **The capacity was never the constraint; the structure
+  is.** A channel is a unit everything downstream is built around. A weight is not.
 
 ### The other half of the trade: speed
 
-If weights are the cheaper thing to remove for accuracy, channels should be the cheaper thing to
-remove for **speed**, since they genuinely shrink the tensors. Both granularities, measured as
-TensorRT engines on the board, plotted against the only axis on which they compare: how much of
-the model is actually gone. A 25% channel cut removes 39.6% of the parameters, so the nominal
-ratios are not comparable and are not used.
+Channels shrink the tensors, so they should be the granularity that buys speed. Both, measured as
+TensorRT engines on the board, against the only comparable axis: how much of the model is
+actually gone. A 25% channel cut removes 39.6% of the parameters, so nominal ratios are not used.
 
 ![Only one of these two ways of shrinking a network makes it faster](../../results/figures/xp06e5b_granularity_speed.png)
 
@@ -380,22 +358,16 @@ ratios are not comparable and are not used.
 | 73.5% | channels deleted | 1.86 M | 528.7 ± 3.2 | 36.7 |
 | 91.2% | channels deleted | 0.62 M | **730.4 ± 8.6** | **28.6** |
 
-**Zeroing weights is a flat line.** Nine tenths of the parameters gone moves throughput by 2.3%,
-because the tensors keep their shape and the kernels multiply every position regardless.
+- **Zeroing weights is a flat line.** 89.5% of the parameters gone moves throughput by 2.3%.
+- **Channels do buy speed, but only past about 70% removed**: **1.55x** at 91%, on 45% less energy.
+- **In between it goes backwards.** At 39.6% removed the engine runs **18% slower than unpruned**,
+  reproducing the 381 img/s XP6 measured earlier. Widths like 47 instead of 64 are what
+  [E3](#e3-does-regular-channel-shape-recover-the-missing-speed) tests.
+- **The speed arrives only after the accuracy has gone.** A 50% and a 70% channel cut both score
+  0.0000. The only cut ever recovered to something usable is 25%, which is exactly the point that
+  runs slower than doing nothing.
 
-**Deleting channels does buy speed, but only past about 70% removed**, where it reaches **1.55x**
-on 45% less energy.
-
-**In between it goes backwards.** At 39.6% removed the engine runs **18% slower than unpruned**,
-which is not noise and independently reproduces the 381 img/s XP6 measured earlier. Pruning
-leaves layers at widths like 47 instead of 64 and the kernels punish it, which is what
-[E3](#the-experiments) exists to test and why it is the last idea here with a route to beating
-the frontier.
-
-**The speed arrives only after the accuracy has gone.** A 50% channel cut scores 0.0000 and a 70%
-cut scores 0.0000; the only cut ever recovered to something usable is 25% at 0.7297, and that is
-precisely the point on the curve that is slower than doing nothing. **Neither granularity has a
-setting where both work**, which is the whole verdict of XP6 in one figure.
+**Neither granularity has a setting where both work.** That is the verdict of XP6 in one figure.
 
 ---
 
