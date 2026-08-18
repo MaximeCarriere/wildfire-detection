@@ -172,29 +172,20 @@ cases and matters enormously for distant smoke.
 
 ## E4. The one pattern the hardware understands
 
-**2:4 sparsity is a middle ground between deleting whole channels and deleting scattered
-weights**, and the only one current hardware can actually exploit. The rule: of every four
-neighbouring weights, exactly two must be zero. Half the numbers go, but *where* they go is
-constrained.
+**2:4 sparsity: of every four neighbouring weights, exactly two must be zero.** Half the numbers
+go, but *where* they go is fixed. That constraint is the point. Ampere GPUs, the Orin's included,
+have circuitry that skips those zeros for up to twice the throughput. Scattered zeros (E5) get no
+such support; whole channels need none.
 
-That constraint is the point. Ampere GPUs have circuitry that skips those zeros for up to twice
-the throughput, and the Orin's GPU is Ampere class. Scattered zeros (E5 below) get no such
-support; whole channels need none.
-
-Like E5 and unlike channel pruning, the weights here are **masked, not removed**: the model
-still stores 7.03 M numbers, of which 3.53 M are non-zero. On this hardware it is only faster if
-the compiler selects sparse kernels, which is exactly the open question.
+The weights are **masked, not removed**: the model still stores 7.03 M numbers, 3.53 M non-zero.
 
 ![What 2:4 sparsity is, and what constraining the pattern costs](../../results/figures/xp06e4_sparsity24.png)
 
-**Read the two grids on the left.** Both delete exactly half the weights. The top one may put
-its zeros anywhere. The bottom one must place exactly two in every group of four, marked by the
-black lines. Same quantity, different freedom, and the bars on the right show what that freedom
-was worth.
+**Read the two grids on the left.** Both delete half the weights. The top one may put its zeros
+anywhere; the bottom one must place exactly two in every group of four.
 
-**Half the weights removed, three ways.** Every row below deletes the same number of weights
-(3.49 M of 6.99 M) from the same 57 layers, chosen by magnitude. Only the rule about *where* the
-zeros may sit changes.
+**Half the weights removed, three ways.** Every row deletes the same 3.49 M of 6.99 M weights,
+from the same 57 layers, by magnitude. Only the rule about *where* changes.
 
 | 50% of the weights deleted | non-zero | mAP50 | tiny plumes |
 |---|---:|---:|---:|
@@ -203,26 +194,20 @@ zeros may sit changes.
 | **forced into a 2:4 pattern** | 3.53 M | **0.0000** | 0.0000 |
 | forced into a 2:4 pattern, then 12 epochs | 3.53 M | 0.7527 | 0.1249 |
 
-Same quantity deleted, same layers, same criterion. Choosing freely costs **1.4 points**.
-Following the pattern costs **everything**. **It is not how much you remove, it is whether the
-removal has to follow a shape.** Retraining then wins it back to 97% of unpruned, matching what
-NVIDIA reports for detection.
+Choosing freely costs **1.4 points**. Following the pattern costs **everything**, until 12 epochs
+win it back to 97% of unpruned. **It is not how much you remove, it is whether the removal has to
+follow a shape.**
 
-> **"Free" here means free to choose *where*, never free of charge.** Free-form pruning is
-> unconstrained in **placement**, and it still costs: 1.4 accuracy points at 50% before
-> retraining, and a file that does not shrink by a single byte. It buys no speed either, for a
-> reason worth stating plainly: the kernels still multiply every position in the grid, and
-> multiplying by zero costs exactly what multiplying by anything else costs (measured below).
-> What it is free of is the pattern constraint. This experiment exists to price that constraint,
-> and the price turns out to be everything.
+> **"Free" means free to choose *where*, never free of charge.** Free-form pruning still costs
+> 1.4 accuracy points, shrinks the file by nothing, and buys no speed: the kernels multiply every
+> position in the grid either way, and multiplying by zero costs what multiplying by anything
+> else costs.
 
 ### Why the patterned half collapses
 
-**Free-form pruning is adaptive; 2:4 cannot be.** One global threshold (0.0069) lets the network
-decide where the budget lands, and it lands very unevenly: measured per-layer sparsity runs from
-**8.4% to 87.6%**. Layers full of small weights are stripped bare, layers full of large ones are
-barely touched. 2:4 takes exactly 50% from every one of the 57 layers, because the quota is
-enforced inside every group of four and a group cannot know it sits in an important layer.
+A global threshold is **adaptive**: it spends per-layer sparsity anywhere from **8.4% to 87.6%**,
+stripping layers full of small weights and sparing layers full of large ones. 2:4 takes exactly
+half of every layer, because a group of four cannot know it sits somewhere fragile.
 
 | what actually got deleted | free choice | 2:4 pattern |
 |---|---:|---:|
@@ -231,57 +216,52 @@ enforced inside every group of four and a group cannot know it sits in an import
 | weights removed from the network's strongest 10% | **0** | **64,990** |
 | per-layer sparsity | 8.4% to 87.6% | 50.0% everywhere |
 
-At identical sparsity the patterned cut destroys **six times the weight energy** and deletes
-65,000 weights from the strongest tenth of the network. Free-form deletes none of them, ever, by
-definition of the threshold.
+It lands hardest where this network can least afford it: free-form takes 9.0% of the first
+convolution, 2:4 takes 50%. [E1](#e1-which-layers-can-be-cut) measured that halving that one
+layer costs **84%** of the accuracy.
 
-It also lands hardest exactly where this network can least afford it. The first convolution holds
-the largest weights in the model; free-form removes 9.0% of it, 2:4 removes 50%, including one
-weight of magnitude 0.4365. [E1](#e1-which-layers-can-be-cut) already measured that bill:
-halving the first convolution alone costs **84%** of the accuracy.
+**That is why the score is exactly 0.0000 and not merely low.** Maximum objectness over 48
+images: unpruned **0.911**, free choice **0.895**, 2:4 **0.00022**. The model still draws boxes,
+at confidences far too low to clear any threshold, so mAP falls off a cliff instead of sliding.
+Retraining rescales the head and the accuracy returns, which says the capacity was never lost.
+The calibration was.
 
-**That is also why the score is exactly 0.0000 rather than merely low.** Maximum objectness over
-a 48-image batch: unpruned **0.911**, free choice **0.895**, 2:4 **0.00022**. The patterned model
-still draws boxes internally, but at confidences roughly 4,000x too low to clear any sensible
-threshold, so mAP falls off a cliff instead of sliding. Twelve epochs of retraining rescale the
-head and the accuracy comes back, which tells you the capacity was never lost. The calibration
-was.
-
-### Does it actually run faster?
-
-Accuracy was screened on a desktop GPU. Speed cannot be, because a TensorRT engine is compiled
-per GPU architecture, so this is measured on the Jetson. Four engines, same network, same shape,
-same arithmetic: only which weights are zero, and whether the compiler was allowed to exploit
-them. Each arm is timed twice, once down the list and once up it, because four engines timed back
-to back would alias any drift in clocks or die temperature onto arm identity.
+### Does it run faster on the board?
 
 ![2:4 sparsity on the board](../../results/figures/xp06e4b_sparsity_speed.png)
 
-**The answer is in the build log, not the bars.**
+No. TensorRT ran the pruned weights and declined the hardware:
 
 ```
 (Sparsity) Found 39 layer(s) eligible to use sparse tactics
 (Sparsity) Chose 0 layer(s) using sparse tactics
 ```
 
-TensorRT identified 39 layers it could run with sparse kernels, timed them against the dense
-ones, and **picked dense every single time**. The sparse engine is a dense engine. The hardware
-path exists on this board and the compiler declined to take it, so the 2x that Ampere's sparse
-tensor cores promise is simply not on offer for this network at this size.
+**Those two lines are about different things, and the difference is the result.**
 
-**Then what is the 3.5%?** Not sparsity. The giveaway is the second row: free-form 50% also comes
-out 1.6% faster than dense, and free-form 50% runs *identical arithmetic through identical
-kernels*. A difference that appears where no difference can physically exist is the noise floor
-between independently built engines, and TensorRT autotunes each build separately. Reversing the
-measurement order reproduced the same ranking, so it is a property of the engine rather than of
-when it was measured, but "reproducible" and "caused by the sparsity" are different claims and
-only the first one is supported.
+- **The weights are ours.** Line one is TensorRT confirming that 39 layers are genuinely in 2:4
+  form. Faulty masking would have found none eligible.
+- **The kernel is not.** Each eligible layer had two available code paths: a **sparse** one that
+  uses the tensor cores to skip the zeros, and an ordinary **dense** one that multiplies all four
+  numbers including the two zeros. TensorRT timed both and kept dense every time.
 
-Energy tracks the same tiny spread: 52.4 J per 1000 frames dense against 49.3 to 51.1 for the
-2:4 engines. Nothing here changes the deployment answer.
+So the sparsity is in the data and absent from the execution. The engine multiplies by zero 3.49
+M times per frame, gets the right answer, and takes exactly as long as if nothing had been
+pruned.
 
-**So the verdict for the whole of XP6 stands.** The unpruned model at 512 px remains the line to
-beat, and 2:4 was the last candidate with a hardware story behind it.
+**Why dense wins.** Sparse kernels must load and decode metadata recording which two of four
+survived, and that only repays itself when a layer is large enough for multiplication to
+dominate. At 512 px on an Orin Nano the layers are small and the limit is moving data and
+launching kernels, which is what [XP9](../xp09_tensorrt_fp16/) found across the whole runtime.
+Halving the multiplies of something that was never multiply-bound buys nothing.
+
+**The 3.5% spread in the figure is not sparsity either.** Free-form 50% also comes out 1.6%
+faster while running identical arithmetic through identical kernels, and a difference where none
+can physically exist is the noise floor between separately autotuned builds. Reversing the
+measurement order reproduced the ranking, so it belongs to the engine, but "reproducible" and
+"caused by sparsity" are different claims and only the first is supported.
+
+**So the verdict stands.** 2:4 was the last candidate with a hardware story behind it.
 
 ## E5. Whole channels versus individual weights
 
