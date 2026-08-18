@@ -1022,69 +1022,91 @@ def fig_xp06e6(records) -> Path | None:
 
 
 def fig_xp06e3(records) -> Path | None:
-    """Rounding transforms the channel shape while accuracy barely moves."""
+    """Rounding barely touches accuracy and nearly doubles throughput on the board."""
     import matplotlib.pyplot as plt
 
-    rows = []
+    acc = {}
     for fp in sorted(RAW.glob("xp06e3_dfire_yolov5s_round*.json")):
-        d = json.loads(fp.read_text())
-        m = d["prune_meta"]
-        rows.append({"r": m["round_to"], "map50": d["map50_dfire_test"],
-                     "params": d["params_m"], "aligned": m["widths_divisible_by_32"],
-                     "n": m["n_conv_layers"]})
-    rows.sort(key=lambda x: x["r"])
-    if len(rows) < 2:
+        d = json.loads(fp.read_text()); m = d["prune_meta"]
+        acc[m["round_to"]] = {"map50": d["map50_dfire_test"], "params": d["params_m"],
+                              "aligned": m["widths_divisible_by_32"], "n": m["n_conv_layers"]}
+    spd = {}
+    for fp in sorted(RAW.glob("xp06e3b_yolov5s_round*.json")):
+        d = json.loads(fp.read_text()); j = d["jetson"]; r = d["regularity_meta"]["round_to"]
+        spd[r] = {"fps": j["fps_batched"], "std": j.get("fps_batched_std", 0),
+                  "energy": j.get("energy_j_per_1000_frames")}
+    rs = sorted(acc)
+    if len(rs) < 2:
         return None
+    xs = list(range(len(rs)))
+    labels = [f"round to\n{r}" for r in rs]
+    have_speed = len(spd) == len(rs)
 
-    xs = list(range(len(rows)))
-    labels = [f"round to\n{x['r']}" for x in rows]
-
-    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.4))
-    fig.suptitle("Rounding channel counts reshapes the model for almost no accuracy",
+    ncol = 3 if have_speed else 2
+    fig, axes = plt.subplots(1, ncol, figsize=(5.4 * ncol, 4.4))
+    fig.suptitle("Rounding channel widths: free accuracy, and 1.77x the speed on the board",
                  y=1.03)
-    style.subtitle(fig, "Forcing surviving widths onto a multiple takes the model from 0 to 57 "
-                        "aligned layers, while mAP50 moves less than one point.", y=0.965)
+    style.subtitle(fig, "Same 25% cut, same accuracy. Snapping the surviving widths to clean "
+                        "multiples nearly doubles throughput on the Jetson.", y=0.965)
 
-    # Panel 1: alignment, the thing that changes.
+    # Panel 1: alignment.
     ax = axes[0]
-    bars = ax.bar(xs, [x["aligned"] for x in rows], width=0.62, color=style.BLUE, zorder=3)
-    for b, x in zip(bars, rows):
-        if x["aligned"] > 6:                 # tall enough to hold the label inside
-            ax.text(b.get_x() + b.get_width() / 2, x["aligned"] - 2.5, str(x["aligned"]),
-                    ha="center", va="top", fontsize=11, fontweight="bold", color="white")
-        else:                                # short/zero bar: label sits just above it
-            ax.text(b.get_x() + b.get_width() / 2, x["aligned"] + 1, str(x["aligned"]),
-                    ha="center", va="bottom", fontsize=11, fontweight="bold", color=style.INK)
-    ax.set_xticks(xs)
-    ax.set_xticklabels(labels)
-    ax.set_ylabel(f"conv layers on a multiple of 32 (of {rows[0]['n']})")
-    ax.set_ylim(0, rows[0]["n"] * 1.05)
+    bars = ax.bar(xs, [acc[r]["aligned"] for r in rs], width=0.62, color=style.BLUE, zorder=3)
+    for b, r in zip(bars, rs):
+        v = acc[r]["aligned"]
+        inside = v > 6
+        ax.text(b.get_x() + b.get_width() / 2, v - 2.5 if inside else v + 1, str(v),
+                ha="center", va="top" if inside else "bottom", fontsize=11, fontweight="bold",
+                color="white" if inside else style.INK)
+    ax.set_xticks(xs); ax.set_xticklabels(labels)
+    ax.set_ylabel(f"conv layers on a multiple of 32 (of {acc[rs[0]]['n']})")
+    ax.set_ylim(0, acc[rs[0]]["n"] * 1.05)
     ax.set_title("The shape changes completely", fontsize=11.5, pad=8)
     style.tidy(ax)
 
-    # Panel 2: accuracy, the thing that does not.
+    # Panel 2: accuracy (flat).
     ax = axes[1]
-    ax.plot(xs, [x["map50"] for x in rows], "o-", color=style.AQUA, linewidth=2.2,
+    ax.plot(xs, [acc[r]["map50"] for r in rs], "o-", color=style.AQUA, linewidth=2.2,
             markersize=9, zorder=4)
-    for xi, x in zip(xs, rows):
-        ax.annotate(f"{x['map50']:.4f}\n{x['params']:.2f} M", (xi, x["map50"]),
-                    xytext=(0, 12), textcoords="offset points", ha="center",
-                    fontsize=9, fontweight="bold", color=style.INK)
-    ax.axhline(UNPRUNED_MAP50, color=style.INK_2, linestyle=":", linewidth=1.5,
-               zorder=2, xmax=0.82)
-    ax.text(len(rows) - 0.9, UNPRUNED_MAP50, "unpruned", fontsize=9.5,
-            color=style.INK_2, ha="left", va="center")
-    ax.set_xticks(xs)
-    ax.set_xticklabels(labels)
-    ax.set_ylabel("accuracy (mAP50)")
-    ax.set_ylim(0.70, UNPRUNED_MAP50 * 1.02)
-    ax.set_xlim(-0.4, len(rows) - 0.3)
-    ax.set_title("The accuracy does not", fontsize=11.5, pad=8)
+    for xi, r in zip(xs, rs):
+        ax.annotate(f"{acc[r]['map50']:.4f}", (xi, acc[r]["map50"]), xytext=(0, 12),
+                    textcoords="offset points", ha="center", fontsize=9.5, fontweight="bold",
+                    color=style.INK)
+    ax.axhline(UNPRUNED_MAP50, color=style.INK_2, linestyle=":", linewidth=1.5, zorder=2, xmax=0.82)
+    ax.text(len(rs) - 0.9, UNPRUNED_MAP50, "unpruned", fontsize=9.5, color=style.INK_2,
+            ha="left", va="center")
+    ax.set_xticks(xs); ax.set_xticklabels(labels)
+    ax.set_ylabel("accuracy (mAP50)"); ax.set_ylim(0.70, UNPRUNED_MAP50 * 1.02)
+    ax.set_xlim(-0.4, len(rs) - 0.3)
+    ax.set_title("Accuracy does not", fontsize=11.5, pad=8)
     style.tidy(ax)
 
-    fig.text(0.5, -0.04, "Screened on the RTX 3090. Whether the regular shape runs faster is a "
-                         "board measurement, still pending. Rounding also shrinks the model "
-                         "(4.21 M to 3.52 M), so speed and size are not yet separable.",
+    # Panel 3: throughput (the payoff).
+    if have_speed:
+        ax = axes[2]
+        fps = [spd[r]["fps"] for r in rs]
+        bars = ax.bar(xs, fps, yerr=[spd[r]["std"] for r in rs], width=0.62,
+                      color=style.ORANGE, zorder=3, capsize=4,
+                      error_kw={"elinewidth": 1.2, "ecolor": style.INK_2})
+        for b, r in zip(bars, rs):
+            v = spd[r]["fps"]
+            ax.text(b.get_x() + b.get_width() / 2, v - 18, f"{v:.0f}", ha="center", va="top",
+                    fontsize=10.5, fontweight="bold", color="white")
+        base = spd[rs[0]]["fps"]
+        ax.text(xs[-1], fps[-1] + 20, f"{fps[-1] / base:.2f}x", ha="center", fontsize=11,
+                fontweight="bold", color=style.INK)
+        ax.axhline(472.6, color=style.INK_2, linestyle=":", linewidth=1.5, zorder=2, xmax=0.82)
+        ax.text(len(rs) - 0.9, 472.6, "unpruned", fontsize=9.5, color=style.INK_2,
+                ha="left", va="center")
+        ax.set_xticks(xs); ax.set_xticklabels(labels)
+        ax.set_ylabel("throughput on the Jetson (img/s)")
+        ax.set_ylim(0, max(fps) * 1.16)
+        ax.set_title("Throughput nearly doubles", fontsize=11.5, pad=8)
+        style.tidy(ax)
+
+    fig.text(0.5, -0.04, "Measured on the Jetson Orin, MAXN_SUPER. Size is not the driver: "
+                         "round_to=1 has 40% fewer parameters than unpruned yet runs slower "
+                         "(363 vs 473 img/s); rounding the widths is what recovers the speed.",
              ha="center", fontsize=8.5, color=style.MUTED)
     fig.tight_layout()
     return save(fig, "xp06e3_regularity.png")
