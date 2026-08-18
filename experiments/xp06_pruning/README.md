@@ -196,14 +196,27 @@ cases and matters enormously for distant smoke.
 
 ## E3. Does regular channel shape recover the missing speed?
 
-> **Axis:** channel widths &nbsp;·&nbsp; **Asks:** does rounding awkward widths (47) up to round ones (48) run faster? &nbsp;·&nbsp; **Answer:** accuracy costs nothing; speed still pending the board
+> **Axis:** channel widths &nbsp;·&nbsp; **Asks:** does snapping odd widths (52) to clean ones (32) run faster? &nbsp;·&nbsp; **Answer:** accuracy costs nothing; speed still pending the board
 
-**What we round is the number of channels each layer keeps.** Pruning a layer of 64 channels by
-27% leaves 47, an odd number. GPUs process channels in fixed-size blocks of 8, 16 or 32, so a
-layer left with 47 wastes most of a block while 48 fills exactly three. `round_to` rounds each
-layer's surviving channel count *up* to the nearest multiple (47 becomes 48), keeping a few extra
-channels so the shape is tidy. XP6 even saw a *larger* pruned model run *faster* than a smaller
-one, which points at exactly this. The test: do the tidy widths run faster?
+**What gets rounded is each layer's *width*, the number of channels it outputs.** Pruning leaves
+those widths at odd values. `round_to` snaps each one to a clean multiple. Real widths from this
+detector's second layer onward:
+
+| a layer | original width | after pruning (`round_to=1`) | snapped to a multiple of 32 (`round_to=32`) |
+|---|---:|---:|---:|
+| conv A | 64 | 52 | **32** |
+| conv B | 128 | 97 | **96** |
+| conv C | 32 | 20 | **32** |
+
+- **`round_to=1`** keeps whatever pruning left: 52, 97, 20, all odd.
+- **`round_to=32`** snaps each width to the nearest multiple of 32 below it (52 to 32, 97 to 96),
+  never going under one full group. It removes a few *more* channels, so the model ends up a
+  little smaller, not larger.
+
+**Why anyone would.** GPUs process channels in fixed-size groups (a warp is 32). A width of 52 is
+one full group of 32 plus a ragged 20 that wastes most of a second group; 32 and 96 fill groups
+exactly. XP6 even saw a *larger* pruned model run *faster* than a smaller one, which points at
+exactly this. The test: do the clean widths run faster?
 
 ![Rounding channel counts reshapes the model for almost no accuracy](../../results/figures/xp06e3_regularity.png)
 
