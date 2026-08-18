@@ -25,11 +25,23 @@ fault of one badly chosen setting.
 
 ![What small and tiny plume mean](../../results/figures/plume_definition.png)
 
-## Pruning is four choices, not one technique
+## Why, and what would count as winning
 
-**What shape** you delete in (single weights, or whole channels), **which parts** you pick,
-**how much** comes out of each layer, and **what retraining** repairs the damage. Almost every
-named method is one combination of those four. Each experiment below changes exactly one.
+- **The detector has to run on a $249 fanless Jetson Orin Nano**: no cloud, 8 GB shared, a 15 W
+  budget, thermals that only show up over ten minutes. Smaller and faster is the line between
+  deployable and not.
+- **The bar is the network itself**, unpruned, compiled to TensorRT FP16 at 512 px:
+  **0.7776 mAP50 at 474 img/s**. Any technique has to beat that or it lost. So far nothing has,
+  and the cheapest win of the whole study was simply feeding the network a smaller image.
+- **We change one decision at a time.** Pruning looks like dozens of techniques; it is really
+  four independent choices, and each experiment below moves exactly one of them.
+
+## The four choices
+
+- **Granularity** is the *shape* you delete in: scattered individual weights, or whole channels.
+- **Criterion** is *which* parts you pick to remove.
+- **Ratio** is *how much* comes out of each layer.
+- **Retraining** is *how* you repair the damage afterwards.
 
 > **What a "channel" is, since most of this page turns on it.** A layer is one processing step;
 > a **channel is one of that layer's outputs**, a single 2D map of "how strongly does my pattern
