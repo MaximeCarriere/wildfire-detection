@@ -882,67 +882,106 @@ def fig_xp06e4(records) -> Path | None:
 
 
 def fig_xp06e5(records) -> Path | None:
-    """Capacity was never the problem. Structure was."""
+    """Accuracy, speed and energy for the two granularities, on one shared axis.
+
+    A 25% channel cut and a 25% weight cut are not the same amount of network, so
+    every panel is plotted against **the fraction of parameters actually removed**.
+    That is what lets the three be read together: pick a point on the x-axis and
+    the panels say what it costs, what it buys, and what it draws.
+
+    Panel one is damage with **no retraining in either series**. Comparing a
+    retrained weight-pruned model against an un-retrained channel-pruned one would
+    flatter weights enormously, and the two converge once both are allowed to
+    recover.
+    """
     import matplotlib.pyplot as plt
 
-    by_sparsity = {}
-    for r in records:
-        if r.get("granularity") != "unstructured":
-            continue
-        s = r["prune_meta"]["requested_sparsity"]
-        # Either record carries the same damage number; keep one per level.
-        by_sparsity.setdefault(s, r)
-    fine = [by_sparsity[k] for k in sorted(by_sparsity)]
-    chan = sorted([r for r in records if "_nofinetune" in r["model_id"]
-                   and r.get("granularity") != "unstructured"
-                   and r.get("prune_meta", {}).get("requested_channel_ratio") is not None],
-                  key=lambda r: r["prune_meta"]["requested_channel_ratio"])
-    if not fine or not chan:
+    chan_acc = sorted(
+        (100 * r["prune_meta"]["params_reduction"], r["map50_dfire_test"])
+        for r in records
+        if "_nofinetune" in r["model_id"]
+        and r.get("granularity") != "unstructured"
+        and (r.get("prune_meta") or {}).get("params_reduction") is not None)
+    wgt_acc = sorted({
+        (100 * (1 - m["nonzero_params_m"] / m["dense_params_m"]), m["map50_before_recovery"])
+        for r in records
+        for m in [r.get("prune_meta") or {}]
+        if m.get("granularity") == "unstructured"
+        and m.get("map50_before_recovery") is not None})
+    if not chan_acc or not wgt_acc:
         return None
 
-    fig, ax = plt.subplots(figsize=(8.4, 5.0))
-    fig.suptitle("The same network survives losing half its weights and dies "
-                 "losing 5% of its channels", y=1.05)
-    style.subtitle(fig, "Both lines remove capacity with no retraining. Only the SHAPE of "
-                        "the removal differs, and that is what the detector cannot absorb.",
-                   y=0.985)
+    def eng(tag):
+        return by_id(records, f"yolov5s_e5b_{tag}")
 
-    cx = [100 * r["prune_meta"]["requested_channel_ratio"] for r in chan]
-    cy = [r["map50_dfire_test"] for r in chan]
-    ax.plot(cx, cy, "o-", color=style.RED, linewidth=2.2, markersize=8,
-            label="whole channels removed", zorder=4)
+    base = eng("dense")
+    if not base:
+        return None
 
-    fx = [100 * r["prune_meta"]["requested_sparsity"] for r in fine]
-    fy = [r["prune_meta"].get("map50_before_recovery") for r in fine]
-    if all(v is not None for v in fy):
-        ax.plot(fx, fy, "s-", color=style.AQUA, linewidth=2.2, markersize=8,
-                label="individual weights removed", zorder=5)
+    def eseries(tags):
+        pts = [(0.0, base["jetson"])]
+        for tg in tags:
+            r = eng(tg)
+            if r:
+                pts.append((r["granularity_meta"]["params_removed_frac"] * 100, r["jetson"]))
+        return sorted(pts)
 
-    base = UNPRUNED_MAP50
-    ax.axhline(base, color=style.MUTED, linestyle=":", linewidth=1.6, zorder=2)
-    ax.text(97, base + 0.02, "unpruned", fontsize=9.5, color=style.INK_2, ha="right")
+    chan_e = eseries(["chan25", "chan50", "chan70"])
+    wgt_e = eseries(["weight50", "weight90"])
 
-    ax.annotate("5% of channels:\naccuracy is gone", xy=(5, cy[min(2, len(cy)-1)]),
-                xytext=(16, 0.30), textcoords="data", fontsize=9.5,
-                color=style.RED, fontweight="bold",
-                arrowprops=dict(arrowstyle="->", color=style.RED, linewidth=1.2))
-    if all(v is not None for v in fy):
-        ax.annotate("50% of weights:\nbarely a scratch", xy=(50, fy[1] if len(fy) > 1 else fy[0]),
-                    xytext=(40, 0.90), textcoords="data", fontsize=9.5,
-                    color=style.AQUA, fontweight="bold",
-                    arrowprops=dict(arrowstyle="->", color=style.AQUA, linewidth=1.2))
+    CH, WG = style.RED, style.AQUA
+    fig, axes = plt.subplots(1, 3, figsize=(15.2, 4.3))
+    fig.suptitle("Deleting channels and zeroing weights are not the same operation", y=1.09)
+    style.subtitle(fig, "One axis throughout: how much of the model is actually gone. Weights "
+                        "survive damage that channels cannot, and channels buy speed that "
+                        "weights never do.", y=1.01)
 
-    ax.set_xlabel("capacity removed (%)")
-    ax.set_ylabel("detection accuracy (mAP50), no retraining")
-    ax.set_xlim(-3, 100)
-    ax.set_ylim(-0.04, 0.95)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2)
-    style.tidy(ax)
-    fig.text(0.5, -0.20, "Removing individual weights has no speed benefit on this "
-                         "hardware: irregular zeros sit in a full-size tensor and the GPU "
-                         "does the same work.\nThe comparison is about what the network can "
-                         "tolerate, not about what runs faster.",
-             ha="center", fontsize=9, color=style.MUTED)
+    ax = axes[0]
+    ax.plot(*zip(*([(0.0, UNPRUNED_MAP50)] + list(chan_acc))), "o-", color=CH,
+            linewidth=2.2, markersize=7, label="whole channels deleted", zorder=4)
+    ax.plot(*zip(*([(0.0, UNPRUNED_MAP50)] + list(wgt_acc))), "s-", color=WG,
+            linewidth=2.2, markersize=7, label="individual weights zeroed", zorder=5)
+    ax.axhline(UNPRUNED_MAP50, color=style.MUTED, linestyle=":", linewidth=1.4, zorder=2)
+    ax.annotate("7% of the model gone\nand accuracy with it", xy=chan_acc[1],
+                xytext=(30, 0.34), textcoords="data", fontsize=9, color=CH,
+                fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=CH, linewidth=1.2))
+    ax.set_ylabel("accuracy (mAP50), no retraining")
+    ax.set_ylim(-0.05, 0.95)
+    ax.set_title("What it costs", fontsize=11.5, pad=8)
+    ax.legend(loc="upper right", fontsize=8.5)
+
+    for ax, key, std_key, ylab, title, lab_va in (
+            (axes[1], "fps_batched", "fps_batched_std", "images per second", "What it buys",
+             "top"),
+            (axes[2], "energy_j_per_1000_frames", None, "joules per 1000 frames",
+             "What it draws", "bottom")):
+        ref = base["jetson"].get(key)
+        ax.axhline(ref, color=style.MUTED, linestyle=":", linewidth=1.4, zorder=2)
+        # The weights line sits almost exactly on the reference in the speed panel,
+        # so the label goes below it there and above it in the energy panel.
+        ax.text(98, ref, "unpruned", fontsize=9, color=style.INK_2, ha="right", va=lab_va)
+        for pts, colour, marker in ((chan_e, CH, "o"), (wgt_e, WG, "s")):
+            ys = [j.get(key) for _, j in pts]
+            if any(v is None for v in ys):
+                continue
+            es = [(j.get(std_key) or 0.0) for _, j in pts] if std_key else None
+            ax.errorbar([x for x, _ in pts], ys, yerr=es, fmt=marker + "-", color=colour,
+                        linewidth=2.2, markersize=7, capsize=3, zorder=4)
+        ax.set_ylabel(ylab)
+        ax.set_title(title, fontsize=11.5, pad=8)
+
+    dip = min(chan_e[1:], key=lambda p: p[1]["fps_batched"])
+    axes[1].annotate("slower than\nnot pruning", (dip[0], dip[1]["fps_batched"]),
+                     xytext=(28, 6), textcoords="offset points", fontsize=9.5, color=CH,
+                     fontweight="bold", ha="left", va="center",
+                     arrowprops=dict(arrowstyle="->", color=CH, lw=1.3))
+
+    for ax in axes:
+        ax.set_xlabel("percent of the model removed")
+        ax.set_xlim(-4, 100)
+        style.tidy(ax)
+
     fig.tight_layout()
     return save(fig, "xp06e5_granularity.png")
 
@@ -1123,105 +1162,8 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 
-# --------------------------------------------------------------------------
-# XP6 E5b — does deleting channels buy the speed that zeroing weights does not?
-# --------------------------------------------------------------------------
-
-E5B_ARMS = {"channel": ["chan25", "chan50", "chan70"],
-            "weight": ["weight50", "weight90"]}
-
-
-def fig_xp06e5b(records) -> Path | None:
-    """Two granularities on the one axis where they compare.
-
-    A 25% channel cut and a 25% weight cut are not the same amount of network,
-    so both series are plotted against the **fraction of parameters removed**.
-    Both start from the same unpruned point, which is what makes the divergence
-    legible: one line is flat and the other is not even monotonic.
-    """
-    import matplotlib.pyplot as plt
-
-    def get(tag):
-        return by_id(records, f"yolov5s_e5b_{tag}")
-
-    base = get("dense")
-    if not base:
-        return None
-
-    def series(tags):
-        pts = [(0.0, base["jetson"], base["granularity_meta"])]
-        for tg in tags:
-            r = get(tg)
-            if r:
-                pts.append((r["granularity_meta"]["params_removed_frac"] * 100,
-                            r["jetson"], r["granularity_meta"]))
-        return sorted(pts)
-
-    chan, wgt = series(E5B_ARMS["channel"]), series(E5B_ARMS["weight"])
-    if len(chan) < 2 or len(wgt) < 2:
-        return None
-
-    fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.4))
-    fig.suptitle("Only one of these two ways of shrinking a network makes it faster", y=1.07)
-    style.subtitle(fig, "Deleting channels makes the tensors smaller. Zeroing weights leaves "
-                        "them full-size with holes in them. Same axis: how much of the model "
-                        "is gone.", y=1.0)
-
-    ref_fps = base["jetson"]["fps_batched"]
-    ref_j = base["jetson"].get("energy_j_per_1000_frames")
-
-    for ax, key, std_key, ref, ylab, title in (
-            (axes[0], "fps_batched", "fps_batched_std", ref_fps,
-             "images per second", "Speed"),
-            (axes[1], "energy_j_per_1000_frames", None, ref_j,
-             "joules per 1000 frames", "Energy")):
-        if ref is None:
-            continue
-        ax.axhline(ref, color=style.INK, linestyle=":", linewidth=1.3, zorder=2)
-        ax.annotate("unpruned", (0.5, ref), xytext=(2, 5), textcoords="offset points",
-                    fontsize=9, color=style.INK_2, va="bottom")
-
-        for pts, colour, label, marker in ((chan, style.ORANGE, "channels deleted", "o"),
-                                           (wgt, style.BLUE, "weights zeroed", "s")):
-            xs = [x for x, _, _ in pts]
-            ys = [j.get(key) for _, j, _ in pts]
-            if any(v is None for v in ys):
-                continue
-            es = [(j.get(std_key) or 0.0) for _, j, _ in pts] if std_key else None
-            ax.errorbar(xs, ys, yerr=es, fmt=marker + "-", color=colour, linewidth=2.2,
-                        markersize=8, capsize=4, label=label, zorder=4)
-
-        ax.set_xlabel("percent of the model removed")
-        ax.set_ylabel(ylab)
-        ax.set_title(title, fontsize=11.5, pad=8)
-        ax.set_xlim(-4, 100)
-        style.tidy(ax)
-
-    # The finding that has to survive a five-second look: pruning a third of the
-    # channels away makes it SLOWER than leaving it alone.
-    ax = axes[0]
-    ax.axhspan(ax.get_ylim()[0], ref_fps, color=style.RED, alpha=0.07, zorder=1)
-    dip = min(chan[1:], key=lambda p: p[1]["fps_batched"])
-    # Inside the shaded band and to the right: below the point would land the
-    # text on the x-axis tick labels.
-    ax.annotate("slower than not\npruning at all",
-                (dip[0], dip[1]["fps_batched"]), xytext=(34, 14),
-                textcoords="offset points", fontsize=10, color=style.RED,
-                fontweight="bold", ha="left", va="center",
-                arrowprops=dict(arrowstyle="->", color=style.RED, lw=1.4))
-    top = max(chan, key=lambda p: p[1]["fps_batched"])
-    ax.annotate(f"{top[1]['fps_batched'] / ref_fps:.2f}x", (top[0], top[1]["fps_batched"]),
-                xytext=(-6, 12), textcoords="offset points", fontsize=10.5,
-                color=style.ORANGE, fontweight="bold", ha="right")
-    ax.legend(loc="upper left")
-    axes[1].legend(loc="lower left")
-
-    fig.tight_layout()
-    return save(fig, "xp06e5b_granularity_speed.png")
-
-
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e5b, fig_xp06e6,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e6,
             fig_xp06e7]
 
 

@@ -63,6 +63,8 @@ Each section below is one experiment. The unpruned model is the top row of every
 
 ## E1. Which layers can be cut
 
+> **Axis:** ratio &nbsp;·&nbsp; **Asks:** which layers can be cut at all? &nbsp;·&nbsp; **Answer:** the fragile ones are exactly those that free the least
+
 Prune one layer, leave the other 56 alone, measure, put it back, move on. 57 layers x 5 depths
 of cut, on the **validation** split, since the result chooses a configuration and test has to
 stay clean.
@@ -95,6 +97,8 @@ is enough to fix it.
 ---
 
 ## E2. Which channels to pick
+
+> **Axis:** criterion &nbsp;·&nbsp; **Asks:** which channels to pick, and does it beat random? &nbsp;·&nbsp; **Answer:** it decides everything, 99% kept against 12%
 
 This page used to say a 5% cut costs 88% of the accuracy. That is mostly a fact about **L2**,
 the one selection rule that had ever been tried.
@@ -180,6 +184,8 @@ cases and matters enormously for distant smoke.
 
 ## E3. Does regular channel shape recover the missing speed?
 
+> **Axis:** shape regularity &nbsp;·&nbsp; **Asks:** does rounding channel counts recover the missing speed? &nbsp;·&nbsp; **Answer:** accuracy costs nothing; speed still pending the board
+
 XP6's most surprising observation was that a *larger* pruned model ran *faster* than a smaller
 one. The suspected cause: pruning leaves layers at awkward widths like 47, and GPU kernels are
 written for regular tile sizes, so a rounded shape should run better. `round_to` forces surviving
@@ -212,6 +218,8 @@ workload is not compute bound, it may buy little. The measurement will settle it
 ---
 
 ## E4. The one pattern the hardware understands
+
+> **Axis:** granularity &nbsp;·&nbsp; **Asks:** does 2:4, the one pattern the hardware understands, hold up? &nbsp;·&nbsp; **Answer:** accuracy holds, and the compiler refuses the sparse kernels
 
 **2:4 sparsity: of every four neighbouring weights, exactly two must be zero.** Half the numbers
 go, but *where* they go is fixed. That constraint is the point. Ampere GPUs, the Orin's included,
@@ -308,6 +316,8 @@ measurement order reproduced the ranking, so it belongs to the engine, but "repr
 
 ## E5. Whole channels versus individual weights
 
+> **Axis:** granularity &nbsp;·&nbsp; **Asks:** is the collapse a capacity limit or a structural one? &nbsp;·&nbsp; **Answer:** structural, decisively
+
 E1, E2, E6 and E7 deleted **whole channels**. E4 zeroed **individual weights** under a pattern.
 This zeros them with no pattern at all. A convolution's weights are a grid
 `[out, in, height, width]`:
@@ -324,30 +334,31 @@ This zeros them with no pattern at all. A convolution's weights are a grid
 > value it points to. **2:4 is the exception**, because two-of-four positions fit in a couple of
 > bits, which is why [E4](#e4-the-one-pattern-the-hardware-understands) is its own experiment.
 
-So this cannot produce a deployable model. It answers the one question channel pruning cannot:
-**is this detector short of capacity, or short of structure?**
+Everything below is on one axis, **percent of the model actually removed**, because a 25% channel
+cut removes 39.6% of the parameters and the nominal ratios do not compare.
 
-![The same network survives losing half its weights and dies losing 5% of its channels](../../results/figures/xp06e5_granularity.png)
+![Deleting channels and zeroing weights are not the same operation](../../results/figures/xp06e5_granularity.png)
 
-| what was removed | model size | non-zero weights | mAP50 |
-|---|---|---:|---:|
-| **nothing** | 7.03 M | 7.03 M | **0.7764** |
-| 25% of individual weights | still 7.03 M | 5.28 M | 0.7552 |
-| **90% of individual weights** | **still 7.03 M** | **0.74 M** | **0.7425** |
-| 5% of *channels* | genuinely 6.53 M | 6.53 M | 0.0956 |
+**What it costs** (damage, no retraining in either series):
 
-- **Nine tenths of the numbers can be zeroed and it still works**: 0.7425.
-- **Deleting 5% of the channels destroys it**: 0.0956.
-- Same capacity removed, opposite outcome. **The capacity was never the constraint; the structure
-  is.** A channel is a unit everything downstream is built around. A weight is not.
+| removed | channels deleted | weights zeroed |
+|---:|---:|---:|
+| 0% | **0.7764** | **0.7764** |
+| ~7% | 0.0956 | |
+| ~25% | 0.0000 | 0.7775 |
+| ~50% | 0.0000 | 0.7622 |
+| ~70% | 0.0000 | 0.5066 |
+| ~90% | 0.0000 | 0.1447 |
 
-### The other half of the trade: speed
+- **Weights absorb damage that channels cannot.** Half the model zeroed costs 1.4 points; 7% of
+  the model deleted as channels costs almost everything.
+- **The capacity was never the constraint; the structure is.** A channel is a unit everything
+  downstream is built around. A weight is not.
+- **Retraining closes most of the gap**, which is why the table above is damage only. Recovered,
+  90% of weights reaches 0.7425 and 25% of channels reaches 0.7297. The structural advantage is
+  real before recovery and largely gone after it.
 
-Channels shrink the tensors, so they should be the granularity that buys speed. Both, measured as
-TensorRT engines on the board, against the only comparable axis: how much of the model is
-actually gone. A 25% channel cut removes 39.6% of the parameters, so nominal ratios are not used.
-
-![Only one of these two ways of shrinking a network makes it faster](../../results/figures/xp06e5b_granularity_speed.png)
+**What it buys, and what it draws** (TensorRT engines on the board):
 
 | removed | how | non-zero | throughput | energy |
 |---:|---|---:|---:|---:|
@@ -363,15 +374,16 @@ actually gone. A 25% channel cut removes 39.6% of the parameters, so nominal rat
 - **In between it goes backwards.** At 39.6% removed the engine runs **18% slower than unpruned**,
   reproducing the 381 img/s XP6 measured earlier. Widths like 47 instead of 64 are what
   [E3](#e3-does-regular-channel-shape-recover-the-missing-speed) tests.
-- **The speed arrives only after the accuracy has gone.** A 50% and a 70% channel cut both score
-  0.0000. The only cut ever recovered to something usable is 25%, which is exactly the point that
-  runs slower than doing nothing.
+- **The speed arrives only after the accuracy has gone.** Read the three panels at 90% removed:
+  channels are 1.55x faster at 0.0000 mAP50, weights hold 0.1447 and gain nothing.
 
 **Neither granularity has a setting where both work.** That is the verdict of XP6 in one figure.
 
 ---
 
 ## E6. How to spread the cut
+
+> **Axis:** ratio &nbsp;·&nbsp; **Asks:** same cut spread three ways, does allocation rescue it? &nbsp;·&nbsp; **Answer:** it helps, but far less than choosing a better rule
 
 Using E1's map, protect the fragile layers and cut hard where there is slack. All three arms are
 matched to the same measured size by search, so only the distribution varies.
@@ -386,6 +398,8 @@ otherwise causes.
 ---
 
 ## E7. One-shot versus iterative, fairly
+
+> **Axis:** retraining &nbsp;·&nbsp; **Asks:** does iterative still lose when both arms train equally? &nbsp;·&nbsp; **Answer:** yes, it still loses
 
 The original comparison was confounded: both arms got 12 epochs, but the iterative model's final
 shape existed for only 4 of them while one-shot trained all 12 in its final shape. Here both get
