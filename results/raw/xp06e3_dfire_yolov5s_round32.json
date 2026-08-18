@@ -1,0 +1,247 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_round32",
+  "params_m": 3.5225,
+  "size_disk_mb": 14.58,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7377,
+  "map5095_dfire_test": 0.3817,
+  "map50_fire_class": 0.6755,
+  "map50_smoke_class": 0.7999,
+  "map50_small_plume": 0.5622,
+  "map50_tiny_plume": 0.1072,
+  "bg_false_alarm_rate": 0.0464,
+  "bg_correctly_silent_rate": 0.9536,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": null,
+  "accuracy_detail": {
+    "map5095": 0.3817,
+    "map50": 0.7377,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.4432,
+        "map50": 0.7999
+      },
+      "fire": {
+        "map5095": 0.3202,
+        "map50": 0.6755
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2267,
+      "map50": 0.5622
+    },
+    "tiny_plume": {
+      "map5095": 0.0283,
+      "map50": 0.1072
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 93,
+      "false_alarm_rate": 0.0464,
+      "correctly_silent_rate": 0.9536,
+      "false_boxes_per_bg_image": 0.0504
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 55919,
+    "fingerprint": "e5d8c92c9af237d6"
+  },
+  "ood_detail": null,
+  "notes": "XP6 E3: 25% channels pruned one-shot with l1, surviving channel counts rounded up to a multiple of 32. THE HEADLINE NUMBER FOR THIS EXPERIMENT IS THROUGHPUT AND IT IS NOT IN THIS FILE: it has to be measured on the Jetson, because an engine is compiled per GPU architecture. What this record establishes is the accuracy cost of alignment, so the board's speed numbers can be read against a known accuracy. Unpruned reference 0.7764 mAP50. 3090 SCREENING MEASUREMENT, off-device: accuracy only. No latency, throughput or energy is recorded here because a TensorRT engine is compiled per GPU architecture and a 3090 figure says nothing about a 15 W Orin. torch 2.13.0+cu126, batch 32, 12 epochs at 512px.",
+  "prune_meta": {
+    "requested_channel_ratio": 0.25,
+    "importance": "l1",
+    "round_to": 32,
+    "global_pruning": true,
+    "per_layer_ratios": false,
+    "params_m_before": 7.025,
+    "params_m_after": 3.5225,
+    "params_reduction": 0.4986,
+    "gmacs_before": 5.075,
+    "gmacs_after": 2.504,
+    "macs_reduction": 0.5067,
+    "method": "oneshot",
+    "surviving_widths": [
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      96,
+      32,
+      32,
+      96,
+      32,
+      32,
+      32,
+      32,
+      192,
+      96,
+      96,
+      192,
+      96,
+      96,
+      96,
+      96,
+      96,
+      96,
+      416,
+      192,
+      224,
+      384,
+      192,
+      192,
+      224,
+      384,
+      192,
+      96,
+      96,
+      160,
+      64,
+      64,
+      64,
+      32,
+      32,
+      64,
+      32,
+      32,
+      64,
+      96,
+      64,
+      128,
+      96,
+      96,
+      160,
+      160,
+      128,
+      288,
+      160,
+      160,
+      21,
+      21,
+      21
+    ],
+    "widths_divisible_by_8": 57,
+    "widths_divisible_by_16": 57,
+    "widths_divisible_by_32": 57,
+    "n_conv_layers": 60
+  },
+  "train_meta": {
+    "epochs": 12,
+    "res": 512,
+    "batch": 32,
+    "hyp": {
+      "lr0": 0.0032,
+      "lrf": 0.12,
+      "momentum": 0.937,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 2.0,
+      "warmup_momentum": 0.5,
+      "warmup_bias_lr": 0.05,
+      "box": 0.05,
+      "cls": 0.012500000000000002,
+      "cls_pw": 1.0,
+      "obj": 0.6400000000000001,
+      "obj_pw": 1.0,
+      "iou_t": 0.2,
+      "anchor_t": 4.0,
+      "fl_gamma": 0.0,
+      "label_smoothing": 0.0,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4,
+      "degrees": 0.0,
+      "translate": 0.1,
+      "scale": 0.5,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "flipud": 0.0,
+      "fliplr": 0.5,
+      "mosaic": 0.5,
+      "mixup": 0.0,
+      "copy_paste": 0.0
+    },
+    "accumulate": 2,
+    "ema": true,
+    "total_minutes": 19.4,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 2.36754,
+        "minutes": 1.61
+      },
+      {
+        "epoch": 2,
+        "loss": 1.77435,
+        "minutes": 1.63
+      },
+      {
+        "epoch": 3,
+        "loss": 1.75201,
+        "minutes": 1.59
+      },
+      {
+        "epoch": 4,
+        "loss": 1.71062,
+        "minutes": 1.61
+      },
+      {
+        "epoch": 5,
+        "loss": 1.66008,
+        "minutes": 1.59
+      },
+      {
+        "epoch": 6,
+        "loss": 1.63716,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 7,
+        "loss": 1.5928,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 8,
+        "loss": 1.57094,
+        "minutes": 1.64
+      },
+      {
+        "epoch": 9,
+        "loss": 1.53444,
+        "minutes": 1.63
+      },
+      {
+        "epoch": 10,
+        "loss": 1.51839,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 11,
+        "loss": 1.49298,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 12,
+        "loss": 1.46248,
+        "minutes": 1.62
+      }
+    ]
+  },
+  "machine": "rtx3090_screening",
+  "experiment": "xp06e3",
+  "round_to": 32,
+  "criterion": "l1",
+  "verdict_requires": "jetson_throughput",
+  "speed_measured": false
+}
