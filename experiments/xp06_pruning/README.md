@@ -198,34 +198,24 @@ cases and matters enormously for distant smoke.
 
 > **Axis:** shape regularity &nbsp;·&nbsp; **Asks:** does rounding channel counts recover the missing speed? &nbsp;·&nbsp; **Answer:** accuracy costs nothing; speed still pending the board
 
-XP6's most surprising observation was that a *larger* pruned model ran *faster* than a smaller
-one. The suspected cause: pruning leaves layers at awkward widths like 47, and GPU kernels are
-written for regular tile sizes, so a rounded shape should run better. `round_to` forces surviving
-channel counts onto a multiple of 8, 16 or 32.
+XP6 saw a *larger* pruned model run *faster* than a smaller one. The suspected cause: pruning
+leaves layers at awkward widths like 47, and GPU kernels are written for regular tile sizes.
+`round_to` forces surviving channel counts onto a multiple of 8, 16 or 32 to test it.
 
-The accuracy cost of that rounding is **negligible**, screened on the 3090:
+![Rounding channel counts reshapes the model for almost no accuracy](../../results/figures/xp06e3_regularity.png)
 
-| round_to | params | layers landing on a multiple of 32 | mAP50 |
-|---|---:|---:|---:|
-| 1 (no rounding) | 4.21 M | 0 of 60 | 0.7458 |
-| 8 | 4.03 M | 13 of 60 | 0.7436 |
-| 16 | 3.79 M | 28 of 60 | 0.7351 |
-| 32 | 3.52 M | 57 of 60 | 0.7377 |
-
-Rounding changes the shape completely (0 aligned layers becomes 57) while accuracy moves less
-than one point, inside the noise of a 12-epoch recovery.
-
-**The speed verdict is a board measurement and is not in yet.** The four engines have to be
-built and timed on the Jetson, by [`e3_speed.py`](e3_speed.py), the same way [E4](#e4-the-one-pattern-the-hardware-understands)
-was. One caveat is already visible and will have to be stated with whatever the board returns:
-rounding also **shrinks** the model (4.21 M down to 3.52 M), so the arms are not size-matched. If
-`round_to=32` runs faster, part of that is regularity and part is simply being smaller, and only
-a further size-matched arm could separate them.
-
-There is a reason for caution about the result before it arrives. E4 found the runtime on this
-board to be kernel-launch and memory bound at 512 px, not compute bound, which is why TensorRT
-declined every sparse kernel. Regularity helps a compute kernel choose a better tile; if the
-workload is not compute bound, it may buy little. The measurement will settle it.
+- **Rounding transforms the shape.** From 0 of 60 conv layers on a multiple of 32 at
+  `round_to=1`, to 57 of 60 at `round_to=32`.
+- **Accuracy barely notices.** 0.7458 down to 0.7377 across the four, less than one point, inside
+  the noise of a 12-epoch recovery.
+- **The speed verdict needs the board and is not in yet.** The four engines get built and timed
+  on the Jetson by [`e3_speed.py`](e3_speed.py), the way [E4](#e4-the-one-pattern-the-hardware-understands) was.
+- **One caveat already visible:** rounding also *shrinks* the model (4.21 M to 3.52 M), so the
+  arms are not size-matched. A faster `round_to=32` would mix regularity with size, and only a
+  further size-matched arm could separate them.
+- **Expect little.** [E4](#e4-the-one-pattern-the-hardware-understands) found this board
+  launch- and memory-bound at 512 px, not compute-bound. Regularity helps a compute kernel pick
+  a better tile; if the workload is not compute-bound, it may buy nothing.
 
 ---
 

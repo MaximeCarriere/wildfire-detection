@@ -1021,6 +1021,75 @@ def fig_xp06e6(records) -> Path | None:
     return save(fig, "xp06e6_allocation.png")
 
 
+def fig_xp06e3(records) -> Path | None:
+    """Rounding transforms the channel shape while accuracy barely moves."""
+    import matplotlib.pyplot as plt
+
+    rows = []
+    for fp in sorted(RAW.glob("xp06e3_dfire_yolov5s_round*.json")):
+        d = json.loads(fp.read_text())
+        m = d["prune_meta"]
+        rows.append({"r": m["round_to"], "map50": d["map50_dfire_test"],
+                     "params": d["params_m"], "aligned": m["widths_divisible_by_32"],
+                     "n": m["n_conv_layers"]})
+    rows.sort(key=lambda x: x["r"])
+    if len(rows) < 2:
+        return None
+
+    xs = list(range(len(rows)))
+    labels = [f"round to\n{x['r']}" for x in rows]
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.4))
+    fig.suptitle("Rounding channel counts reshapes the model for almost no accuracy",
+                 y=1.03)
+    style.subtitle(fig, "Forcing surviving widths onto a multiple takes the model from 0 to 57 "
+                        "aligned layers, while mAP50 moves less than one point.", y=0.965)
+
+    # Panel 1: alignment, the thing that changes.
+    ax = axes[0]
+    bars = ax.bar(xs, [x["aligned"] for x in rows], width=0.62, color=style.BLUE, zorder=3)
+    for b, x in zip(bars, rows):
+        if x["aligned"] > 6:                 # tall enough to hold the label inside
+            ax.text(b.get_x() + b.get_width() / 2, x["aligned"] - 2.5, str(x["aligned"]),
+                    ha="center", va="top", fontsize=11, fontweight="bold", color="white")
+        else:                                # short/zero bar: label sits just above it
+            ax.text(b.get_x() + b.get_width() / 2, x["aligned"] + 1, str(x["aligned"]),
+                    ha="center", va="bottom", fontsize=11, fontweight="bold", color=style.INK)
+    ax.set_xticks(xs)
+    ax.set_xticklabels(labels)
+    ax.set_ylabel(f"conv layers on a multiple of 32 (of {rows[0]['n']})")
+    ax.set_ylim(0, rows[0]["n"] * 1.05)
+    ax.set_title("The shape changes completely", fontsize=11.5, pad=8)
+    style.tidy(ax)
+
+    # Panel 2: accuracy, the thing that does not.
+    ax = axes[1]
+    ax.plot(xs, [x["map50"] for x in rows], "o-", color=style.AQUA, linewidth=2.2,
+            markersize=9, zorder=4)
+    for xi, x in zip(xs, rows):
+        ax.annotate(f"{x['map50']:.4f}\n{x['params']:.2f} M", (xi, x["map50"]),
+                    xytext=(0, 12), textcoords="offset points", ha="center",
+                    fontsize=9, fontweight="bold", color=style.INK)
+    ax.axhline(UNPRUNED_MAP50, color=style.INK_2, linestyle=":", linewidth=1.5,
+               zorder=2, xmax=0.82)
+    ax.text(len(rows) - 0.9, UNPRUNED_MAP50, "unpruned", fontsize=9.5,
+            color=style.INK_2, ha="left", va="center")
+    ax.set_xticks(xs)
+    ax.set_xticklabels(labels)
+    ax.set_ylabel("accuracy (mAP50)")
+    ax.set_ylim(0.70, UNPRUNED_MAP50 * 1.02)
+    ax.set_xlim(-0.4, len(rows) - 0.3)
+    ax.set_title("The accuracy does not", fontsize=11.5, pad=8)
+    style.tidy(ax)
+
+    fig.text(0.5, -0.04, "Screened on the RTX 3090. Whether the regular shape runs faster is a "
+                         "board measurement, still pending. Rounding also shrinks the model "
+                         "(4.21 M to 3.52 M), so speed and size are not yet separable.",
+             ha="center", fontsize=8.5, color=style.MUTED)
+    fig.tight_layout()
+    return save(fig, "xp06e3_regularity.png")
+
+
 def fig_xp06e7(records) -> Path | None:
     """The one-shot versus iterative comparison, with the confound removed."""
     import matplotlib.pyplot as plt
@@ -1163,7 +1232,8 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e6,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5,
+            fig_xp06e6,
             fig_xp06e7]
 
 
