@@ -49,7 +49,7 @@ named method is one combination of those four. Each experiment below changes exa
 | **E1** | ratio | which layers can be cut at all? | ✅ fragile layers are the ones that free the least |
 | **E2** | criterion | which channels to pick, and does it beat random? | ✅ decides everything: 99% kept vs 12% |
 | **E3** | shape regularity | does rounding channel counts recover the missing speed? | ❌ **not run**, and needs the board |
-| **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **speed needs the board** |
+| **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **the compiler refuses the sparse kernels** |
 | **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
 | **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ helps, but far less than E2 |
 | **E7** | retraining | does iterative still lose when both arms train equally? | ✅ yes, it still loses |
@@ -192,25 +192,102 @@ its zeros anywhere. The bottom one must place exactly two in every group of four
 black lines. Same quantity, different freedom, and the bars on the right show what that freedom
 was worth.
 
-| | non-zero weights | mAP50 | tiny plumes |
+**Half the weights removed, three ways.** Every row below deletes the same number of weights
+(3.49 M of 6.99 M) from the same 57 layers, chosen by magnitude. Only the rule about *where* the
+zeros may sit changes.
+
+| 50% of the weights deleted | non-zero | mAP50 | tiny plumes |
 |---|---:|---:|---:|
-| **unpruned** | 7.03 M | **0.7764** | 0.1380 |
-| 2:4, no retraining | 3.53 M | **0.0000** | 0.0000 |
-| 2:4, after 12 epochs | 3.53 M | **0.7527** | 0.1249 |
+| **none (unpruned)** | 7.03 M | **0.7764** | 0.1380 |
+| free choice of where ([E5](#e5-whole-channels-versus-individual-weights)) | 3.53 M | 0.7622 | 0.1562 |
+| **forced into a 2:4 pattern** | 3.53 M | **0.0000** | 0.0000 |
+| forced into a 2:4 pattern, then 12 epochs | 3.53 M | 0.7527 | 0.1249 |
 
-Retraining wins it all back, to 97% of the unpruned model, matching what NVIDIA reports for
-detection. But note the untrained row against E5's: removing 50% of the weights **freely** costs
-almost nothing (0.7622), and removing the same 50% **in a fixed pattern** scores zero. **It is not how much you remove,
-it is whether the removal has to follow a shape.**
+Same quantity deleted, same layers, same criterion. Choosing freely costs **1.4 points**.
+Following the pattern costs **everything**. **It is not how much you remove, it is whether the
+removal has to follow a shape.** Retraining then wins it back to 97% of unpruned, matching what
+NVIDIA reports for detection.
 
-Whether the board's compiler actually uses sparse kernels is a separate question with a separate
-answer. If it does, this is the most promising candidate in the study: channel-pruning accuracy
-at half the weights. See [`HANDOFF_TO_JETSON.md`](HANDOFF_TO_JETSON.md).
+> **"Free" here means free to choose *where*, never free of charge.** Free-form pruning is
+> unconstrained in **placement**, and it still costs: 1.4 accuracy points at 50% before
+> retraining, and a file that does not shrink by a single byte. It buys no speed either, for a
+> reason worth stating plainly: the kernels still multiply every position in the grid, and
+> multiplying by zero costs exactly what multiplying by anything else costs (measured below).
+> What it is free of is the pattern constraint. This experiment exists to price that constraint,
+> and the price turns out to be everything.
+
+### Why the patterned half collapses
+
+**Free-form pruning is adaptive; 2:4 cannot be.** One global threshold (0.0069) lets the network
+decide where the budget lands, and it lands very unevenly: measured per-layer sparsity runs from
+**8.4% to 87.6%**. Layers full of small weights are stripped bare, layers full of large ones are
+barely touched. 2:4 takes exactly 50% from every one of the 57 layers, because the quota is
+enforced inside every group of four and a group cannot know it sits in an important layer.
+
+| what actually got deleted | free choice | 2:4 pattern |
+|---|---:|---:|
+| largest single weight removed | 0.0069 | **0.4365** |
+| share of the network's weight energy removed | 2.1% | **12.6%** |
+| weights removed from the network's strongest 10% | **0** | **64,990** |
+| per-layer sparsity | 8.4% to 87.6% | 50.0% everywhere |
+
+At identical sparsity the patterned cut destroys **six times the weight energy** and deletes
+65,000 weights from the strongest tenth of the network. Free-form deletes none of them, ever, by
+definition of the threshold.
+
+It also lands hardest exactly where this network can least afford it. The first convolution holds
+the largest weights in the model; free-form removes 9.0% of it, 2:4 removes 50%, including one
+weight of magnitude 0.4365. [E1](#e1-which-layers-can-be-cut) already measured that bill:
+halving the first convolution alone costs **84%** of the accuracy.
+
+**That is also why the score is exactly 0.0000 rather than merely low.** Maximum objectness over
+a 48-image batch: unpruned **0.911**, free choice **0.895**, 2:4 **0.00022**. The patterned model
+still draws boxes internally, but at confidences roughly 4,000x too low to clear any sensible
+threshold, so mAP falls off a cliff instead of sliding. Twelve epochs of retraining rescale the
+head and the accuracy comes back, which tells you the capacity was never lost. The calibration
+was.
+
+### Does it actually run faster?
+
+Accuracy was screened on a desktop GPU. Speed cannot be, because a TensorRT engine is compiled
+per GPU architecture, so this is measured on the Jetson. Four engines, same network, same shape,
+same arithmetic: only which weights are zero, and whether the compiler was allowed to exploit
+them. Each arm is timed twice, once down the list and once up it, because four engines timed back
+to back would alias any drift in clocks or die temperature onto arm identity.
+
+![2:4 sparsity on the board](../../results/figures/xp06e4b_sparsity_speed.png)
+
+**The answer is in the build log, not the bars.**
+
+```
+(Sparsity) Found 39 layer(s) eligible to use sparse tactics
+(Sparsity) Chose 0 layer(s) using sparse tactics
+```
+
+TensorRT identified 39 layers it could run with sparse kernels, timed them against the dense
+ones, and **picked dense every single time**. The sparse engine is a dense engine. The hardware
+path exists on this board and the compiler declined to take it, so the 2x that Ampere's sparse
+tensor cores promise is simply not on offer for this network at this size.
+
+**Then what is the 3.5%?** Not sparsity. The giveaway is the second row: free-form 50% also comes
+out 1.6% faster than dense, and free-form 50% runs *identical arithmetic through identical
+kernels*. A difference that appears where no difference can physically exist is the noise floor
+between independently built engines, and TensorRT autotunes each build separately. Reversing the
+measurement order reproduced the same ranking, so it is a property of the engine rather than of
+when it was measured, but "reproducible" and "caused by the sparsity" are different claims and
+only the first one is supported.
+
+Energy tracks the same tiny spread: 52.4 J per 1000 frames dense against 49.3 to 51.1 for the
+2:4 engines. Nothing here changes the deployment answer.
+
+**So the verdict for the whole of XP6 stands.** The unpruned model at 512 px remains the line to
+beat, and 2:4 was the last candidate with a hardware story behind it.
 
 ## E5. Whole channels versus individual weights
 
-Everything up to here removed **whole channels**. This removes **individual weights** instead,
-and the difference is the most important distinction on the page.
+E1, E2, E6 and E7 all removed **whole channels**. E4 was the first to remove **individual
+weights**, but under a rule about where the zeros may sit. This removes individual weights with
+no rule at all, and the channel-versus-weight distinction is the most important one on the page.
 
 A convolution's weights are a grid: `[output channels, input channels, height, width]`.
 
@@ -222,9 +299,22 @@ A convolution's weights are a grid: `[output channels, input channels, height, w
   holes in it.
 
 **This is why the two columns below are not comparable as sizes.** A 90% weight-pruned model
-still stores and loads 7.03 M numbers; 0.74 M of them are non-zero. It is *not* a 0.74 M model,
-and on this hardware it is not one byte smaller or one microsecond faster. Scattered zeros have
-no matching kernels, so the GPU multiplies the full-size grid exactly as before.
+still stores and loads 7.03 M numbers; 0.74 M of them are non-zero. It is *not* a 0.74 M model.
+
+> **Why zeroing 90% of the weights leaves the file the same size.** Setting a weight to zero does
+> not delete it. The weights sit in a dense rectangular array, and a zero occupies exactly the
+> same two bytes as any other number in it. Shrinking the file would need a **sparse storage
+> format**, which keeps only the non-zeros plus indices recording where each one belongs. Such
+> formats exist and are decades old, but nothing in this pipeline uses one: PyTorch saves dense
+> tensors, ONNX carries dense initialisers, and TensorRT compiles kernels that multiply every
+> position in the grid. So the file is byte-for-byte the same size, and the GPU performs the same
+> number of multiplications as before, most of them now by zero.
+>
+> Indices are not free either. At 50% sparsity you would store half the values plus a location for
+> each survivor, and a naive index costs more than the value it points to. **2:4 is the exception
+> that proves the rule**: because exactly two of every four survive, their positions fit in a
+> couple of bits per group, and Ampere has circuitry that reads that encoding directly. That is
+> the whole reason [E4](#e4-the-one-pattern-the-hardware-understands) is a separate experiment.
 
 So this experiment cannot produce a deployable model. It exists to answer one question that
 channel pruning cannot: **is this detector short of capacity, or short of structure?**
@@ -314,7 +404,14 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 
 ## Limitations
 
-- **No speed number exists for anything new here.** It all needs the board.
+- **E4 now has its speed number; E3 still does not.** Everything else new on this page is
+  accuracy only and still needs the board.
+- **The 3.5% spread between the four E4 engines is unexplained.** It is reproducible under
+  reversed measurement order, so it belongs to the engine, and it cannot be sparsity because the
+  compiler selected no sparse kernels and because free-form 50% shows the same effect while
+  running identical arithmetic. The obvious control, rebuilding one ONNX twice to size TensorRT's
+  own build-to-build variance, was started and lost when the board dropped off the network. Until
+  it runs, "this is autotuner noise" is the best-supported reading rather than a measured one.
 - **A 25% cut does not mean the same size for every rule**, which is why E2's parameter column is
   not constant. The cut is a *channel* target, and channels are not equal in cost: one in the
   first layer carries about 100 weights, one deep in the network about 2,300. A rule that
@@ -351,7 +448,10 @@ sparsity never reached it. Sparsity is now verified after training rather than a
 python experiments/xp06_pruning/e1_sensitivity.py                       # E1 layer map
 python experiments/xp06_pruning/e2_criteria.py --stage damage           # E2 selection rules
 python experiments/xp06_pruning/e2_criteria.py --stage recover --criteria lamp l1 fpgm random
-python experiments/xp06_pruning/e4_sparsity24.py                        # E4 2:4
+python experiments/xp06_pruning/e4_sparsity24.py                        # E4 2:4 accuracy
+python experiments/xp06_pruning/e4_why.py                               # E4 why the pattern collapses
+python experiments/xp06_pruning/e4_speed.py                             # E4 speed, ON THE BOARD
+python experiments/xp06_pruning/e4_speed.py --skip-build --reverse      # ... and the order control
 python experiments/xp06_pruning/e5_finegrained.py --sparsity 0.90       # E5 single weights
 python experiments/xp06_pruning/e6_allocation.py --plan                 # E6, then --arm <name>
 python experiments/xp06_pruning/e7_fair_rerun.py --mode iterative --post-epochs 12  # E7

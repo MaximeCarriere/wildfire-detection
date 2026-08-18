@@ -1034,10 +1034,103 @@ def fig_xp06e7(records) -> Path | None:
     return save(fig, "xp06e7_fair_rerun.png")
 
 
+ARMS_E4B = [
+    ("yolov5s_dense",             "unpruned\n(dense)",             "MUTED"),
+    ("yolov5s_free50",            "50% removed,\nfree choice",      "AQUA"),
+    ("yolov5s_sparse24_nosparse", "50% as 2:4,\nordinary build",    "BLUE"),
+    ("yolov5s_sparse24_sparse",   "50% as 2:4,\nsparse build",      "ORANGE"),
+]
+
+
+def fig_xp06e4b(records) -> Path | None:
+    """Four engines of the same network, measured in both directions.
+
+    Each arm was timed twice, once going down the list and once going up, because
+    four engines timed back to back alias anything that drifts with elapsed time
+    onto arm identity. The bar is the mean of the two orders and the error bar
+    spans them, so a reader can see the repeat rather than take it on trust.
+
+    The figure's job is to stop a 3% gradient from being read as a sparsity
+    result. TensorRT found 39 layers eligible for sparse kernels and selected
+    none, so whatever separates these bars, it is not the hardware doing what the
+    hardware was supposed to do. That sentence is on the figure, not just in the
+    caption.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    def pair(mid):
+        a, b = by_id(records, mid), by_id(records, mid + "_rev")
+        return [r for r in (a, b) if r and usable(r)]
+
+    arms = [(lab, pair(mid), col) for mid, lab, col in ARMS_E4B]
+    arms = [(lab, rs, col) for lab, rs, col in arms if rs]
+    if len(arms) < 2:
+        return None
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.0),
+                             gridspec_kw={"width_ratios": [1.4, 1.0]})
+    fig.suptitle("The one pattern the hardware understands, measured on the hardware", y=1.10)
+    style.subtitle(fig, "Same network, same shape, same arithmetic in all four: only which "
+                        "weights are zero, and whether the compiler was allowed to exploit "
+                        "them. Bars are the mean of two runs taken in opposite order.", y=1.02)
+
+    ys = np.arange(len(arms))[::-1]
+    colours = [getattr(style, c) for _, _, c in arms]
+    labels = [lab for lab, _, _ in arms]
+
+    panels = ((axes[0], "fps_batched", "fps_batched_std",
+               "Throughput", "images per second (higher is better)"),
+              (axes[1], "latency_ms_median", "latency_ms_median_std",
+               "Batch-1 latency", "milliseconds (lower is better)"))
+
+    for ax, key, std_key, title, xlabel in panels:
+        vals, errs = [], []
+        for _, rs, _ in arms:
+            v = [r["jetson"][key] for r in rs]
+            within = max((r["jetson"].get(std_key) or 0.0) for r in rs)
+            vals.append(float(np.mean(v)))
+            # spread across the two orders, or the within-run spread if only one
+            errs.append(max(within, (max(v) - min(v)) / 2 if len(v) > 1 else 0.0))
+
+        ref = vals[0]
+        ax.axvline(ref, color=style.INK, linestyle=":", linewidth=1.2, zorder=2)
+        ax.barh(ys, vals, xerr=errs, height=0.62, color=colours, zorder=3,
+                error_kw=dict(ecolor=style.INK, lw=1.3, capsize=4))
+        span = max(max(vals) - min(vals), max(vals) * 0.02)
+        for y, v, e in zip(ys, vals, errs):
+            pct = (v / ref - 1) * 100
+            tag = f"{v:,.1f} \u00b1 {e:.1f}" + (f"   {pct:+.1f}%" if y != ys[0] else "")
+            ax.text(v + e + span * 0.12, y, tag, va="center", ha="left",
+                    fontsize=9.5, color=style.INK_2)
+        ax.set_yticks(ys); ax.set_yticklabels(labels, fontsize=9.5)
+        ax.set_xlabel(xlabel)
+        ax.set_title(title, fontsize=11.5, pad=8)
+        # Zero baseline, deliberately. A truncated axis would blow a 3% spread up
+        # into a visible staircase, which is the opposite of what this figure
+        # concludes. The bars should look the same, because they are; the labels
+        # carry the difference for anyone who wants it.
+        ax.set_xlim(0, (max(vals) + max(errs)) * 1.62)
+        style.tidy(ax)
+        ax.grid(axis="y", visible=False)
+
+    axes[0].text(0.5, -0.34, "TensorRT found 39 layers eligible for sparse kernels "
+                             "and chose 0 of them.",
+                 transform=axes[0].transAxes, ha="center", va="top",
+                 fontsize=10.5, color=style.RED, fontweight="bold")
+    fig.tight_layout()
+    return save(fig, "xp06e4b_sparsity_speed.png")
+
+
+
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e5, fig_xp06e6,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e6,
             fig_xp06e7]
 
+
+# --------------------------------------------------------------------------
+# XP6 E4b — does the one hardware-supported pattern actually run faster?
+# --------------------------------------------------------------------------
 
 def main() -> None:
     ap = argparse.ArgumentParser()

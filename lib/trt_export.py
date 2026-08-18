@@ -287,9 +287,19 @@ def export_onnx_from_model(model, onnx_path: Path, *, res: int = 512,
 
 
 def build_fp16_engine(onnx_path: Path, engine_path: Path, *, res: int,
-                      max_batch: int = 16, trtexec: str = "/usr/src/tensorrt/bin/trtexec") -> Path:
+                      max_batch: int = 16, trtexec: str = "/usr/src/tensorrt/bin/trtexec",
+                      sparsity: bool = False, log_path: Path | None = None) -> Path:
     """FP16 engine via trtexec — the same path XP9's engines were built with, so
-    the pruned models land on exactly the same measurement footing."""
+    the pruned models land on exactly the same measurement footing.
+
+    ``sparsity`` adds ``--sparsity=enable``, which *permits* the compiler to pick
+    structured-sparse kernels for 2:4 weights. It does not force it, and a build
+    that succeeds with the flag set is **not** evidence that sparse kernels were
+    chosen: TensorRT decides per layer on its own timings. ``log_path`` keeps the
+    build log so that decision can be read afterwards rather than assumed, which is
+    the whole point of XP6 E4. Info level is enough: TensorRT names the layers it
+    gave sparse implementations without being asked for verbose output.
+    """
     import subprocess
 
     engine_path = Path(engine_path)
@@ -298,7 +308,14 @@ def build_fp16_engine(onnx_path: Path, engine_path: Path, *, res: int,
            f"--optShapes=images:1x3x{res}x{res}",
            f"--maxShapes=images:{max_batch}x3x{res}x{res}",
            "--skipInference"]
+    if sparsity:
+        cmd += ["--sparsity=enable"]
+    # NOT --verbose. TensorRT reports its sparsity decision at info level, and
+    # verbose output on this board turns a 3-minute build into a 20-minute one
+    # while adding nothing that is read here.
     r = subprocess.run(cmd, capture_output=True, text=True)
+    if log_path is not None:
+        Path(log_path).write_text(r.stdout + "\n" + r.stderr)
     if not engine_path.exists():
         tail = "\n".join(r.stdout.splitlines()[-15:])
         raise RuntimeError(f"engine build failed for {onnx_path.name}:\n{tail}")
