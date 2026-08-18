@@ -42,6 +42,8 @@ named method is one combination of those four. Each experiment below changes exa
 > The vocabulary is specific to **convolutional** networks. The four choices are not: a
 > transformer has the same problem with attention heads and feed-forward widths.
 
+---
+
 ## The experiments
 
 | | axis it changes | question | outcome |
@@ -56,6 +58,8 @@ named method is one combination of those four. Each experiment below changes exa
 | **E8** | criterion | pick channels by reconstructing the layer's output | ❌ **not attempted** |
 
 Each section below is one experiment. The unpruned model is the top row of every table.
+
+---
 
 ## E1. Which layers can be cut
 
@@ -87,6 +91,8 @@ most expensive place to take damage and the least profitable place to save. A si
 threshold ranks channels by weight size and knows none of this, so part of its budget lands
 exactly there, which is what produced the original collapse. E6 tests whether acting on this map
 is enough to fix it.
+
+---
 
 ## E2. Which channels to pick
 
@@ -170,6 +176,8 @@ whether any cut plus retraining lands in the same place. On overall accuracy the
 it by 4.5 points, but **on tiny plumes by nearly double**. The choice barely matters for easy
 cases and matters enormously for distant smoke.
 
+---
+
 ## E3. Does regular channel shape recover the missing speed?
 
 XP6's most surprising observation was that a *larger* pruned model ran *faster* than a smaller
@@ -200,6 +208,8 @@ There is a reason for caution about the result before it arrives. E4 found the r
 board to be kernel-launch and memory bound at 512 px, not compute bound, which is why TensorRT
 declined every sparse kernel. Regularity helps a compute kernel choose a better tile; if the
 workload is not compute bound, it may buy little. The measurement will settle it.
+
+---
 
 ## E4. The one pattern the hardware understands
 
@@ -294,6 +304,8 @@ measurement order reproduced the ranking, so it belongs to the engine, but "repr
 
 **So the verdict stands.** 2:4 was the last candidate with a hardware story behind it.
 
+---
+
 ## E5. Whole channels versus individual weights
 
 E1, E2, E6 and E7 all removed **whole channels**. E4 was the first to remove **individual
@@ -385,6 +397,8 @@ cut scores 0.0000; the only cut ever recovered to something usable is 25% at 0.7
 precisely the point on the curve that is slower than doing nothing. **Neither granularity has a
 setting where both work**, which is the whole verdict of XP6 in one figure.
 
+---
+
 ## E6. How to spread the cut
 
 Using E1's map, protect the fragile layers and cut hard where there is slack. All three arms are
@@ -396,6 +410,8 @@ matched to the same measured size by search, so only the distribution varies.
 worth 4.5.** The map is correct and acting on it is second-order. It does buy one thing: correct
 silence on empty frames returns to the unpruned 97.4%, undoing the extra false alarms pruning
 otherwise causes.
+
+---
 
 ## E7. One-shot versus iterative, fairly
 
@@ -422,6 +438,8 @@ shape, exactly as the limitation on this page always suspected.
 that gradual pruning preserves more accuracy at the same sparsity. On this detector it does not,
 and that is now a clean result rather than a budgeting artefact.
 
+---
+
 ## Speed: removing arithmetic is still not gaining it
 
 ![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
@@ -432,6 +450,8 @@ TensorRT engine in E5b above it is 1.55x, and the engine is the number that coun
 kernels are written for regular sizes. Parameter counts and MAC counts are structural facts
 here, never performance claims.
 
+---
+
 ## Verdict
 
 **Pruning still loses.** The best model is 44% smaller and gives up 2.2 accuracy points, and
@@ -440,6 +460,8 @@ the size of the loss (4.8 points to 2.2) and the reason for it.
 
 The honest summary: **this detector can be pruned far harder than this page used to claim, and
 it still should not be**, because the cheap knob (smaller pictures) is still ahead.
+
+---
 
 ## What was not finished
 
@@ -450,6 +472,8 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
   deliberately last.
 - **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
   to a GPU out-of-memory error.
+
+---
 
 ## Limitations
 
@@ -477,6 +501,8 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 - **Recovery is 12 epochs**, what the board allows overnight; **one dataset, one architecture.**
   "Early layers are fragile" is a claim about this network.
 
+---
+
 ## Bugs that produced wrong numbers
 
 **The library swapped the model.** Given `yolov5s.pt`, Ultralytics quietly downloaded its own
@@ -490,6 +516,8 @@ now until retraining the unpruned model returns it to where it started.
 **The sparse models were not sparse.** They came back 0% sparse, because the loop ends by
 loading averaged weights and that average never runs a forward pass, so the masks enforcing
 sparsity never reached it. Sparsity is now verified after training rather than assumed.
+
+---
 
 ## Reproduce
 
