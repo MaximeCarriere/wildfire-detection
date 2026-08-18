@@ -1123,8 +1123,105 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 
+# --------------------------------------------------------------------------
+# XP6 E5b — does deleting channels buy the speed that zeroing weights does not?
+# --------------------------------------------------------------------------
+
+E5B_ARMS = {"channel": ["chan25", "chan50", "chan70"],
+            "weight": ["weight50", "weight90"]}
+
+
+def fig_xp06e5b(records) -> Path | None:
+    """Two granularities on the one axis where they compare.
+
+    A 25% channel cut and a 25% weight cut are not the same amount of network,
+    so both series are plotted against the **fraction of parameters removed**.
+    Both start from the same unpruned point, which is what makes the divergence
+    legible: one line is flat and the other is not even monotonic.
+    """
+    import matplotlib.pyplot as plt
+
+    def get(tag):
+        return by_id(records, f"yolov5s_e5b_{tag}")
+
+    base = get("dense")
+    if not base:
+        return None
+
+    def series(tags):
+        pts = [(0.0, base["jetson"], base["granularity_meta"])]
+        for tg in tags:
+            r = get(tg)
+            if r:
+                pts.append((r["granularity_meta"]["params_removed_frac"] * 100,
+                            r["jetson"], r["granularity_meta"]))
+        return sorted(pts)
+
+    chan, wgt = series(E5B_ARMS["channel"]), series(E5B_ARMS["weight"])
+    if len(chan) < 2 or len(wgt) < 2:
+        return None
+
+    fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.4))
+    fig.suptitle("Only one of these two ways of shrinking a network makes it faster", y=1.07)
+    style.subtitle(fig, "Deleting channels makes the tensors smaller. Zeroing weights leaves "
+                        "them full-size with holes in them. Same axis: how much of the model "
+                        "is gone.", y=1.0)
+
+    ref_fps = base["jetson"]["fps_batched"]
+    ref_j = base["jetson"].get("energy_j_per_1000_frames")
+
+    for ax, key, std_key, ref, ylab, title in (
+            (axes[0], "fps_batched", "fps_batched_std", ref_fps,
+             "images per second", "Speed"),
+            (axes[1], "energy_j_per_1000_frames", None, ref_j,
+             "joules per 1000 frames", "Energy")):
+        if ref is None:
+            continue
+        ax.axhline(ref, color=style.INK, linestyle=":", linewidth=1.3, zorder=2)
+        ax.annotate("unpruned", (0.5, ref), xytext=(2, 5), textcoords="offset points",
+                    fontsize=9, color=style.INK_2, va="bottom")
+
+        for pts, colour, label, marker in ((chan, style.ORANGE, "channels deleted", "o"),
+                                           (wgt, style.BLUE, "weights zeroed", "s")):
+            xs = [x for x, _, _ in pts]
+            ys = [j.get(key) for _, j, _ in pts]
+            if any(v is None for v in ys):
+                continue
+            es = [(j.get(std_key) or 0.0) for _, j, _ in pts] if std_key else None
+            ax.errorbar(xs, ys, yerr=es, fmt=marker + "-", color=colour, linewidth=2.2,
+                        markersize=8, capsize=4, label=label, zorder=4)
+
+        ax.set_xlabel("percent of the model removed")
+        ax.set_ylabel(ylab)
+        ax.set_title(title, fontsize=11.5, pad=8)
+        ax.set_xlim(-4, 100)
+        style.tidy(ax)
+
+    # The finding that has to survive a five-second look: pruning a third of the
+    # channels away makes it SLOWER than leaving it alone.
+    ax = axes[0]
+    ax.axhspan(ax.get_ylim()[0], ref_fps, color=style.RED, alpha=0.07, zorder=1)
+    dip = min(chan[1:], key=lambda p: p[1]["fps_batched"])
+    # Inside the shaded band and to the right: below the point would land the
+    # text on the x-axis tick labels.
+    ax.annotate("slower than not\npruning at all",
+                (dip[0], dip[1]["fps_batched"]), xytext=(34, 14),
+                textcoords="offset points", fontsize=10, color=style.RED,
+                fontweight="bold", ha="left", va="center",
+                arrowprops=dict(arrowstyle="->", color=style.RED, lw=1.4))
+    top = max(chan, key=lambda p: p[1]["fps_batched"])
+    ax.annotate(f"{top[1]['fps_batched'] / ref_fps:.2f}x", (top[0], top[1]["fps_batched"]),
+                xytext=(-6, 12), textcoords="offset points", fontsize=10.5,
+                color=style.ORANGE, fontweight="bold", ha="right")
+    ax.legend(loc="upper left")
+    axes[1].legend(loc="lower left")
+
+    fig.tight_layout()
+    return save(fig, "xp06e5b_granularity_speed.png")
+
+
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e6,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e5b, fig_xp06e6,
             fig_xp06e7]
 
 

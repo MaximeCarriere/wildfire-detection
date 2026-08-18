@@ -349,6 +349,42 @@ removing one forces a change on every layer that follows. A weight is not.
 That is also the reason pruning keeps losing here. The redundancy is real and provable, and no
 kernel on this board can convert it into a single extra frame per second.
 
+### The other half of the trade: speed
+
+If weights are the cheaper thing to remove for accuracy, channels should be the cheaper thing to
+remove for **speed**, since they genuinely shrink the tensors. Both granularities, measured as
+TensorRT engines on the board, plotted against the only axis on which they compare: how much of
+the model is actually gone. A 25% channel cut removes 39.6% of the parameters, so the nominal
+ratios are not comparable and are not used.
+
+![Only one of these two ways of shrinking a network makes it faster](../../results/figures/xp06e5b_granularity_speed.png)
+
+| removed | how | non-zero | throughput | energy |
+|---:|---|---:|---:|---:|
+| 0% | unpruned | 7.03 M | 472.6 ± 0.9 | 51.8 J/1k |
+| 49.8% | weights zeroed | 3.53 M | 474.5 ± 0.8 | 51.4 |
+| 89.5% | weights zeroed | 0.74 M | 483.6 ± 0.2 | 50.2 |
+| 39.6% | channels deleted | 4.24 M | **388.2 ± 0.2** | 52.9 |
+| 73.5% | channels deleted | 1.86 M | 528.7 ± 3.2 | 36.7 |
+| 91.2% | channels deleted | 0.62 M | **730.4 ± 8.6** | **28.6** |
+
+**Zeroing weights is a flat line.** Nine tenths of the parameters gone moves throughput by 2.3%,
+because the tensors keep their shape and the kernels multiply every position regardless.
+
+**Deleting channels does buy speed, but only past about 70% removed**, where it reaches **1.55x**
+on 45% less energy.
+
+**In between it goes backwards.** At 39.6% removed the engine runs **18% slower than unpruned**,
+which is not noise and independently reproduces the 381 img/s XP6 measured earlier. Pruning
+leaves layers at widths like 47 instead of 64 and the kernels punish it, which is what
+[E3](#the-experiments) exists to test and why it is the last idea here with a route to beating
+the frontier.
+
+**The speed arrives only after the accuracy has gone.** A 50% channel cut scores 0.0000 and a 70%
+cut scores 0.0000; the only cut ever recovered to something usable is 25% at 0.7297, and that is
+precisely the point on the curve that is slower than doing nothing. **Neither granularity has a
+setting where both work**, which is the whole verdict of XP6 in one figure.
+
 ## E6. How to spread the cut
 
 Using E1's map, protect the fragile layers and cut hard where there is slack. All three arms are
@@ -390,8 +426,9 @@ and that is now a clean result rather than a budgeting artefact.
 
 ![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
 
-On the board, removing **88.9% of the multiply-adds bought 1.7x the throughput**, not the ~9x
-the arithmetic implies. Pruned layers land on awkward widths (47 channels instead of 64) and GPU
+On the board, removing **88.9% of the multiply-adds bought 1.55x the throughput**, not the ~9x
+the arithmetic implies. (That figure was 1.7x while it rested on PyTorch timings; measured as a
+TensorRT engine in E5b above it is 1.55x, and the engine is the number that counts.) Pruned layers land on awkward widths (47 channels instead of 64) and GPU
 kernels are written for regular sizes. Parameter counts and MAC counts are structural facts
 here, never performance claims.
 
