@@ -48,7 +48,7 @@ named method is one combination of those four. Each experiment below changes exa
 |---|---|---|---|
 | **E1** | ratio | which layers can be cut at all? | ✅ fragile layers are the ones that free the least |
 | **E2** | criterion | which channels to pick, and does it beat random? | ✅ decides everything: 99% kept vs 12% |
-| **E3** | shape regularity | does rounding channel counts recover the missing speed? | ❌ **not run**, and needs the board |
+| **E3** | shape regularity | does rounding channel counts recover the missing speed? | ⏳ accuracy done (costs nothing); **speed pending the board** |
 | **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **the compiler refuses the sparse kernels** |
 | **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
 | **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ helps, but far less than E2 |
@@ -169,6 +169,37 @@ failed method.
 whether any cut plus retraining lands in the same place. On overall accuracy the good rules beat
 it by 4.5 points, but **on tiny plumes by nearly double**. The choice barely matters for easy
 cases and matters enormously for distant smoke.
+
+## E3. Does regular channel shape recover the missing speed?
+
+XP6's most surprising observation was that a *larger* pruned model ran *faster* than a smaller
+one. The suspected cause: pruning leaves layers at awkward widths like 47, and GPU kernels are
+written for regular tile sizes, so a rounded shape should run better. `round_to` forces surviving
+channel counts onto a multiple of 8, 16 or 32.
+
+The accuracy cost of that rounding is **negligible**, screened on the 3090:
+
+| round_to | params | layers landing on a multiple of 32 | mAP50 |
+|---|---:|---:|---:|
+| 1 (no rounding) | 4.21 M | 0 of 60 | 0.7458 |
+| 8 | 4.03 M | 13 of 60 | 0.7436 |
+| 16 | 3.79 M | 28 of 60 | 0.7351 |
+| 32 | 3.52 M | 57 of 60 | 0.7377 |
+
+Rounding changes the shape completely (0 aligned layers becomes 57) while accuracy moves less
+than one point, inside the noise of a 12-epoch recovery.
+
+**The speed verdict is a board measurement and is not in yet.** The four engines have to be
+built and timed on the Jetson, by [`e3_speed.py`](e3_speed.py), the same way [E4](#e4-the-one-pattern-the-hardware-understands)
+was. One caveat is already visible and will have to be stated with whatever the board returns:
+rounding also **shrinks** the model (4.21 M down to 3.52 M), so the arms are not size-matched. If
+`round_to=32` runs faster, part of that is regularity and part is simply being smaller, and only
+a further size-matched arm could separate them.
+
+There is a reason for caution about the result before it arrives. E4 found the runtime on this
+board to be kernel-launch and memory bound at 512 px, not compute bound, which is why TensorRT
+declined every sparse kernel. Regularity helps a compute kernel choose a better tile; if the
+workload is not compute bound, it may buy little. The measurement will settle it.
 
 ## E4. The one pattern the hardware understands
 
@@ -375,8 +406,9 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 
 ## What was not finished
 
-- **E3, the regularity test, never ran.** [`e3_regularity.py`](e3_regularity.py) is ready. It is
-  the only direct test of why a larger pruned model ran faster than a smaller one.
+- **E3's speed verdict is pending the board.** Its accuracy side ran (rounding costs under one
+  point) and the four engines are exported; the throughput measurement that is the actual point
+  runs on the Jetson via [`e3_speed.py`](e3_speed.py) and is not in yet.
 - **E8, regression-based selection, was not attempted.** The most implementation-heavy item, and
   deliberately last.
 - **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
