@@ -62,7 +62,7 @@ fault of one badly chosen setting.
 |---|---|---|---|
 | **E1** | ratio | which layers can be cut at all? | ✅ fragile layers are the ones that free the least |
 | **E2** | criterion | which channels to pick, and does it beat random? | ✅ decides everything: 99% kept vs 12% |
-| **E3** | channel widths | round the surviving widths (47 to 48) so kernels run better? | ⏳ accuracy done (costs nothing); **speed pending the board** |
+| **E3** | channel widths | round the surviving widths so kernels run better? | ✅ **1.77x faster on the board** at the same accuracy |
 | **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **the compiler refuses the sparse kernels** |
 | **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
 | **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ helps, but far less than E2 |
@@ -194,9 +194,9 @@ cases and matters enormously for distant smoke.
 
 ---
 
-## E3. Does regular channel shape recover the missing speed?
+## E3. Regular channel widths recover the missing speed
 
-> **Axis:** channel widths &nbsp;·&nbsp; **Asks:** does snapping odd widths (52) to clean ones (32) run faster? &nbsp;·&nbsp; **Answer:** accuracy costs nothing; speed still pending the board
+> **Axis:** channel widths &nbsp;·&nbsp; **Asks:** does snapping odd widths (52) to clean ones (32) run faster? &nbsp;·&nbsp; **Answer:** yes, 1.77x on the board, for no accuracy cost
 
 **What gets rounded is each layer's *width*, the number of channels it outputs.** Pruning leaves
 those widths at odd values. `round_to` snaps each one to a clean multiple. Real widths from this
@@ -220,18 +220,29 @@ exactly this. The test: do the clean widths run faster?
 
 ![Rounding channel counts reshapes the model for almost no accuracy](../../results/figures/xp06e3_regularity.png)
 
-- **Rounding transforms the shape.** From 0 of 60 conv layers on a multiple of 32 at
-  `round_to=1`, to 57 of 60 at `round_to=32`.
-- **Accuracy barely notices.** 0.7458 down to 0.7377 across the four, less than one point, inside
-  the noise of a 12-epoch recovery.
-- **The speed verdict needs the board and is not in yet.** The four engines get built and timed
-  on the Jetson by [`e3_speed.py`](e3_speed.py), the way [E4](#e4-the-one-pattern-the-hardware-understands) was.
-- **One caveat already visible:** rounding also *shrinks* the model (4.21 M to 3.52 M), so the
-  arms are not size-matched. A faster `round_to=32` would mix regularity with size, and only a
-  further size-matched arm could separate them.
-- **Expect little.** [E4](#e4-the-one-pattern-the-hardware-understands) found this board
-  launch- and memory-bound at 512 px, not compute-bound. Regularity helps a compute kernel pick
-  a better tile; if the workload is not compute-bound, it may buy nothing.
+- **Rounding transforms the shape for free.** From 0 of 60 conv layers on a multiple of 32 at
+  `round_to=1` to 57 of 60 at `round_to=32`, while accuracy moves 0.7458 to 0.7377, under one
+  point and inside recovery noise.
+- **On the board it nearly doubles throughput.** Same 25% cut, same accuracy:
+
+  | round_to | aligned | Jetson throughput | energy | vs `round_to=1` |
+  |---:|---:|---:|---:|---:|
+  | 1 | 0 / 60 | 362.9 img/s | 58.4 J/1k | 1.00x |
+  | 8 | 13 / 60 | 532.3 | 42.0 | 1.47x |
+  | 16 | 28 / 60 | 622.4 | 37.5 | 1.71x |
+  | 32 | 57 / 60 | **641.9 img/s** | **38.0 J/1k** | **1.77x** |
+
+- **Size is not what did it.** Parameters fall only 16% (4.21 M to 3.52 M) while speed rises
+  77%, and the tell is decisive: `round_to=1` has **40% fewer parameters than the unpruned
+  model yet runs slower than it** (363 vs 473 img/s), while `round_to=32` runs 1.36x faster.
+  Awkward widths are a penalty; rounding removes it.
+- **This is a different mechanism from [E4](#e4-the-one-pattern-the-hardware-understands).** 2:4
+  needed sparse tensor cores, which the compiler declined. Regularity works on the ordinary
+  *dense* kernels: the width decides which tile the kernel picks, and a clean multiple of 32
+  fills tiles that 52 leaves ragged. It was the one prediction on this page I got wrong, having
+  expected a launch-bound board to show little.
+- **It confirms XP6's oddest observation.** A larger pruned model really can run faster than a
+  smaller one, because *how* the channels are shaped matters more than *how many* survive.
 
 ---
 
@@ -465,13 +476,16 @@ the size of the loss (4.8 points to 2.2) and the reason for it.
 The honest summary: **this detector can be pruned far harder than this page used to claim, and
 it still should not be**, because the cheap knob (smaller pictures) is still ahead.
 
+**But E3 is the one result worth carrying into practice.** If you do prune, rounding the
+surviving widths to a multiple of 32 costs nothing in accuracy and runs 1.77x faster on the
+board, turning a pruned model that was *slower* than unpruned into one that is 1.36x faster.
+It does not beat the frontier on accuracy, but it is a free, hardware-aware speedup that any
+pruning pipeline should apply by default.
+
 ---
 
 ## What was not finished
 
-- **E3's speed verdict is pending the board.** Its accuracy side ran (rounding costs under one
-  point) and the four engines are exported; the throughput measurement that is the actual point
-  runs on the Jetson via [`e3_speed.py`](e3_speed.py) and is not in yet.
 - **E8, regression-based selection, was not attempted.** The most implementation-heavy item, and
   deliberately last.
 - **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
@@ -481,8 +495,8 @@ it still should not be**, because the cheap knob (smaller pictures) is still ahe
 
 ## Limitations
 
-- **E4 now has its speed number; E3 still does not.** Everything else new on this page is
-  accuracy only and still needs the board.
+- **E3 and E4 now have board speed numbers.** The remaining new results on this page (E5's
+  granularity, E6, E7) are accuracy only and still need the board for throughput.
 - **The 3.5% spread between the four E4 engines is unexplained.** It is reproducible under
   reversed measurement order, so it belongs to the engine, and it cannot be sparsity because the
   compiler selected no sparse kernels and because free-form 50% shows the same effect while
