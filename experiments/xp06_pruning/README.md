@@ -238,19 +238,31 @@ exactly this. The test: do the clean widths run faster?
 - **Rounding transforms the shape for free.** From 0 of 60 conv layers on a multiple of 32 at
   `round_to=1` to 57 of 60 at `round_to=32`, while accuracy moves 0.7458 to 0.7377, under one
   point and inside recovery noise.
-- **On the board it nearly doubles throughput.** Same 25% cut, same accuracy:
+- **On the board it nearly doubles throughput.** Same 25% cut, same accuracy. Parameters and
+  engine size are in the table because the point of this experiment is that **they do not
+  predict the speed**:
 
-  | round_to | aligned | Jetson throughput | energy | vs `round_to=1` |
-  |---:|---:|---:|---:|---:|
-  | 1 | 0 / 60 | 362.9 img/s | 58.4 J/1k | 1.00x |
-  | 8 | 13 / 60 | 532.3 | 42.0 | 1.47x |
-  | 16 | 28 / 60 | 622.4 | 37.5 | 1.71x |
-  | 32 | 57 / 60 | **641.9 img/s** | **38.0 J/1k** | **1.77x** |
+  | round_to | params | engine | aligned | mAP50 | Jetson throughput | energy |
+  |---:|---:|---:|---:|---:|---:|---:|
+  | *(unpruned)* | *7.03 M* | *17.0 MB* | *n/a* | *0.7764* | *472.6 img/s* | *51.8 J/1k* |
+  | 1 | 4.21 M | 12.3 MB | 0 / 60 | 0.7458 | 362.9 img/s | 58.4 J/1k |
+  | 8 | 4.03 M | 11.0 MB | 13 / 60 | 0.7436 | 532.3 | 42.0 |
+  | 16 | 3.79 M | 10.2 MB | 28 / 60 | 0.7351 | 622.4 | 37.5 |
+  | 32 | **3.52 M** | **9.8 MB** | 57 / 60 | 0.7377 | **641.9 img/s** | **38.0 J/1k** |
 
-- **Size is not what did it.** Parameters fall only 16% (4.21 M to 3.52 M) while speed rises
-  77%, and the tell is decisive: `round_to=1` has **40% fewer parameters than the unpruned
-  model yet runs slower than it** (363 vs 473 img/s), while `round_to=32` runs 1.36x faster.
-  Awkward widths are a penalty; rounding removes it.
+- **Parameter count does not predict speed, and the table shows it three ways.**
+  - Across the four arms, **parameters fall 16%** (4.21 M to 3.52 M) while **speed rises 77%**.
+    Size cannot account for a gain four times larger than itself.
+  - **The unpruned model has 67% more parameters than `round_to=1` and runs 30% faster**
+    (7.03 M at 472.6 img/s against 4.21 M at 362.9). Deleting a third of the network made it
+    slower.
+  - `round_to=32` beats the unpruned model by 1.36x while also being half its size, so the two
+    effects are separable and shape is the one doing the work.
+
+  **So a bigger model can be the faster one.** If a rounded arm had come out larger than the
+  ragged one, it could still have been the right choice, because what the hardware charges for
+  is the shape of each layer, not the number of weights in it. Here rounding happened to shrink
+  the model as well, which is a bonus rather than the mechanism.
 - **This is a different mechanism from [E4](#e4-the-one-pattern-the-hardware-understands).** 2:4
   needed sparse tensor cores, which the compiler declined. Regularity works on the ordinary
   *dense* kernels: the width decides which tile the kernel picks, and a clean multiple of 32
