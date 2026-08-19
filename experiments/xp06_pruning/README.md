@@ -198,20 +198,34 @@ cases and matters enormously for distant smoke.
 
 > **Axis:** channel widths &nbsp;·&nbsp; **Asks:** does snapping odd widths (52) to clean ones (32) run faster? &nbsp;·&nbsp; **Answer:** yes, 1.77x on the board, for no accuracy cost
 
-**What gets rounded is each layer's *width*, the number of channels it outputs.** Pruning leaves
-those widths at odd values. `round_to` snaps each one to a clean multiple. Real widths from this
-detector's second layer onward:
+**It is the channel *count* that gets rounded, never the weights.** No weight value is altered,
+and no weight is rounded to anything. What changes is *how many* channels a layer is allowed to
+keep.
 
-| a layer | original width | after pruning (`round_to=1`) | snapped to a multiple of 32 (`round_to=32`) |
+Take `model.1.conv`, a real layer in this detector. Its weight tensor is `[64, 32, 3, 3]`: **64
+output channels**, each one a 32x3x3 filter.
+
+1. **Unpruned.** 64 channels, tensor `[64, 32, 3, 3]`.
+2. **Pruned 25%, `round_to=1`.** The criterion scores all 64 channels and deletes the weakest.
+   **52 survive**, tensor `[52, 32, 3, 3]`. 52 is whatever the scores happened to leave.
+3. **Pruned 25%, `round_to=32`.** Same scores, same order, but the survivor count must be a
+   multiple of 32. **32 survive**, tensor `[32, 32, 3, 3]`.
+
+Measured on this model, L1 criterion, 25% cut:
+
+| layer | unpruned | `round_to=1` | `round_to=32` |
 |---|---:|---:|---:|
-| conv A | 64 | 52 | **32** |
-| conv B | 128 | 97 | **96** |
-| conv C | 32 | 20 | **32** |
+| `model.0.conv` | 32 | 20 | **32** |
+| `model.1.conv` | 64 | 52 | **32** |
+| `model.2.cv3.conv` | 64 | 51 | **32** |
+| `model.3.conv` | 128 | 97 | **96** |
+| `model.4.cv3.conv` | 128 | 99 | **96** |
+| **whole model** | **9,567** | **7,319** | **6,559** |
 
-- **`round_to=1`** keeps whatever pruning left: 52, 97, 20, all odd.
-- **`round_to=32`** snaps each width to the nearest multiple of 32 below it (52 to 32, 97 to 96),
-  never going under one full group. It removes a few *more* channels, so the model ends up a
-  little smaller, not larger.
+- Usually it rounds **down**, 52 to 32 and 97 to 96, deleting more channels than the ratio asked
+  for.
+- Occasionally **up**, 20 to 32, because a layer is never taken below one full group of 32.
+- Across the whole model it nets out smaller: 7,319 surviving channels become 6,559.
 
 **Why anyone would.** A GPU kernel does not walk a layer channel by channel. It covers it in
 fixed-size tiles, and any leftover is padded out and computed anyway. A width of 52 is one full
