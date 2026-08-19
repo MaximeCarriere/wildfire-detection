@@ -213,9 +213,10 @@ detector's second layer onward:
   never going under one full group. It removes a few *more* channels, so the model ends up a
   little smaller, not larger.
 
-**Why anyone would.** GPUs process channels in fixed-size groups (a warp is 32). A width of 52 is
-one full group of 32 plus a ragged 20 that wastes most of a second group; 32 and 96 fill groups
-exactly. XP6 even saw a *larger* pruned model run *faster* than a smaller one, which points at
+**Why anyone would.** A GPU kernel does not walk a layer channel by channel. It covers it in
+fixed-size tiles, and any leftover is padded out and computed anyway. A width of 52 is one full
+tile of 32 plus a ragged 20 that still costs a whole second tile, so 20 of those 32 lanes compute
+nothing useful. Widths of 32 and 96 fill their tiles exactly. XP6 even saw a *larger* pruned model run *faster* than a smaller one, which points at
 exactly this. The test: do the clean widths run faster?
 
 ![Rounding channel counts reshapes the model for almost no accuracy](../../results/figures/xp06e3_regularity.png)
