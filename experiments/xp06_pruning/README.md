@@ -202,6 +202,12 @@ cases and matters enormously for distant smoke.
 and no weight is rounded to anything. What changes is *how many* channels a layer is allowed to
 keep.
 
+> **`round_to=N` means the surviving count must be a multiple of N. It is not a number of
+> channels.** So `round_to=1` is the **control with no rounding at all**, because every integer
+> is a multiple of 1 and any width is allowed. `round_to=32` permits only 32, 64, 96, 128 and so
+> on. Bigger N is a *stricter* constraint, and since a width is snapped down to the multiple
+> below it, **bigger N keeps fewer channels**, not more.
+
 Take `model.1.conv`, a real layer in this detector. Its weight tensor is `[64, 32, 3, 3]`: **64
 output channels**, each one a 32x3x3 filter.
 
@@ -213,7 +219,7 @@ output channels**, each one a 32x3x3 filter.
 
 Measured on this model, L1 criterion, 25% cut:
 
-| layer | unpruned | `round_to=1` | `round_to=32` |
+| layer | unpruned | `round_to=1`<br>(no rounding) | `round_to=32`<br>(multiples of 32 only) |
 |---|---:|---:|---:|
 | `model.0.conv` | 32 | 20 | **32** |
 | `model.1.conv` | 64 | 52 | **32** |
@@ -242,13 +248,13 @@ exactly this. The test: do the clean widths run faster?
   engine size are in the table because the point of this experiment is that **they do not
   predict the speed**:
 
-  | round_to | params | engine | aligned | mAP50 | Jetson throughput | energy |
-  |---:|---:|---:|---:|---:|---:|---:|
-  | *(unpruned)* | *7.03 M* | *17.0 MB* | *n/a* | *0.7764* | *472.6 img/s* | *51.8 J/1k* |
-  | 1 | 4.21 M | 12.3 MB | 0 / 60 | 0.7458 | 362.9 img/s | 58.4 J/1k |
-  | 8 | 4.03 M | 11.0 MB | 13 / 60 | 0.7436 | 532.3 | 42.0 |
-  | 16 | 3.79 M | 10.2 MB | 28 / 60 | 0.7351 | 622.4 | 37.5 |
-  | 32 | **3.52 M** | **9.8 MB** | 57 / 60 | 0.7377 | **641.9 img/s** | **38.0 J/1k** |
+  | round_to | widths allowed | params | engine | aligned | mAP50 | Jetson throughput | energy |
+  |---:|---|---:|---:|---:|---:|---:|---:|
+  | *(unpruned)* | *not pruned* | *7.03 M* | *17.0 MB* | *n/a* | *0.7764* | *472.6 img/s* | *51.8 J/1k* |
+  | 1 | any (no rounding) | 4.21 M | 12.3 MB | 0 / 60 | 0.7458 | 362.9 img/s | 58.4 J/1k |
+  | 8 | multiples of 8 | 4.03 M | 11.0 MB | 13 / 60 | 0.7436 | 532.3 | 42.0 |
+  | 16 | multiples of 16 | 3.79 M | 10.2 MB | 28 / 60 | 0.7351 | 622.4 | 37.5 |
+  | 32 | multiples of 32 | **3.52 M** | **9.8 MB** | 57 / 60 | 0.7377 | **641.9 img/s** | **38.0 J/1k** |
 
 - **Parameter count does not predict speed, and the table shows it three ways.**
   - Across the four arms, **parameters fall 16%** (4.21 M to 3.52 M) while **speed rises 77%**.
