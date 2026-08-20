@@ -517,7 +517,19 @@ shape, exactly as the limitation on this page always suspected.
 **But iterative still loses**, and it loses while holding every advantage: more total training
 (20 epochs against 12) and a larger model (4.53 M against 4.24 M). The textbook expectation is
 that gradual pruning preserves more accuracy at the same sparsity. On this detector it does not,
-and that is now a clean result rather than a budgeting artefact.
+and that is a clean result rather than a budgeting artefact.
+
+> **How far this generalises is not yet measured, and the limit is specific.** This is one point
+> on an axis: 40.1% of the parameters. The reference result for iterative pruning plots the two
+> arms from 40% to 95% removed and finds them lying on top of each other until roughly 90%,
+> separating only past it — so 40% is the part of the curve where no difference is predicted.
+> Two further choices narrow it: the arms are not size-matched the way [E6](#e6-how-to-spread-the-cut)
+> matched its own (4.53 M against 4.24 M), and the criterion is held at L2, which
+> [E2](#e2-which-channels-to-pick) found poor here and which an iterative arm applies once per
+> step rather than once. **E9 sweeps the ratio to settle it**; the script and its handover are
+> written and waiting on GPU time, in [`HANDOFF_TO_RTX3090.md`](HANDOFF_TO_RTX3090.md). Until it
+> runs, read this section as "iterative does not pay for itself at 40% with L2", not as a
+> general result.
 
 ---
 
@@ -554,6 +566,10 @@ pruning pipeline should apply by default.
 
 - **E8, regression-based selection, was not attempted.** The most implementation-heavy item, and
   deliberately last.
+- **E9, the recoverable frontier, is written but not run.** It sweeps the pruning ratio so E7's
+  one-shot versus iterative comparison can be read as a curve rather than a single point at 40%.
+  About 7 hours on a 3090; the board cannot do it at a comparable batch size. See
+  [`HANDOFF_TO_RTX3090.md`](HANDOFF_TO_RTX3090.md).
 - **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
   to a GPU out-of-memory error.
 - **E6's damage scores were taken on the Orin, not the screening box** that produced its
@@ -623,6 +639,8 @@ python experiments/xp06_pruning/e4_speed.py --skip-build --reverse      # ... an
 python experiments/xp06_pruning/e5_finegrained.py --sparsity 0.90       # E5 single weights
 python experiments/xp06_pruning/e6_allocation.py --plan                 # E6, then --arm <name>
 python experiments/xp06_pruning/e7_fair_rerun.py --mode iterative --post-epochs 12  # E7
+python experiments/xp06_pruning/e6_damage.py                            # E6 before recovery
+python experiments/xp06_pruning/e9_frontier.py --plan                   # E9, then --arm <name>
 
 python analysis/make_figures.py     # every figure, from the committed JSON
 python analysis/xp06_tables.py      # every table, from the same JSON
