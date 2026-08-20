@@ -557,10 +557,13 @@ on the board as a standalone engine; no model was trained.
 **Reading the panels.** Panel 1 is how the table is built; the rest are the question asked in
 four steps, each able to end it.
 
-1. **How the table is built.** Deployed, the detector is one engine and TensorRT fuses
-   neighbouring layers into single kernels, so input and output handling is paid once and shared.
-   To fill the table each layer has to be compiled and timed *alone*, where it pays that handling
-   by itself. The whole experiment turns on whether the second thing describes the first.
+1. **How the table is built, and the question it raises.** Deployed, the detector is one engine
+   and TensorRT fuses neighbouring layers into single kernels, so input and output handling is
+   paid once and shared. To fill the table each layer must be compiled and timed *alone*, where
+   it pays that handling by itself — `model.0.conv` alone is 8.0 ms, `model.1.conv` 5.2, and so
+   on for all 60. Sweeping one layer's width fills one row of the table. Those rows sum to
+   **72.8 ms** describing an engine that runs in **33.9**, and the rest of the figure is whether
+   that gap matters.
 2. **Is layer cost informative?** Latency is strongly sublinear — 8x the channels costs 2.1x the
    time — so halving a layer saves far less than half its time. It is also not monotonic: 32
    channels cost *less* than 24, and 64 less than 52. That non-monotonicity is E3's tiling effect
