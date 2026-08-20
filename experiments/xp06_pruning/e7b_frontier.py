@@ -167,9 +167,13 @@ def run_trained(mode: str, ratios, args) -> None:
                     finetune(m, repo=YOLOV5_REPO, epochs=args.between, res=RES,
                              batch=32, log_every=400))
 
-            # final_recover=None on purpose: prune_iterative must NOT train after
-            # the last cut, so that recover_and_record supplies the whole post-cut
-            # budget and both arms get the same one. This is E7's fix, kept.
+            # final_recover is left None, so prune_iterative's recover fallback runs
+            # `between` epochs after EVERY increment including the last, then
+            # recover_and_record adds `post_epochs` more. Iterative therefore gets
+            # `between + post_epochs` after the final cut against one-shot's
+            # `post_epochs`: strictly more training in its final shape, never less.
+            # That is the conservative direction, and it keeps E7's fix that
+            # iterative's final architecture is not the under-trained one.
             meta = prune_iterative(model, r, steps=args.steps,
                                    recover=between_recover, res=RES,
                                    importance=CRITERION, round_to=1)
@@ -191,9 +195,11 @@ def run_trained(mode: str, ratios, args) -> None:
             notes=(f"XP6 E7b: {mode} channel pruning at {r:.0%} with the {CRITERION} criterion, "
                    f"{args.post_epochs} epochs after the final cut. One point on the recoverable "
                    f"frontier; the arm is only interpretable against the other points at the "
-                   f"same ratio, never alone. Post-cut budget is held equal across arms per E7, "
-                   f"so iterative receives more total training ({total}) than one-shot, not "
-                   f"less. Criterion is L1 rather than E7's L2 because E2 found L2 poor on this "
+                   f"same ratio, never alone. Iterative trains {args.between} epochs after every "
+                   f"increment including the last, then the same {args.post_epochs} post-cut "
+                   f"epochs as one-shot, so it gets more training in its final shape ({total} "
+                   f"total), never less: if it still loses the result is conservative. "
+                   f"Criterion is L1 rather than E7's L2 because E2 found L2 poor on this "
                    f"detector and an iterative arm would apply it once per step. Plotted "
                    f"against measured parameter reduction, not the channel ratio. Unpruned "
                    f"reference {UNPRUNED['map50']} mAP50."),
