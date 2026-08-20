@@ -1,6 +1,6 @@
-# Handing E9 to the RTX 3090
+# Handing E7b to the RTX 3090
 
-This is one experiment, `e9_frontier.py`, and it needs about **7 hours of GPU time**. The
+This is one experiment, `e7b_frontier.py`, and it needs about **7 hours of GPU time**. The
 board cannot run it: the Orin trains at roughly 20 img/s against the 3090's 172, and it caps at
 batch 8 in its 7 GB where every published XP6 number used batch 32. A board-trained result would
 be ten times slower to get *and* not comparable to the table it has to join.
@@ -20,7 +20,7 @@ single point sits at 40% — in the flat region, where the literature predicts n
 all.
 
 So E7 did not contradict the textbook. It sampled the one part of the axis least able to
-distinguish the two arms. **E9 sweeps the whole axis** so the claim can be made properly, in
+distinguish the two arms. **E7b sweeps the whole axis** so the claim can be made properly, in
 either direction.
 
 There is a second reason to want this curve. E5 and E6 both found that 12 epochs of recovery
@@ -53,7 +53,7 @@ anything, which takes a couple of minutes and catches a broken environment befor
 seven hours on one:
 
 ```bash
-python experiments/xp06_pruning/e9_frontier.py --plan
+python experiments/xp06_pruning/e7b_frontier.py --plan
 ```
 
 Expected output, already verified on the Jetson:
@@ -76,9 +76,9 @@ downstream will be comparable.
 Then the three arms, in this order:
 
 ```bash
-python experiments/xp06_pruning/e9_frontier.py --arm damage      # ~25 min
-python experiments/xp06_pruning/e9_frontier.py --arm oneshot     # ~2.7 h
-python experiments/xp06_pruning/e9_frontier.py --arm iterative   # ~4.4 h
+python experiments/xp06_pruning/e7b_frontier.py --arm damage      # ~25 min
+python experiments/xp06_pruning/e7b_frontier.py --arm oneshot     # ~2.7 h
+python experiments/xp06_pruning/e7b_frontier.py --arm iterative   # ~4.4 h
 ```
 
 Damage first, deliberately. It is cheap, it needs no training, and it tells you where the curve
@@ -88,7 +88,7 @@ committing four hours to the iterative arm.
 Each arm writes one JSON per ratio and is safe to interrupt. Resume with an explicit subset:
 
 ```bash
-python experiments/xp06_pruning/e9_frontier.py --arm oneshot --ratios 0.55 0.65 0.75 0.80
+python experiments/xp06_pruning/e7b_frontier.py --arm oneshot --ratios 0.55 0.65 0.75 0.80
 ```
 
 ## Choices already made, and why
@@ -96,7 +96,7 @@ python experiments/xp06_pruning/e9_frontier.py --arm oneshot --ratios 0.55 0.65 
 Do not change these without a reason, because each one is holding a confound still:
 
 - **Criterion is L1, not E7's L2.** E7 held L2 because it was rerunning a specific published
-  comparison and changing the rule would have fixed a different experiment. E9 has no such
+  comparison and changing the rule would have fixed a different experiment. E7b has no such
   obligation, and E2 established L2 is a poor rule on this detector. An iterative arm applies
   the criterion once per step, so a bad rule is applied four times instead of once — running the
   frontier on L2 would confound "iterative does not help" with "the criterion was wrong, more
@@ -117,12 +117,12 @@ Do not change these without a reason, because each one is holding a confound sti
 Commit the raw JSONs — that is the whole handover, there are no weights worth moving:
 
 ```
-results/raw/xp06e9_damage.json                      the unretrained series
-results/raw/xp06e9_dfire_yolov5s_frontier_*.json    one per (arm, ratio)
+results/raw/xp06e7b_damage.json                      the unretrained series
+results/raw/xp06e7b_dfire_yolov5s_frontier_*.json    one per (arm, ratio)
 ```
 
-`analysis/make_figures.py` already has `fig_xp06e9` and builds
-`results/figures/xp06e9_frontier.png` from them. It renders as soon as the damage arm exists and
+`analysis/make_figures.py` already has `fig_xp06e7b` and builds
+`results/figures/xp06e7b_frontier.png` from them. It renders as soon as the damage arm exists and
 fills in as the trained arms land, so you can look at the curve before the run finishes. It
 marks E7's single measurement point on the x-axis, which is the whole reason the sweep exists.
 

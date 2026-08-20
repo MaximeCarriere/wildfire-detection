@@ -526,7 +526,7 @@ and that is a clean result rather than a budgeting artefact.
 > Two further choices narrow it: the arms are not size-matched the way [E6](#e6-how-to-spread-the-cut)
 > matched its own (4.53 M against 4.24 M), and the criterion is held at L2, which
 > [E2](#e2-which-channels-to-pick) found poor here and which an iterative arm applies once per
-> step rather than once. **E9 sweeps the ratio to settle it**; the script and its handover are
+> step rather than once. **E7b sweeps the ratio to settle it**; the script and its handover are
 > written and waiting on GPU time, in [`HANDOFF_TO_RTX3090.md`](HANDOFF_TO_RTX3090.md). Until it
 > runs, read this section as "iterative does not pay for itself at 40% with L2", not as a
 > general result.
@@ -566,7 +566,7 @@ pruning pipeline should apply by default.
 
 - **E8, regression-based selection, was not attempted.** The most implementation-heavy item, and
   deliberately last.
-- **E9, the recoverable frontier, is written but not run.** It sweeps the pruning ratio so E7's
+- **E7b, the recoverable frontier, is written but not run.** It sweeps the pruning ratio so E7's
   one-shot versus iterative comparison can be read as a curve rather than a single point at 40%.
   About 7 hours on a 3090; the board cannot do it at a comparable batch size. See
   [`HANDOFF_TO_RTX3090.md`](HANDOFF_TO_RTX3090.md).
@@ -640,7 +640,7 @@ python experiments/xp06_pruning/e5_finegrained.py --sparsity 0.90       # E5 sin
 python experiments/xp06_pruning/e6_allocation.py --plan                 # E6, then --arm <name>
 python experiments/xp06_pruning/e7_fair_rerun.py --mode iterative --post-epochs 12  # E7
 python experiments/xp06_pruning/e6_damage.py                            # E6 before recovery
-python experiments/xp06_pruning/e9_frontier.py --plan                   # E9, then --arm <name>
+python experiments/xp06_pruning/e7b_frontier.py --plan                 # E7b, then --arm <name>
 
 python analysis/make_figures.py     # every figure, from the committed JSON
 python analysis/xp06_tables.py      # every table, from the same JSON
