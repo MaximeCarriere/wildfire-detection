@@ -167,20 +167,22 @@ def run_trained(mode: str, ratios, args) -> None:
                     finetune(m, repo=YOLOV5_REPO, epochs=args.between, res=RES,
                              batch=32, log_every=400))
 
-            # final_recover is left None, so prune_iterative's recover fallback runs
-            # `between` epochs after EVERY increment including the last, then
-            # recover_and_record adds `post_epochs` more. Iterative therefore gets
-            # `between + post_epochs` after the final cut against one-shot's
-            # `post_epochs`: strictly more training in its final shape, never less.
-            # That is the conservative direction, and it keeps E7's fix that
-            # iterative's final architecture is not the under-trained one.
+            # The final increment trains NOTHING here: recover_and_record supplies
+            # the whole post-cut budget, so iterative's final shape gets exactly the
+            # same `post_epochs` as one-shot (12 vs 12). A no-op final_recover is
+            # what makes prune_iterative skip training on the last step. Iterative
+            # still pays `between` epochs on each of the earlier increments, its
+            # intrinsic overhead, so it gets more TOTAL training but the same
+            # FINAL-shape training. That keeps the schedule the only variable and
+            # makes a win or loss at high sparsity unambiguous.
+            between_steps = args.steps - 1
             meta = prune_iterative(model, r, steps=args.steps,
-                                   recover=between_recover, res=RES,
-                                   importance=CRITERION, round_to=1)
+                                   recover=between_recover, final_recover=lambda m: None,
+                                   res=RES, importance=CRITERION, round_to=1)
             meta["between_epochs_each"] = args.between
-            meta["between_epochs_total"] = args.between * args.steps
+            meta["between_epochs_total"] = args.between * between_steps
             meta["between_step_runs"] = between_runs
-            total = args.between * args.steps + args.post_epochs
+            total = args.between * between_steps + args.post_epochs
 
         meta["method"] = mode
         meta["channel_ratio"] = r
@@ -195,10 +197,11 @@ def run_trained(mode: str, ratios, args) -> None:
             notes=(f"XP6 E7b: {mode} channel pruning at {r:.0%} with the {CRITERION} criterion, "
                    f"{args.post_epochs} epochs after the final cut. One point on the recoverable "
                    f"frontier; the arm is only interpretable against the other points at the "
-                   f"same ratio, never alone. Iterative trains {args.between} epochs after every "
-                   f"increment including the last, then the same {args.post_epochs} post-cut "
-                   f"epochs as one-shot, so it gets more training in its final shape ({total} "
-                   f"total), never less: if it still loses the result is conservative. "
+                   f"same ratio, never alone. Post-cut budget is held EXACTLY equal to one-shot "
+                   f"({args.post_epochs} epochs after the final cut for both); iterative pays "
+                   f"{args.between} epochs on each earlier increment as intrinsic overhead "
+                   f"({total} total). Equal final-shape training makes the schedule the only "
+                   f"variable, so a win or loss at any ratio is unambiguous. "
                    f"Criterion is L1 rather than E7's L2 because E2 found L2 poor on this "
                    f"detector and an iterative arm would apply it once per step. Plotted "
                    f"against measured parameter reduction, not the channel ratio. Unpruned "

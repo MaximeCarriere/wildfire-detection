@@ -1,0 +1,78 @@
+{
+  "experiment": "xp06e7b_damage",
+  "base_model": "yolov5s",
+  "input_res": 512,
+  "criterion": "l1",
+  "granularity": "channels",
+  "unpruned_here": {
+    "map50": 0.7764,
+    "map50_tiny": 0.138
+  },
+  "points": [
+    {
+      "channel_ratio": 0.15,
+      "params_m_after": 5.2926,
+      "params_reduction": 0.2466,
+      "macs_reduction": 0.2435,
+      "map50": 0.6829,
+      "map50_tiny": 0.0375
+    },
+    {
+      "channel_ratio": 0.25,
+      "params_m_after": 4.2053,
+      "params_reduction": 0.4014,
+      "macs_reduction": 0.3873,
+      "map50": 0.0728,
+      "map50_tiny": 0.0
+    },
+    {
+      "channel_ratio": 0.35,
+      "params_m_after": 3.1291,
+      "params_reduction": 0.5546,
+      "macs_reduction": 0.5344,
+      "map50": 0.0026,
+      "map50_tiny": 0.0
+    },
+    {
+      "channel_ratio": 0.45,
+      "params_m_after": 2.2228,
+      "params_reduction": 0.6836,
+      "macs_reduction": 0.6592,
+      "map50": 0.0,
+      "map50_tiny": 0.0
+    },
+    {
+      "channel_ratio": 0.55,
+      "params_m_after": 1.4694,
+      "params_reduction": 0.7908,
+      "macs_reduction": 0.7667,
+      "map50": 0.0,
+      "map50_tiny": 0.0
+    },
+    {
+      "channel_ratio": 0.65,
+      "params_m_after": 0.8898,
+      "params_reduction": 0.8733,
+      "macs_reduction": 0.854,
+      "map50": 0.0,
+      "map50_tiny": 0.0
+    },
+    {
+      "channel_ratio": 0.75,
+      "params_m_after": 0.4645,
+      "params_reduction": 0.9339,
+      "macs_reduction": 0.9188,
+      "map50": 0.0001,
+      "map50_tiny": 0.0
+    },
+    {
+      "channel_ratio": 0.8,
+      "params_m_after": 0.3149,
+      "params_reduction": 0.9552,
+      "macs_reduction": 0.9369,
+      "map50": 0.0022,
+      "map50_tiny": 0.0
+    }
+  ],
+  "notes": "XP6 E7b: channel pruning damage across the ratio, no recovery training. The unretrained series of the Han-style frontier figure. Scored against an unpruned baseline measured on the same machine in the same run, so the deltas hold even if the machine is not the screening box. No model_id: side data for the E7b figure, not a results record."
+}
