@@ -1,0 +1,39 @@
+{
+  "experiment": "xp06e6b_damage",
+  "base_model": "yolov5s",
+  "input_res": 512,
+  "criterion": "l1",
+  "machine": "jetson_orin_nano",
+  "unpruned_here": {
+    "map50": 0.7775,
+    "map50_tiny": 0.1386
+  },
+  "unpruned_screening_box": 0.7764,
+  "arms": {
+    "global": {
+      "params_m_after": 4.2053,
+      "params_reduction": 0.40138,
+      "map50_damage": 0.0726,
+      "map50_tiny_damage": 0.0,
+      "map5095_damage": 0.0286,
+      "allocation": "global"
+    },
+    "uniform": {
+      "params_m_after": 4.2061,
+      "params_reduction": 0.40126,
+      "map50_damage": 0.011,
+      "map50_tiny_damage": 0.0,
+      "map5095_damage": 0.0039,
+      "allocation": "uniform"
+    },
+    "sensitivity": {
+      "params_m_after": 4.211,
+      "params_reduction": 0.40058,
+      "map50_damage": 0.1689,
+      "map50_tiny_damage": 0.0007,
+      "map5095_damage": 0.0654,
+      "allocation": "sensitivity"
+    }
+  },
+  "notes": "XP6 E6b: the three E6 allocations scored with no recovery training, the measurement E6's records left at null. Matched sizes and L1 criterion are unchanged from E6; only the optimizer is absent. Scored on the Orin Nano with the unpruned baseline re-scored alongside, so every delta is against a same-machine reference. No model_id: this is side data for the E6 figure, not a results record."
+}
