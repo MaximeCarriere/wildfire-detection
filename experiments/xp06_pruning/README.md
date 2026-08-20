@@ -65,7 +65,7 @@ fault of one badly chosen setting.
 | **E3** | channel widths | round the surviving widths so kernels run better? | ✅ **1.77x faster on the board** at the same accuracy |
 | **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **the compiler refuses the sparse kernels** |
 | **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
-| **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ helps, but far less than E2 |
+| **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ decides the damage (15x), but 12 epochs erase it |
 | **E7** | retraining | does iterative still lose when both arms train equally? | ✅ yes, it still loses |
 | **E8** | criterion | pick channels by reconstructing the layer's output | ❌ **not attempted** |
 
@@ -434,7 +434,7 @@ cut removes 39.6% of the parameters and the nominal ratios do not compare.
 - **Channels do buy speed, but only past about 70% removed**: **1.55x** at 91%, on 45% less energy.
 - **In between it goes backwards.** At 39.6% removed the engine runs **18% slower than unpruned**,
   reproducing the 381 img/s XP6 measured earlier. Widths like 47 instead of 64 are what
-  [E3](#e3-does-regular-channel-shape-recover-the-missing-speed) tests.
+  [E3](#e3-regular-channel-widths-recover-the-missing-speed) tests.
 - **The speed arrives only after the accuracy has gone.** Read the three panels at 90% removed:
   channels are 1.55x faster at 0.0000 mAP50, weights hold 0.1447 and gain nothing.
 
@@ -444,17 +444,51 @@ cut removes 39.6% of the parameters and the nominal ratios do not compare.
 
 ## E6. How to spread the cut
 
-> **Axis:** ratio &nbsp;·&nbsp; **Asks:** same cut spread three ways, does allocation rescue it? &nbsp;·&nbsp; **Answer:** it helps, but far less than choosing a better rule
+> **Axis:** ratio &nbsp;·&nbsp; **Asks:** same cut spread three ways, does allocation rescue it? &nbsp;·&nbsp; **Answer:** it decides almost everything about the damage, and almost nothing about what survives retraining
 
 Using E1's map, protect the fragile layers and cut hard where there is slack. All three arms are
-matched to the same measured size by search, so only the distribution varies.
+matched to the same measured size by search — 40.1% of the parameters removed, 7.03 M down to
+about 4.21 M — so only the distribution varies. The criterion is held at L1 rather than LAMP,
+because LAMP normalises magnitudes per layer and would smuggle in an allocation decision of its
+own.
 
 ![Where the cut lands](../../results/figures/xp06e6_allocation.png)
 
-**Sensitivity-driven allocation wins by 0.4 accuracy points. Choosing a better rule (E2) was
-worth 4.5.** The map is correct and acting on it is second-order. It does buy one thing: correct
-silence on empty frames returns to the unpruned 97.4%, undoing the extra false alarms pruning
-otherwise causes.
+**The same three models, scored twice.** Left, at the moment they were cut. Right, after the 12
+epochs E6 originally published.
+
+| allocation | damage, no retraining | after 12 epochs |
+|---|---:|---:|
+| uniform | 0.0110 | 0.7514 |
+| global (what XP6 used) | 0.0726 | 0.7479 |
+| **sensitivity-driven** | **0.1689** | **0.7522** |
+| *spread across the three* | *0.158* | *0.004* |
+
+**Allocation is not second-order. Recovery is just strong enough to hide that it is not.**
+Sensitivity-driven allocation leaves a model **15x** better than uniform and **2.3x** better than
+global — and after twelve epochs all three land within 0.4 points of each other, which is the
+number E6 first reported. Both measurements are of the same three models. Only the second one
+was ever published, and on its own it says allocation barely matters.
+
+**E1's map is right, and acting on it works.** Sensitivity wins on both sides of the figure,
+which is the check that matters: an allocation derived from single-layer sensitivity really does
+produce the least-damaged network. What it does not do is produce a *better* network once the
+optimizer has been allowed to run.
+
+> **This is E5's finding again on a different axis.** There, weight and channel pruning looked
+> nothing alike as damage and converged once both retrained. Here, three allocations spanning
+> 0.158 mAP50 converge to 0.004. On this detector, twelve epochs is enough to absorb almost any
+> structural choice made before them — which makes "how much retraining can you afford" the
+> question that determines whether any of these decisions matter. [E7](#e7-one-shot-versus-iterative-fairly)
+> takes that up directly.
+
+**So the practical reading depends entirely on your budget.** With a retraining budget, spend
+your effort on the criterion — [E2](#e2-which-channels-to-pick) showed that is worth 4.5 points where
+allocation is worth 0.4. Without one, allocation is the difference between a model at 0.169 and
+a model at 0.011, and E1's map is the best tool on this page.
+
+Sensitivity buys one thing outright: correct silence on empty frames returns to the unpruned
+97.4%, undoing the extra false alarms the other two allocations leave behind.
 
 ---
 
@@ -522,6 +556,10 @@ pruning pipeline should apply by default.
   deliberately last.
 - **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
   to a GPU out-of-memory error.
+- **E6's damage scores were taken on the Orin, not the screening box** that produced its
+  recovered numbers, because the 3090 was not reachable when the gap was found. The unpruned
+  baseline was re-scored alongside them and agrees to 0.0011 mAP50, so the two panels of the E6
+  figure are comparable; they are not, however, the same machine.
 
 ---
 

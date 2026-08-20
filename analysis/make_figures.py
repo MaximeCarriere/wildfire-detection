@@ -987,7 +987,23 @@ def fig_xp06e5(records) -> Path | None:
 
 
 def fig_xp06e6(records) -> Path | None:
-    """Same amount removed, three ways of choosing where."""
+    """Same amount removed, three ways of choosing where, before and after recovery.
+
+    E6's published comparison is the right-hand panel alone, and read alone it says
+    allocation is worth 0.4 points and therefore barely matters. The left panel is
+    the measurement that was missing: the same three models scored at the moment
+    they were cut, with no optimizer run at all.
+
+    Both panels are needed because E5 already showed this detector can erase a
+    large structural difference in 12 epochs. A gap that is wide before recovery
+    and narrow after it is a statement about what retraining absorbs; a gap that
+    is narrow in both is a statement about allocation. Only the pair distinguishes
+    them, so only the pair is published.
+
+    Each panel carries its own unpruned reference because the damage scores were
+    taken on the Orin and the recovered ones on the screening box. The two
+    baselines agree to 0.0011 mAP50, which is the point of measuring both.
+    """
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -996,27 +1012,63 @@ def fig_xp06e6(records) -> Path | None:
         return None
     order = [a for a in ("global", "uniform", "sensitivity") if a in arms]
 
-    fig, ax = plt.subplots(figsize=(8.6, 4.8))
-    fig.suptitle("Where the cut lands matters as much as how big it is", y=1.05)
-    style.subtitle(fig, "All three models are the same size, pruned with the same criterion. "
-                        "Only the per-layer distribution differs.", y=0.985)
+    dmg_path = RAW / "xp06e6b_damage.json"
+    dmg = json.loads(dmg_path.read_text()) if dmg_path.exists() else None
+    if dmg and not all(a in dmg["arms"] for a in order):
+        dmg = None
 
-    metrics = [("map50_dfire_test", "overall", style.BLUE),
-               ("map50_small_plume", "small plumes", style.ORANGE),
-               ("map50_tiny_plume", "tiny plumes", style.AQUA)]
+    panels = []
+    if dmg:
+        panels.append(("Before retraining", "the cut, scored as damage",
+                       {a: (dmg["arms"][a]["map50_damage"],
+                            dmg["arms"][a]["map50_tiny_damage"]) for a in order},
+                       dmg["unpruned_here"]["map50"]))
+    panels.append(("After 12 epochs of recovery", "what E6 published",
+                   {a: (arms[a].get("map50_dfire_test") or 0,
+                        arms[a].get("map50_tiny_plume") or 0) for a in order},
+                   0.7764))
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(6.5 * len(panels), 4.9),
+                             sharey=True, squeeze=False)
+    axes = axes[0]
+    fig.suptitle("Where the cut lands, before and after the retraining that hides it", y=1.06)
+    style.subtitle(fig, "All three models are the same size (~4.21 M, 40% removed), pruned "
+                        "with the same L1 criterion. Only the per-layer distribution differs.",
+                   y=0.995)
+
+    series = (("overall", style.BLUE), ("tiny plumes", style.AQUA))
     x = np.arange(len(order))
-    w = 0.26
-    for i, (key, label, colour) in enumerate(metrics):
-        vals = [arms[a].get(key) or 0 for a in order]
-        ax.bar(x + (i - 1) * w, vals, width=w - 0.02, color=colour, label=label, zorder=3)
-        for xi, v in zip(x + (i - 1) * w, vals):
-            ax.text(xi, v + 0.012, f"{v:.3f}", ha="center", fontsize=8.5)
+    w = 0.34
+    for ax, (title, sub, vals, ref) in zip(axes, panels):
+        for i, (label, colour) in enumerate(series):
+            vs = [vals[a][i] for a in order]
+            ax.bar(x + (i - 0.5) * w, vs, width=w - 0.03, color=colour,
+                   label=label, zorder=3)
+            for xi, v in zip(x + (i - 0.5) * w, vs):
+                # A bar that nearly reaches the unpruned line has no room above it,
+                # so those labels go inside the bar instead of on top of the line.
+                if v > ref * 0.85:
+                    ax.text(xi, v - 0.02, f"{v:.3f}", ha="center", va="top",
+                            fontsize=8.5, color="white", fontweight="bold", zorder=4)
+                else:
+                    ax.text(xi, v + 0.012, f"{v:.3f}", ha="center", fontsize=8.5)
+        ax.axhline(ref, color=style.INK, linestyle=":", linewidth=1.2, zorder=2)
+        ax.text(-0.45, ref + 0.014, f"unpruned {ref:.4f}",
+                ha="left", va="bottom", fontsize=8.5, color=style.INK_2)
 
-    ax.set_xticks(x)
-    ax.set_xticklabels([f"{a}\n{arms[a]['params_m']:.2f} M params" for a in order])
-    ax.set_ylabel("accuracy (mAP50)")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3)
-    style.tidy(ax)
+        # The number the panel exists to show: how far apart the three allocations
+        # are on the overall metric. Side by side, the pair is the whole argument.
+        spread = max(vals[a][0] for a in order) - min(vals[a][0] for a in order)
+        ax.set_title(f"{title}\n{sub} \u2014 arms span {spread:.3f} mAP50",
+                     fontsize=11, pad=8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(order)
+        style.tidy(ax)
+        ax.grid(axis="x", visible=False)
+
+    axes[0].set_ylabel("accuracy (mAP50)")
+    axes[0].set_ylim(0, max(max(v) for _, _, vals, _ in panels for v in vals.values()) * 1.24)
+    axes[-1].legend(loc="upper center", bbox_to_anchor=(0.5, -0.10), ncol=2, frameon=False)
     fig.tight_layout()
     return save(fig, "xp06e6_allocation.png")
 
