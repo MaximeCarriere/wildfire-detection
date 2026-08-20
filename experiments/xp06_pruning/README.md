@@ -554,23 +554,27 @@ on the board as a standalone engine; no model was trained.
 
 ![Whether NetAdapt's latency table describes this board](../../results/figures/xp06e9_netadapt.png)
 
-**Reading the four panels.** They are the question asked in four steps, each able to end it.
+**Reading the panels.** Panel 1 is how the table is built; the rest are the question asked in
+four steps, each able to end it.
 
-1. **Is layer cost informative?** Latency is strongly sublinear — 8x the channels costs 2.1x the
+1. **How the table is built.** Deployed, the detector is one engine and TensorRT fuses
+   neighbouring layers into single kernels, so input and output handling is paid once and shared.
+   To fill the table each layer has to be compiled and timed *alone*, where it pays that handling
+   by itself. The whole experiment turns on whether the second thing describes the first.
+2. **Is layer cost informative?** Latency is strongly sublinear — 8x the channels costs 2.1x the
    time — so halving a layer saves far less than half its time. It is also not monotonic: 32
    channels cost *less* than 24, and 64 less than 52. That non-monotonicity is E3's tiling effect
    visible inside a single layer.
-2. **How good is one entry?** Rebuilding the same layer moves it up to **7%**. The search ranks
+3. **How good is one entry?** Rebuilding the same layer moves it up to **7%**. The search ranks
    candidates whose predicted savings differ by less than that, so this number sets the finest
    width grid worth searching. Merely re-timing an already-built engine moves it 3%.
-3. **Do the layers sum to the network?** No: 72.8 ms of layers against a 33.9 ms engine, **2.15x
-   too high**. Timed alone, every layer pays for its own input and output handling; inside the
-   real graph TensorRT fuses those away.
-4. **Does it get a real cut right?** Yes. Scored against two engines E3 already built and
+4. **Do the layers sum to the network?** No: 72.8 ms of layers against a 33.9 ms engine, **2.15x
+   too high** — the grey overhead in panel 1, counted sixty times instead of once.
+5. **Does it get a real cut right?** Yes. Scored against two engines E3 already built and
    measured, the table calls `round_to=1` **slower** than unpruned and `round_to=32` faster —
    both signs correct, and the full ranking correct.
 
-**Panels 3 and 4 disagree on purpose.** NetAdapt never uses absolute latency, only the difference
+**Panels 4 and 5 disagree on purpose.** NetAdapt never uses absolute latency, only the difference
 a cut makes, so a per-layer overhead that does not change with width cancels out. A total that is
 2.15x wrong is survivable. A wrong direction would not be, and the direction is right.
 
