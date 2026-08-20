@@ -1155,18 +1155,20 @@ def fig_xp06e7b(records) -> Path | None:
 def fig_xp06e9(records) -> Path | None:
     """Whether NetAdapt's latency lookup table is a usable cost model on this board.
 
-    Four panels, in the order the question actually has to be asked. Each one could
-    have ended the experiment, and the figure is arranged so a reader can see which
-    one nearly did.
+    A schematic and four data panels, in the order the question actually has to be
+    asked. Each data panel could have ended the experiment, and the figure is
+    arranged so a reader can see which one nearly did.
 
-    Left: is layer latency informative in channel count? Only if the curve bends.
-    Second: how repeatable is one entry, which sets the finest width grid a search
-    could resolve. Third: do per-layer times sum to the real engine, where they
+    Leftmost: no data, just the method -- each conv layer is lifted out of the
+    fused engine and timed alone, which is the fact every later panel leans on.
+    Second: is layer latency informative in channel count? Only if the curve bends.
+    Third: how repeatable is one entry, which sets the finest width grid a search
+    could resolve. Fourth: do per-layer times sum to the real engine, where they
     plainly do not. Right: the one that decides it -- does the table predict the
     *direction* of a real cut's effect, scored against engines E3 already built and
     measured on this board.
 
-    The third and fourth panels disagree deliberately. NetAdapt never consumes
+    The fourth and fifth panels disagree deliberately. NetAdapt never consumes
     absolute latency, only differences, so a per-layer overhead that does not vary
     with width cancels out and the 2.16x total error is survivable. Showing the
     failed total next to the correct ranking is the whole argument of the section.
@@ -1182,16 +1184,81 @@ def fig_xp06e9(records) -> Path | None:
     if not (shape and slope):
         return None
 
-    fig, axes = plt.subplots(1, 4, figsize=(19.0, 4.3),
-                             gridspec_kw={"width_ratios": [1.25, 0.8, 0.85, 1.25]})
+    # One tall schematic column, then the four data panels in a 2x2 block, the
+    # same shape fig_xp06e4 uses. A single row of five would be ~5.6:1 and turn
+    # unreadable at README width; this keeps the figure near 1.8:1.
+    fig = plt.figure(figsize=(15.5, 8.5))
+    gs = fig.add_gridspec(2, 3, width_ratios=[1.0, 0.95, 0.95], hspace=0.42, wspace=0.30)
+    axes = [fig.add_subplot(gs[:, 0]),
+            fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+            fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[1, 2])]
     fig.suptitle("Can the pruning ratio be searched automatically against measured latency?",
-                 y=1.09)
+                 y=1.045)
     style.subtitle(fig, "NetAdapt ranks candidate cuts with a table of layer latency versus "
                         "channel count. Before writing the search, the table has to be shown "
                         "to describe this hardware. It half does.", y=1.005)
 
-    # --- 1. shape -----------------------------------------------------------
+    # --- 1. method schematic ------------------------------------------------
+    # The data panels judge a cost model, but a reader cannot judge whether the
+    # model is valid without first knowing how its table was built: each conv
+    # layer is lifted out of the fused engine, compiled as its own tiny TensorRT
+    # engine, and timed alone. The schematic shows what that isolation changes --
+    # fused layers share overheads, isolated ones each pay their own -- which is
+    # why panel 4 can fail while panel 5 survives.
+    from matplotlib.patches import Rectangle
+
     ax = axes[0]
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.set_title("1. How the table is built\nlayers timed alone vs the fused engine",
+                 fontsize=10.5, pad=8)
+    n, bw = 4, 1.9
+    arrow = dict(arrowstyle="->", color=style.INK_2, linewidth=1.4)
+
+    # The deployed reality: one engine, neighbouring layers fused edge to edge.
+    ax.text(0.3, 16.6, "deployed: one fused TensorRT engine", fontsize=9.5,
+            color=style.INK, va="bottom", fontweight="bold")
+    for i in range(n):
+        ax.add_patch(Rectangle((1.3 + i * bw, 14.5), bw, 1.3, facecolor=style.BLUE,
+                               edgecolor="white", linewidth=1.5))
+    ax.add_patch(Rectangle((1.3, 14.5), n * bw, 1.3, facecolor="none",
+                           edgecolor=style.INK, linewidth=1.4))
+    ax.annotate("", xy=(1.25, 15.15), xytext=(0.2, 15.15), arrowprops=arrow)
+    ax.annotate("", xy=(9.95, 15.15), xytext=(8.95, 15.15), arrowprops=arrow)
+    ax.text(0.3, 13.9, "~60 conv layers, neighbours fused into single kernels:\n"
+                       "input/output handling is paid once and shared",
+            fontsize=9, color=style.INK_2, va="top")
+
+    ax.annotate("", xy=(1.5, 10.4), xytext=(1.5, 12.1), arrowprops=arrow)
+    ax.text(2.15, 11.25, "to fill the table, each layer is compiled\n"
+                        "as its own engine and timed alone,\n"
+                        "sweeping its output-channel count",
+            fontsize=9, color=style.INK_2, va="center", ha="left")
+
+    # The measurement: the same layers, pulled apart. The grey caps are the
+    # per-layer input/output handling that fusion had absorbed.
+    ax.text(0.3, 8.8, "measured for the table: every layer alone", fontsize=9.5,
+            color=style.INK, va="bottom", fontweight="bold")
+    for i in range(n):
+        x0 = 0.4 + i * 2.45
+        ax.add_patch(Rectangle((x0, 6.7), 0.4, 1.3, facecolor=style.MUTED,
+                               edgecolor="none"))
+        ax.add_patch(Rectangle((x0 + 1.65, 6.7), 0.4, 1.3, facecolor=style.MUTED,
+                               edgecolor="none"))
+        ax.add_patch(Rectangle((x0 + 0.4, 6.7), 1.25, 1.3, facecolor=style.BLUE,
+                               edgecolor="none"))
+        ax.text(x0 + 1.025, 6.3, f"t{chr(0x2080 + i + 1)}", fontsize=9.5,
+                color=style.INK_2, ha="center", va="top")
+    ax.text(0.3, 5.1, "alone, each layer pays its own input/output\n"
+                      "handling (grey) that the fused engine shared",
+            fontsize=9, color=style.INK_2, va="top")
+    ax.text(0.3, 3.0, "the question: does \u03a3 t\u1d62 describe the fused engine?",
+            fontsize=9.5, color=style.INK, va="top")
+    ax.set_xlim(0, 10)
+    ax.set_ylim(1.9, 17.5)
+
+    # --- 2. shape -----------------------------------------------------------
+    ax = axes[1]
     xs = [p["out_ch"] for p in shape["points"]]
     ys = [p["ms"] for p in shape["points"]]
     ax.plot(xs, ys, "-o", color=style.BLUE, markersize=4, linewidth=1.8, zorder=3)
@@ -1205,18 +1272,18 @@ def fig_xp06e9(records) -> Path | None:
             zorder=2, label="if cost were proportional")
     ax.set_xlabel("output channels")
     ax.set_ylabel("layer latency (ms)")
-    ax.set_title("1. Sublinear, and not monotonic\n"
+    ax.set_title("2. Sublinear, and not monotonic\n"
                  "8x the channels costs 2.1x the time", fontsize=10.5, pad=8)
     ax.legend(fontsize=8, frameon=False, loc="upper left")
     ax.text(0.97, 0.06, "orange = multiple of 32", transform=ax.transAxes,
             ha="right", fontsize=8, color=style.ORANGE)
     style.tidy(ax)
 
-    # --- 2. noise -----------------------------------------------------------
+    # --- 3. noise -----------------------------------------------------------
     # Two different questions share this panel: rebuilding an entry, and merely
     # re-timing one. Both bound how finely a search can rank candidates, and the
     # rebuild number is much the larger of the two.
-    ax = axes[1]
+    ax = axes[2]
     drift = d.get("drift") or {}
     if noise and noise.get("repeats"):
         labels, worst = [], 0.0
@@ -1237,13 +1304,13 @@ def fig_xp06e9(records) -> Path | None:
         ax.set_xticklabels(labels, fontsize=8)
         ax.set_xlim(-0.5, len(labels) - 0.5)
         ax.set_ylabel("deviation from the mean (%)")
-        ax.set_title(f"2. An entry is only good to ~{worst:.0f}%\n"
+        ax.set_title(f"3. An entry is only good to ~{worst:.0f}%\n"
                      f"which sets the finest usable grid", fontsize=10.5, pad=8)
         style.tidy(ax)
         ax.grid(axis="x", visible=False)
 
-    # --- 3. composition -----------------------------------------------------
-    ax = axes[2]
+    # --- 4. composition -----------------------------------------------------
+    ax = axes[3]
     vals = [slope["unpruned_lut_ms"], slope["unpruned_real_ms"]]
     ax.bar([0, 1], vals, width=0.55, color=[style.RED, style.MUTED], zorder=3)
     for x, v in zip([0, 1], vals):
@@ -1252,13 +1319,13 @@ def fig_xp06e9(records) -> Path | None:
     ax.set_xticklabels(["60 layers\nsummed", "real\nengine"], fontsize=9)
     ax.set_ylabel("latency at batch 16 (ms)")
     ax.set_ylim(0, max(vals) * 1.22)
-    ax.set_title(f"3. Totals do not compose\n{slope['ratio_lut_over_real']:.2f}x too high",
+    ax.set_title(f"4. Totals do not compose\n{slope['ratio_lut_over_real']:.2f}x too high",
                  fontsize=10.5, pad=8)
     style.tidy(ax)
     ax.grid(axis="x", visible=False)
 
-    # --- 4. slope, the decisive one -----------------------------------------
-    ax = axes[3]
+    # --- 5. slope, the decisive one -----------------------------------------
+    ax = axes[4]
     arms = slope["arms"]
     ys = np.arange(len(arms))[::-1]
     h = 0.34
@@ -1275,10 +1342,10 @@ def fig_xp06e9(records) -> Path | None:
     ax.set_yticks(ys)
     ax.set_yticklabels([f"round_to={a['arm'].replace('round', '')}" for a in arms],
                        fontsize=9.5)
-    ax.set_xlabel("latency saved vs unpruned (ms) \u2014 negative means slower")
+    ax.set_xlabel("latency saved vs unpruned (ms)\nnegative means slower")
     ax.set_xlim(-16, 24)
     ok = all(a["sign_agrees"] for a in arms)
-    ax.set_title("4. But the direction is right\n"
+    ax.set_title("5. But the direction is right\n"
                  + ("both signs correct" if ok else "a sign is wrong"),
                  fontsize=10.5, pad=8)
     # Lower left is the only free quadrant: round_to=1 puts its bars left of zero
