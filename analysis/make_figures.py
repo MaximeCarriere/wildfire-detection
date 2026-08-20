@@ -1173,18 +1173,27 @@ ARMS_E4B = [
 
 
 def fig_xp06e4b(records) -> Path | None:
-    """Four engines of the same network, measured in both directions.
+    """Four engines of the same network, built twice under two tuning batches.
 
-    Each arm was timed twice, once going down the list and once going up, because
-    four engines timed back to back alias anything that drifts with elapsed time
-    onto arm identity. The bar is the mean of the two orders and the error bar
-    spans them, so a reader can see the repeat rather than take it on trust.
+    The first build set tuned TensorRT at batch 1 (``--optShapes``) and then
+    reported throughput at batch 16, so its kernels were chosen under conditions
+    that were never measured -- and batch 1 is precisely the case where a sparse
+    kernel cannot win, because its metadata-decode cost is fixed while the maths
+    it saves scales with batch. The second set closes that gap by tuning at 16.
 
-    The figure's job is to stop a 3% gradient from being read as a sparsity
-    result. TensorRT found 39 layers eligible for sparse kernels and selected
-    none, so whatever separates these bars, it is not the hardware doing what the
-    hardware was supposed to do. That sentence is on the figure, not just in the
-    caption.
+    Both sets are plotted against the dense arm *of their own set*, never against
+    each other. The batch-16 engines were measured after an hour of continuous
+    building and sit about 2.6% lower across the board, which is the die being
+    warm, not the engines being slower. Within-set ranking is the only comparison
+    this figure invites, and it is the one that carries the result: the ranking
+    does not survive a rebuild. ``50% as 2:4, ordinary build`` is +2.1% in one set
+    and -1.4% in the other, from identical weights.
+
+    The right panel is the floor that makes that readable. Three engines compiled
+    from one unchanged onnx with identical flags differ by 0.58%, so a same-build
+    comparison is trustworthy to well under a percent while a *different*-build
+    comparison plainly is not. Sparsity cannot be what separates the left-hand
+    bars, and now the figure shows why rather than asserting it.
     """
     import matplotlib.pyplot as plt
     import numpy as np
@@ -1193,59 +1202,102 @@ def fig_xp06e4b(records) -> Path | None:
         a, b = by_id(records, mid), by_id(records, mid + "_rev")
         return [r for r in (a, b) if r and usable(r)]
 
-    arms = [(lab, pair(mid), col) for mid, lab, col in ARMS_E4B]
-    arms = [(lab, rs, col) for lab, rs, col in arms if rs]
-    if len(arms) < 2:
+    def fps(rs):
+        v = [r["jetson"]["fps_batched"] for r in rs]
+        within = max((r["jetson"].get("fps_batched_std") or 0.0) for r in rs)
+        return float(np.mean(v)), max(within, (max(v) - min(v)) / 2 if len(v) > 1 else 0.0)
+
+    sets = []
+    for suffix, label in (("", "tuned at batch 1"), ("_optb16", "tuned at batch 16")):
+        arms = [(lab, pair(mid + suffix), col) for mid, lab, col in ARMS_E4B]
+        if all(rs for _, rs, _ in arms):
+            sets.append((label, [(lab, fps(rs), col) for lab, rs, col in arms]))
+    if not sets:
         return None
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.0),
-                             gridspec_kw={"width_ratios": [1.4, 1.0]})
-    fig.suptitle("The one pattern the hardware understands, measured on the hardware", y=1.10)
+    var = [by_id(records, f"yolov5s_var{r}") for r in ("a", "b", "c")]
+    var = [r for r in var if r and usable(r)]
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.0, 4.3),
+                             gridspec_kw={"width_ratios": [1.55, 1.0]})
+    fig.suptitle("The one pattern the hardware understands, measured on the hardware", y=1.11)
     style.subtitle(fig, "Same network, same shape, same arithmetic in all four: only which "
                         "weights are zero, and whether the compiler was allowed to exploit "
-                        "them. Bars are the mean of two runs taken in opposite order.", y=1.02)
+                        "them. Each set is measured against its own dense engine.", y=1.02)
 
-    ys = np.arange(len(arms))[::-1]
-    colours = [getattr(style, c) for _, _, c in arms]
-    labels = [lab for lab, _, _ in arms]
-
-    panels = ((axes[0], "fps_batched", "fps_batched_std",
-               "Throughput", "images per second (higher is better)"),
-              (axes[1], "latency_ms_median", "latency_ms_median_std",
-               "Batch-1 latency", "milliseconds (lower is better)"))
-
-    for ax, key, std_key, title, xlabel in panels:
-        vals, errs = [], []
-        for _, rs, _ in arms:
-            v = [r["jetson"][key] for r in rs]
-            within = max((r["jetson"].get(std_key) or 0.0) for r in rs)
-            vals.append(float(np.mean(v)))
-            # spread across the two orders, or the within-run spread if only one
-            errs.append(max(within, (max(v) - min(v)) / 2 if len(v) > 1 else 0.0))
-
-        ref = vals[0]
-        ax.axvline(ref, color=style.INK, linestyle=":", linewidth=1.2, zorder=2)
-        ax.barh(ys, vals, xerr=errs, height=0.62, color=colours, zorder=3,
-                error_kw=dict(ecolor=style.INK, lw=1.3, capsize=4))
-        span = max(max(vals) - min(vals), max(vals) * 0.02)
+    # --- left: per-set delta against that set's dense arm -------------------
+    ax = axes[0]
+    labels = [lab for lab, _, _ in sets[0][1]]
+    ys = np.arange(len(labels))[::-1]
+    h = 0.36 if len(sets) > 1 else 0.6
+    hatches = (None, "///")
+    for k, (setlab, arms) in enumerate(sets):
+        ref = arms[0][1][0]
+        vals = [(v / ref - 1) * 100 for _, (v, _), _ in arms]
+        errs = [e / ref * 100 for _, (_, e), _ in arms]
+        off = (k - (len(sets) - 1) / 2) * h
+        ax.barh(ys + off, vals, xerr=errs, height=h * 0.92,
+                color=[getattr(style, c) for _, _, c in arms],
+                hatch=hatches[k], edgecolor="white", linewidth=0.6, zorder=3,
+                error_kw=dict(ecolor=style.INK, lw=1.1, capsize=3),
+                label=setlab)
+        # Labels clear the error bar, not just the bar end, or the caps sit on top
+        # of the digits at this aspect ratio.
         for y, v, e in zip(ys, vals, errs):
-            pct = (v / ref - 1) * 100
-            tag = f"{v:,.1f} \u00b1 {e:.1f}" + (f"   {pct:+.1f}%" if y != ys[0] else "")
-            ax.text(v + e + span * 0.12, y, tag, va="center", ha="left",
-                    fontsize=9.5, color=style.INK_2)
-        ax.set_yticks(ys); ax.set_yticklabels(labels, fontsize=9.5)
-        ax.set_xlabel(xlabel)
-        ax.set_title(title, fontsize=11.5, pad=8)
-        # Zero baseline, deliberately. A truncated axis would blow a 3% spread up
-        # into a visible staircase, which is the opposite of what this figure
-        # concludes. The bars should look the same, because they are; the labels
-        # carry the difference for anyone who wants it.
-        ax.set_xlim(0, (max(vals) + max(errs)) * 1.62)
-        style.tidy(ax)
-        ax.grid(axis="y", visible=False)
+            ha, dx = ("left", e + 0.16) if v >= 0 else ("right", -(e + 0.16))
+            ax.text(v + dx, y + off, f"{v:+.1f}%", va="center", ha=ha,
+                    fontsize=9, color=style.INK_2)
 
-    axes[0].text(0.5, -0.34, "TensorRT found 39 layers eligible for sparse kernels "
-                             "and chose 0 of them.",
+    # The noise floor from the right panel, drawn where it does its work: any bar
+    # inside this band is indistinguishable from rebuilding the same file.
+    if var:
+        v = [r["jetson"]["fps_batched"] for r in var]
+        floor = (max(v) / min(v) - 1) * 100
+        ax.axvspan(-floor, floor, color=style.MUTED, alpha=0.18, zorder=1)
+        ax.text(floor, ys[-1] - 0.60, f" rebuild noise \u00b1{floor:.1f}%",
+                fontsize=8.5, color=style.INK_2, va="center", ha="left")
+    ax.axvline(0, color=style.INK, linestyle=":", linewidth=1.2, zorder=2)
+    # Room for the value labels on both sides: a negative bar puts its label to the
+    # left of the axis, where the tick text already lives.
+    lo = min(v - e for _, arms in sets for (v, e) in
+             [((a[1][0] / arms[0][1][0] - 1) * 100, a[1][1] / arms[0][1][0] * 100)
+              for a in arms])
+    hi = max(v + e for _, arms in sets for (v, e) in
+             [((a[1][0] / arms[0][1][0] - 1) * 100, a[1][1] / arms[0][1][0] * 100)
+              for a in arms])
+    ax.set_xlim(min(lo - 0.95, -1.1), hi + 1.9)
+    ax.set_yticks(ys); ax.set_yticklabels(labels, fontsize=9.5)
+    ax.set_xlabel("throughput vs the dense engine of the same build set (%)")
+    ax.set_title("Speed, relative to dense", fontsize=11.5, pad=8)
+    # Upper right is the only quadrant no bar reaches: the dense row is pinned at
+    # zero by construction and every other arm sits below it.
+    ax.legend(fontsize=8.5, loc="upper right", frameon=False)
+    ax.set_ylim(ys[-1] - 0.95, ys[0] + 0.75)
+    style.tidy(ax); ax.grid(axis="y", visible=False)
+
+    # --- right: the rebuild control ----------------------------------------
+    ax = axes[1]
+    if var:
+        v = [r["jetson"]["fps_batched"] for r in var]
+        e = [r["jetson"].get("fps_batched_std") or 0.0 for r in var]
+        xs = np.arange(len(v))
+        ax.bar(xs, v, yerr=e, width=0.55, color=style.MUTED, zorder=3,
+               error_kw=dict(ecolor=style.INK, lw=1.2, capsize=4))
+        for x, val in zip(xs, v):
+            ax.text(x, val, f"{val:,.1f}", ha="center", va="bottom",
+                    fontsize=9.5, color=style.INK_2)
+        ax.set_xticks(xs)
+        ax.set_xticklabels([f"build {c}" for c in "ABC"], fontsize=9.5)
+        ax.set_ylabel("images per second")
+        ax.set_ylim(0, max(v) * 1.22)
+        ax.set_title(f"One onnx, three builds: {(max(v)/min(v)-1)*100:.1f}% apart",
+                     fontsize=11.5, pad=8)
+        style.tidy(ax); ax.grid(axis="x", visible=False)
+    else:
+        ax.axis("off")
+
+    axes[0].text(0.5, -0.30, "TensorRT found 39 layers eligible for sparse kernels and "
+                             "chose 0 of them \u2014 at both tuning batches.",
                  transform=axes[0].transAxes, ha="center", va="top",
                  fontsize=10.5, color=style.RED, fontweight="bold")
     fig.tight_layout()

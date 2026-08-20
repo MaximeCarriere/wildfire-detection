@@ -135,9 +135,48 @@ ARMS = [
 ]
 
 
+def run_variance(args, ob: str) -> None:
+    """Rebuild the dense arm from the identical onnx and measure each build.
+
+    Every arm in ARMS differs in its weights, so a speed gap between them is always
+    open to "maybe the zeros did something". These builds remove that: same file,
+    same flags, same board, different invocation of the autotuner. Whatever spread
+    appears here is the floor below which no E4 comparison means anything.
+    """
+    onnx = WEIGHTS / f"{BASE}_e4b_dense.onnx"
+    meta = json.loads((WEIGHTS / f"{BASE}_e4b_dense.meta.json").read_text())
+    for rep in ("a", "b", "c"):
+        # 'a' is the published dense engine; b and c are its resamples.
+        suffix = "dense" if rep == "a" else f"dense{rep}"
+        engine = WEIGHTS / f"{BASE}_e4b_{suffix}{ob}_fp16_{RES}.engine"
+        blog = WEIGHTS / f"{BASE}_e4b_{suffix}{ob}_build.log"
+        if not engine.exists():
+            log(f"building {engine.name} (opt_batch={args.opt_batch})")
+            build_fp16_engine(onnx, engine, res=RES, sparsity=False, log_path=blog,
+                              opt_batch=args.opt_batch)
+        measure(engine, f"{BASE}_var{rep}{ob}",
+                f"XP6 E4b variance control, build {rep} of 3. Identical onnx, identical "
+                f"flags, autotuned independently. Measures TensorRT's build-to-build "
+                f"spread so the gaps between the four E4b arms can be read against a "
+                f"floor instead of assumed real. optShapes batch {args.opt_batch}.",
+                meta | {"variance_build": rep, "opt_batch": args.opt_batch}, False)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-build", action="store_true")
+    ap.add_argument("--opt-batch", type=int, default=1,
+                    help="batch size TensorRT autotunes for (--optShapes). The first "
+                         "run of this experiment tuned at 1 and reported throughput at "
+                         "16, so the kernels were chosen under conditions never "
+                         "measured; sparse tactics are exactly the case that gap hides, "
+                         "because their metadata cost is amortised by batch. Results are "
+                         "tagged _optb<N> so they never overwrite the batch-1 set.")
+    ap.add_argument("--variance", action="store_true",
+                    help="measure the extra dense engines built from the SAME onnx with "
+                         "the SAME flags. Nothing about them differs except the build, so "
+                         "their spread IS TensorRT's build-to-build noise -- the control "
+                         "that decides whether E4's unexplained 3.5%% needs explaining.")
     ap.add_argument("--reverse", action="store_true",
                     help="measure the arms in reverse order, tagging results _rev. "
                          "The four arms are timed back to back, so anything that drifts "
@@ -145,11 +184,19 @@ def main() -> None:
                          "onto arm identity. Reversing the order separates the two.")
     args = ap.parse_args()
 
+    # Batch-1 keeps the original unsuffixed names so the published engines and
+    # result files are reproduced exactly; any other tuning batch lands beside them.
+    ob = "" if args.opt_batch == 1 else f"_optb{args.opt_batch}"
+
+    if args.variance:
+        run_variance(args, ob)
+        return
+
     built = {}
     for kind, suffix, flag, _note in ARMS:
         onnx = WEIGHTS / f"{BASE}_e4b_{kind}.onnx"
-        engine = WEIGHTS / f"{BASE}_e4b_{suffix}_fp16_{RES}.engine"
-        blog = WEIGHTS / f"{BASE}_e4b_{suffix}_build.log"
+        engine = WEIGHTS / f"{BASE}_e4b_{suffix}{ob}_fp16_{RES}.engine"
+        blog = WEIGHTS / f"{BASE}_e4b_{suffix}{ob}_build.log"
         if args.skip_build and engine.exists():
             built[suffix] = (engine, blog, {})
             continue
@@ -160,8 +207,9 @@ def main() -> None:
             (WEIGHTS / f"{BASE}_e4b_{kind}.meta.json").write_text(json.dumps(meta, indent=2))
             del model
         meta = json.loads((WEIGHTS / f"{BASE}_e4b_{kind}.meta.json").read_text())
-        log(f"building engine {engine.name} (sparsity={flag})")
-        build_fp16_engine(onnx, engine, res=RES, sparsity=flag, log_path=blog)
+        log(f"building engine {engine.name} (sparsity={flag}, opt_batch={args.opt_batch})")
+        build_fp16_engine(onnx, engine, res=RES, sparsity=flag, log_path=blog,
+                          opt_batch=args.opt_batch)
         built[suffix] = (engine, blog, meta)
 
     log("")
@@ -171,7 +219,7 @@ def main() -> None:
         if not meta:
             meta = json.loads((WEIGHTS / f"{BASE}_e4b_{kind}.meta.json").read_text())
         meta = dict(meta) | sparse_kernel_report(blog)
-        tag = f"{BASE}_{suffix}" + ("_rev" if args.reverse else "")
+        tag = f"{BASE}_{suffix}{ob}" + ("_rev" if args.reverse else "")
         measure(engine, tag, note, meta, flag)
 
 
