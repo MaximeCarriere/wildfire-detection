@@ -1,0 +1,216 @@
+{
+  "experiment": "xp06e9_netadapt_lut",
+  "input_res": 512,
+  "batch": 16,
+  "machine": "jetson_orin_nano",
+  "notes": "XP6 E9: whether NetAdapt's per-layer latency lookup table is a valid cost model on this target. Three stages: the shape of layer latency in channel count, the table's own build-to-build repeatability, and whether the table predicts the saving E3's real engines actually delivered. No search is implemented and no model is trained: the search is only worth writing if the table it consumes can represent what this hardware does. Scored against E3b's measured throughputs rather than re-measuring them. No model_id: side data for the E9 figure, not a results record.",
+  "shape": {
+    "cin": 128,
+    "k": 1,
+    "stride": 1,
+    "hw": 64,
+    "points": [
+      {
+        "out_ch": 16,
+        "ms": 1.11026
+      },
+      {
+        "out_ch": 24,
+        "ms": 1.18786
+      },
+      {
+        "out_ch": 32,
+        "ms": 0.714502
+      },
+      {
+        "out_ch": 40,
+        "ms": 1.10029
+      },
+      {
+        "out_ch": 48,
+        "ms": 1.72324
+      },
+      {
+        "out_ch": 52,
+        "ms": 1.74805
+      },
+      {
+        "out_ch": 56,
+        "ms": 1.25991
+      },
+      {
+        "out_ch": 64,
+        "ms": 1.17331
+      },
+      {
+        "out_ch": 72,
+        "ms": 1.81006
+      },
+      {
+        "out_ch": 80,
+        "ms": 2.3108
+      },
+      {
+        "out_ch": 96,
+        "ms": 1.44355
+      },
+      {
+        "out_ch": 97,
+        "ms": 1.55336
+      },
+      {
+        "out_ch": 104,
+        "ms": 1.46547
+      },
+      {
+        "out_ch": 112,
+        "ms": 1.52555
+      },
+      {
+        "out_ch": 128,
+        "ms": 1.61346
+      }
+    ]
+  },
+  "noise": {
+    "repeats": [
+      {
+        "out_ch": 56,
+        "ms": [
+          1.25531,
+          1.26158,
+          1.24046
+        ],
+        "spread_pct": 1.7
+      },
+      {
+        "out_ch": 64,
+        "ms": [
+          1.16903,
+          1.11352,
+          1.19172
+        ],
+        "spread_pct": 7.02
+      }
+    ]
+  },
+  "slope": {
+    "unpruned_lut_ms": 72.812,
+    "unpruned_real_ms": 33.855,
+    "n_convs": 60,
+    "ratio_lut_over_real": 2.151,
+    "arms": [
+      {
+        "arm": "round1",
+        "lut_ms": 74.578,
+        "real_ms": 44.089,
+        "predicted_saving_ms": -1.766,
+        "actual_saving_ms": -10.234,
+        "sign_agrees": true
+      },
+      {
+        "arm": "round32",
+        "lut_ms": 55.448,
+        "real_ms": 24.926,
+        "predicted_saving_ms": 17.364,
+        "actual_saving_ms": 8.929,
+        "sign_agrees": true
+      }
+    ]
+  },
+  "drift": {
+    "worst_drift_pct": 3.0,
+    "entries": [
+      {
+        "out_ch": 16,
+        "first_ms": 1.11026,
+        "again_ms": 1.11601,
+        "drift_pct": 0.52
+      },
+      {
+        "out_ch": 24,
+        "first_ms": 1.18786,
+        "again_ms": 1.17339,
+        "drift_pct": -1.22
+      },
+      {
+        "out_ch": 32,
+        "first_ms": 0.714502,
+        "again_ms": 0.693309,
+        "drift_pct": -2.97
+      },
+      {
+        "out_ch": 40,
+        "first_ms": 1.10029,
+        "again_ms": 1.08122,
+        "drift_pct": -1.73
+      },
+      {
+        "out_ch": 48,
+        "first_ms": 1.72324,
+        "again_ms": 1.69262,
+        "drift_pct": -1.78
+      },
+      {
+        "out_ch": 52,
+        "first_ms": 1.74805,
+        "again_ms": 1.71687,
+        "drift_pct": -1.78
+      },
+      {
+        "out_ch": 56,
+        "first_ms": 1.25991,
+        "again_ms": 1.25719,
+        "drift_pct": -0.22
+      },
+      {
+        "out_ch": 64,
+        "first_ms": 1.17331,
+        "again_ms": 1.17079,
+        "drift_pct": -0.21
+      },
+      {
+        "out_ch": 72,
+        "first_ms": 1.81006,
+        "again_ms": 1.77557,
+        "drift_pct": -1.91
+      },
+      {
+        "out_ch": 80,
+        "first_ms": 2.3108,
+        "again_ms": 2.2676,
+        "drift_pct": -1.87
+      },
+      {
+        "out_ch": 96,
+        "first_ms": 1.44355,
+        "again_ms": 1.41259,
+        "drift_pct": -2.14
+      },
+      {
+        "out_ch": 97,
+        "first_ms": 1.55336,
+        "again_ms": 1.51202,
+        "drift_pct": -2.66
+      },
+      {
+        "out_ch": 104,
+        "first_ms": 1.46547,
+        "again_ms": 1.43918,
+        "drift_pct": -1.79
+      },
+      {
+        "out_ch": 112,
+        "first_ms": 1.52555,
+        "again_ms": 1.491,
+        "drift_pct": -2.26
+      },
+      {
+        "out_ch": 128,
+        "first_ms": 1.61346,
+        "again_ms": 1.61444,
+        "drift_pct": 0.06
+      }
+    ]
+  }
+}
