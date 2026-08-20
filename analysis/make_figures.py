@@ -1152,6 +1152,144 @@ def fig_xp06e7b(records) -> Path | None:
     fig.tight_layout()
     return save(fig, "xp06e7b_frontier.png")
 
+def fig_xp06e9(records) -> Path | None:
+    """Whether NetAdapt's latency lookup table is a usable cost model on this board.
+
+    Four panels, in the order the question actually has to be asked. Each one could
+    have ended the experiment, and the figure is arranged so a reader can see which
+    one nearly did.
+
+    Left: is layer latency informative in channel count? Only if the curve bends.
+    Second: how repeatable is one entry, which sets the finest width grid a search
+    could resolve. Third: do per-layer times sum to the real engine, where they
+    plainly do not. Right: the one that decides it -- does the table predict the
+    *direction* of a real cut's effect, scored against engines E3 already built and
+    measured on this board.
+
+    The third and fourth panels disagree deliberately. NetAdapt never consumes
+    absolute latency, only differences, so a per-layer overhead that does not vary
+    with width cancels out and the 2.16x total error is survivable. Showing the
+    failed total next to the correct ranking is the whole argument of the section.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    path = RAW / "xp06e9_netadapt_lut.json"
+    if not path.exists():
+        return None
+    d = json.loads(path.read_text())
+    shape, noise, slope = d.get("shape"), d.get("noise"), d.get("slope")
+    if not (shape and slope):
+        return None
+
+    fig, axes = plt.subplots(1, 4, figsize=(19.0, 4.3),
+                             gridspec_kw={"width_ratios": [1.25, 0.8, 0.85, 1.25]})
+    fig.suptitle("Can the pruning ratio be searched automatically against measured latency?",
+                 y=1.09)
+    style.subtitle(fig, "NetAdapt ranks candidate cuts with a table of layer latency versus "
+                        "channel count. Before writing the search, the table has to be shown "
+                        "to describe this hardware. It half does.", y=1.005)
+
+    # --- 1. shape -----------------------------------------------------------
+    ax = axes[0]
+    xs = [p["out_ch"] for p in shape["points"]]
+    ys = [p["ms"] for p in shape["points"]]
+    ax.plot(xs, ys, "-o", color=style.BLUE, markersize=4, linewidth=1.8, zorder=3)
+    for x, y in zip(xs, ys):
+        if x % 32 == 0:
+            ax.plot([x], [y], "o", color=style.ORANGE, markersize=8,
+                    markerfacecolor="white", markeredgewidth=2, zorder=4)
+    # Proportional cost, anchored at the widest point. The gap between this line
+    # and the measured curve is the fixed per-layer overhead.
+    ax.plot([0, max(xs)], [0, max(ys)], ":", color=style.MUTED, linewidth=1.5,
+            zorder=2, label="if cost were proportional")
+    ax.set_xlabel("output channels")
+    ax.set_ylabel("layer latency (ms)")
+    ax.set_title("1. Sublinear, and not monotonic\n"
+                 "8x the channels costs 2.1x the time", fontsize=10.5, pad=8)
+    ax.legend(fontsize=8, frameon=False, loc="upper left")
+    ax.text(0.97, 0.06, "orange = multiple of 32", transform=ax.transAxes,
+            ha="right", fontsize=8, color=style.ORANGE)
+    style.tidy(ax)
+
+    # --- 2. noise -----------------------------------------------------------
+    # Two different questions share this panel: rebuilding an entry, and merely
+    # re-timing one. Both bound how finely a search can rank candidates, and the
+    # rebuild number is much the larger of the two.
+    ax = axes[1]
+    drift = d.get("drift") or {}
+    if noise and noise.get("repeats"):
+        labels, worst = [], 0.0
+        for i, r in enumerate(noise["repeats"]):
+            rel = [(v / np.mean(r["ms"]) - 1) * 100 for v in r["ms"]]
+            ax.plot([i] * len(rel), rel, "o", color=style.BLUE, markersize=7,
+                    markerfacecolor="white", markeredgewidth=1.8, zorder=3)
+            labels.append(f"{r['out_ch']} ch\nrebuilt")
+            worst = max(worst, r["spread_pct"])
+        if drift.get("entries"):
+            rel = [e["drift_pct"] for e in drift["entries"]]
+            ax.plot([len(labels)] * len(rel), rel, "o", color=style.AQUA,
+                    markersize=6, markerfacecolor="white", markeredgewidth=1.6,
+                    zorder=3)
+            labels.append("same engine\nre-timed")
+        ax.axhline(0, color=style.INK, linewidth=1.0, zorder=2)
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, fontsize=8)
+        ax.set_xlim(-0.5, len(labels) - 0.5)
+        ax.set_ylabel("deviation from the mean (%)")
+        ax.set_title(f"2. An entry is only good to ~{worst:.0f}%\n"
+                     f"which sets the finest usable grid", fontsize=10.5, pad=8)
+        style.tidy(ax)
+        ax.grid(axis="x", visible=False)
+
+    # --- 3. composition -----------------------------------------------------
+    ax = axes[2]
+    vals = [slope["unpruned_lut_ms"], slope["unpruned_real_ms"]]
+    ax.bar([0, 1], vals, width=0.55, color=[style.RED, style.MUTED], zorder=3)
+    for x, v in zip([0, 1], vals):
+        ax.text(x, v + max(vals) * 0.02, f"{v:.1f}", ha="center", fontsize=9.5)
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels(["60 layers\nsummed", "real\nengine"], fontsize=9)
+    ax.set_ylabel("latency at batch 16 (ms)")
+    ax.set_ylim(0, max(vals) * 1.22)
+    ax.set_title(f"3. Totals do not compose\n{slope['ratio_lut_over_real']:.2f}x too high",
+                 fontsize=10.5, pad=8)
+    style.tidy(ax)
+    ax.grid(axis="x", visible=False)
+
+    # --- 4. slope, the decisive one -----------------------------------------
+    ax = axes[3]
+    arms = slope["arms"]
+    ys = np.arange(len(arms))[::-1]
+    h = 0.34
+    ax.barh(ys + h / 2, [a["predicted_saving_ms"] for a in arms], height=h * 0.9,
+            color=style.BLUE, label="table predicts", zorder=3)
+    ax.barh(ys - h / 2, [a["actual_saving_ms"] for a in arms], height=h * 0.9,
+            color=style.AQUA, label="hardware delivers", zorder=3)
+    for y, a in zip(ys, arms):
+        for off, v in ((h / 2, a["predicted_saving_ms"]), (-h / 2, a["actual_saving_ms"])):
+            ha, dx = ("left", 0.4) if v >= 0 else ("right", -0.4)
+            ax.text(v + dx, y + off, f"{v:+.1f}", va="center", ha=ha, fontsize=8.5,
+                    color=style.INK_2)
+    ax.axvline(0, color=style.INK, linewidth=1.2, zorder=2)
+    ax.set_yticks(ys)
+    ax.set_yticklabels([f"round_to={a['arm'].replace('round', '')}" for a in arms],
+                       fontsize=9.5)
+    ax.set_xlabel("latency saved vs unpruned (ms) \u2014 negative means slower")
+    ax.set_xlim(-16, 24)
+    ok = all(a["sign_agrees"] for a in arms)
+    ax.set_title("4. But the direction is right\n"
+                 + ("both signs correct" if ok else "a sign is wrong"),
+                 fontsize=10.5, pad=8)
+    # Lower left is the only free quadrant: round_to=1 puts its bars left of zero
+    # in the upper half, round_to=32 puts its bars right of zero in the lower half.
+    ax.legend(fontsize=8.5, frameon=False, loc="lower left")
+    style.tidy(ax)
+    ax.grid(axis="y", visible=False)
+
+    fig.tight_layout()
+    return save(fig, "xp06e9_netadapt.png")
+
 def fig_xp06e3(records) -> Path | None:
     """Rounding barely touches accuracy and nearly doubles throughput on the board."""
     import matplotlib.pyplot as plt
@@ -1437,7 +1575,7 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9,
             fig_xp06e6,
             fig_xp06e7]
 

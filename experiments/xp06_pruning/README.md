@@ -68,6 +68,7 @@ fault of one badly chosen setting.
 | **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ decides the damage (15x), but 12 epochs erase it |
 | **E7** | retraining | does iterative still lose when both arms train equally? | ✅ yes, it still loses |
 | **E8** | criterion | pick channels by reconstructing the layer's output | ❌ **not attempted** |
+| **E9** | allocation | can a search pick ratios against measured latency? | ✅ cost model right per network, too noisy per layer |
 
 Each section below is one experiment. The unpruned model is the top row of every table.
 
@@ -533,6 +534,61 @@ and that is a clean result rather than a budgeting artefact.
 
 ---
 
+## E9. Can the ratio be searched automatically?
+
+> **Axis:** allocation &nbsp;·&nbsp; **Asks:** can a search pick per-layer ratios against measured latency instead of a proxy? &nbsp;·&nbsp; **Answer:** the cost model works at whole-network scale and fails at the scale the search uses
+
+Every allocation on this page is hand-designed, and [E6](#e6-how-to-spread-the-cut) found three of
+them 0.4 points apart after recovery. The lecture's answer to guessing is **NetAdapt**: choose
+per-layer ratios by measuring what each candidate cut actually saves, using a table of layer
+latency versus channel count.
+
+It is the right method to want here, because XP6's recurring problem is that parameters and MACs
+do not predict speed — [E3](#e3-regular-channel-widths-recover-the-missing-speed) measured a
+3.52 M model running 1.77x faster than a 4.21 M one. NetAdapt is the one method in the lecture
+that optimises *measured latency* rather than a proxy for it.
+
+**This tests the table, not the search.** The search is easy to write and worthless if the table
+it reads cannot describe the hardware. Every convolution in the detector was compiled and timed
+on the board as a standalone engine; no model was trained.
+
+![Whether NetAdapt's latency table describes this board](../../results/figures/xp06e9_netadapt.png)
+
+**Reading the four panels.** They are the question asked in four steps, each able to end it.
+
+1. **Is layer cost informative?** Latency is strongly sublinear — 8x the channels costs 2.1x the
+   time — so halving a layer saves far less than half its time. It is also not monotonic: 32
+   channels cost *less* than 24, and 64 less than 52. That non-monotonicity is E3's tiling effect
+   visible inside a single layer.
+2. **How good is one entry?** Rebuilding the same layer moves it up to **7%**. The search ranks
+   candidates whose predicted savings differ by less than that, so this number sets the finest
+   width grid worth searching. Merely re-timing an already-built engine moves it 3%.
+3. **Do the layers sum to the network?** No: 72.8 ms of layers against a 33.9 ms engine, **2.15x
+   too high**. Timed alone, every layer pays for its own input and output handling; inside the
+   real graph TensorRT fuses those away.
+4. **Does it get a real cut right?** Yes. Scored against two engines E3 already built and
+   measured, the table calls `round_to=1` **slower** than unpruned and `round_to=32` faster —
+   both signs correct, and the full ranking correct.
+
+**Panels 3 and 4 disagree on purpose.** NetAdapt never uses absolute latency, only the difference
+a cut makes, so a per-layer overhead that does not change with width cancels out. A total that is
+2.15x wrong is survivable. A wrong direction would not be, and the direction is right.
+
+**The conclusion is that the table works at the wrong scale.** It correctly ranks whole networks
+— it knows that ragged widths make a *smaller* model slower, which no parameter count or MAC
+count on this page ever managed. But NetAdapt does not compare whole networks. Its inner loop
+compares one layer's entry against another's to decide where the next cut goes, and at that
+scale a 7% wobble is the same size as the differences being ranked. The cost model is right about
+the thing the search does not ask and unreliable about the thing it does.
+
+**So it is worth building, with one constraint.** A NetAdapt search on this board must move in
+steps of 16 or 32 channels, never single ones, so each candidate's predicted saving clears the
+table's own noise. That constraint is not a workaround: it is
+[E3's result](#e3-regular-channel-widths-recover-the-missing-speed) arrived at independently,
+which is the strongest evidence so far that E3's tiling explanation is the right one.
+
+---
+
 ## Speed: removing arithmetic is still not gaining it
 
 ![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
@@ -641,6 +697,7 @@ python experiments/xp06_pruning/e6_allocation.py --plan                 # E6, th
 python experiments/xp06_pruning/e7_fair_rerun.py --mode iterative --post-epochs 12  # E7
 python experiments/xp06_pruning/e6_damage.py                            # E6 before recovery
 python experiments/xp06_pruning/e7b_frontier.py --plan                 # E7b, then --arm <name>
+python experiments/xp06_pruning/e9_netadapt.py --stage all             # E9, ON THE BOARD
 
 python analysis/make_figures.py     # every figure, from the committed JSON
 python analysis/xp06_tables.py      # every table, from the same JSON
