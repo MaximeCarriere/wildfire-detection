@@ -241,22 +241,32 @@ def stage_slope() -> dict:
     model = load_yolov5(WEIGHTS / "yolov5s.pt", YOLOV5_REPO, device="cpu")
     seen, hooks = [], []
 
-    def hook(mod, inp, _out):
-        seen.append({"cin": mod.in_channels, "cout": mod.out_channels,
-                     "k": mod.kernel_size[0], "stride": mod.stride[0],
-                     "hw": inp[0].shape[-1]})
+    def make_hook(name):
+        def hook(mod, inp, _out):
+            seen.append({"layer": name, "cin": mod.in_channels,
+                         "cout": mod.out_channels, "k": mod.kernel_size[0],
+                         "stride": mod.stride[0], "hw": inp[0].shape[-1]})
+        return hook
 
-    for mod in model.modules():
+    # Layer names are carried through because the per-layer table is the artefact
+    # this experiment is about, and a table of anonymous shapes cannot be checked
+    # against the network by anyone reading it later.
+    for name, mod in model.named_modules():
         if isinstance(mod, nn.Conv2d):
-            hooks.append(mod.register_forward_hook(hook))
+            hooks.append(mod.register_forward_hook(make_hook(name)))
     with torch.no_grad():
         model(torch.randn(1, 3, RES, RES))
     for h in hooks:
         h.remove()
     del model
 
-    base_lut = sum(t for t in (time_layer(s["cin"], s["cout"], s["k"], s["stride"],
-                                          s["hw"]) for s in seen) if t)
+    table, base_lut = [], 0.0
+    for e in seen:
+        ms = time_layer(e["cin"], e["cout"], e["k"], e["stride"], e["hw"])
+        if ms is None:
+            continue
+        base_lut += ms
+        table.append(dict(e, ms=round(ms, 4)))
     n = len(seen)
     log(f"  {'unpruned':10s} {n:3d} convs -> LUT {base_lut:7.2f} ms")
 
@@ -279,7 +289,7 @@ def stage_slope() -> dict:
     return {"unpruned_lut_ms": round(base_lut, 3),
             "unpruned_real_ms": round(base_real, 3),
             "n_convs": n, "ratio_lut_over_real": round(base_lut / base_real, 3),
-            "arms": arms}
+            "unpruned_table": table, "arms": arms}
 
 
 def main() -> None:

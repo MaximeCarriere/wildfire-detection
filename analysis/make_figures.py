@@ -1159,8 +1159,9 @@ def fig_xp06e9(records) -> Path | None:
     asked. Each data panel could have ended the experiment, and the figure is
     arranged so a reader can see which one nearly did.
 
-    Leftmost: no data, just the method -- each conv layer is lifted out of the
-    fused engine and timed alone, which is the fact every later panel leans on.
+    Leftmost: the method, hung on the real network -- named layers lifted out of
+    the fused engine and timed alone, a sweep filling one row of the table, and
+    the two totals posed as the question that panel 4 then resolves.
     Second: is layer latency informative in channel count? Only if the curve bends.
     Third: how repeatable is one entry, which sets the finest width grid a search
     could resolve. Fourth: do per-layer times sum to the real engine, where they
@@ -1202,9 +1203,12 @@ def fig_xp06e9(records) -> Path | None:
     # The data panels judge a cost model, but a reader cannot judge whether the
     # model is valid without first knowing how its table was built: each conv
     # layer is lifted out of the fused engine, compiled as its own tiny TensorRT
-    # engine, and timed alone. The schematic shows what that isolation changes --
-    # fused layers share overheads, isolated ones each pay their own -- which is
-    # why panel 4 can fail while panel 5 survives.
+    # engine, and timed alone. The panel shows that on the real network -- named
+    # layers with measured times, not generic boxes -- because the contrast that
+    # matters (fused layers share input/output handling, isolated ones each pay
+    # their own) is what lets panel 4 fail while panel 5 survives. Everything
+    # numeric is read from the record; ``unpruned_table`` is newer than some
+    # copies of it, so its absence degrades the rows rather than raising.
     from matplotlib.patches import Rectangle
 
     ax = axes[0]
@@ -1212,50 +1216,83 @@ def fig_xp06e9(records) -> Path | None:
     ax.axis("off")
     ax.set_title("1. How the table is built\nlayers timed alone vs the fused engine",
                  fontsize=10.5, pad=8)
-    n, bw = 4, 1.9
-    arrow = dict(arrowstyle="->", color=style.INK_2, linewidth=1.4)
+    table = slope.get("unpruned_table") or []
+    rows = table[:3]
+    n_more = (slope.get("n_convs") or len(table)) - len(rows)
+    lut_ms, real_ms = slope["unpruned_lut_ms"], slope["unpruned_real_ms"]
+    arrow = dict(arrowstyle="->", color=style.INK_2, linewidth=1.1)
+    fx, fw, ix, iw, rh = 4.55, 1.4, 7.45, 1.3, 0.95   # fused col, isolated col, row pitch
 
-    # The deployed reality: one engine, neighbouring layers fused edge to edge.
-    ax.text(0.3, 16.6, "deployed: one fused TensorRT engine", fontsize=9.5,
-            color=style.INK, va="bottom", fontweight="bold")
-    for i in range(n):
-        ax.add_patch(Rectangle((1.3 + i * bw, 14.5), bw, 1.3, facecolor=style.BLUE,
-                               edgecolor="white", linewidth=1.5))
-    ax.add_patch(Rectangle((1.3, 14.5), n * bw, 1.3, facecolor="none",
-                           edgecolor=style.INK, linewidth=1.4))
-    ax.annotate("", xy=(1.25, 15.15), xytext=(0.2, 15.15), arrowprops=arrow)
-    ax.annotate("", xy=(9.95, 15.15), xytext=(8.95, 15.15), arrowprops=arrow)
-    ax.text(0.3, 13.9, "~60 conv layers, neighbours fused into single kernels:\n"
-                       "input/output handling is paid once and shared",
-            fontsize=9, color=style.INK_2, va="top")
+    ax.text(fx + fw / 2, 15.15, "deployed:\none fused engine", fontsize=8, color=style.INK,
+            va="bottom", ha="center", fontweight="bold")
+    ax.text(8.5, 15.15, "for the table:\neach conv alone", fontsize=8, color=style.INK,
+            va="bottom", ha="center", fontweight="bold")
+    for i in range(3):
+        e = rows[i] if i < len(rows) else None
+        y0 = 14.55 - rh * (i + 1)                     # bottom of this row
+        rc = y0 + rh / 2
+        ax.add_patch(Rectangle((fx, y0), fw, rh, facecolor=style.BLUE,
+                               edgecolor="white", linewidth=1.2))
+        ax.annotate("", xy=(ix - 0.05, rc), xytext=(fx + fw + 0.15, rc), arrowprops=arrow)
+        ax.add_patch(Rectangle((ix, y0 + 0.08), iw, 0.16, facecolor=style.MUTED,
+                               edgecolor="none"))
+        ax.add_patch(Rectangle((ix, y0 + 0.24), iw, 0.47, facecolor=style.BLUE,
+                               edgecolor="none"))
+        ax.add_patch(Rectangle((ix, y0 + 0.71), iw, 0.16, facecolor=style.MUTED,
+                               edgecolor="none"))
+        if e:
+            ax.text(0.15, rc + 0.04, e["layer"], fontsize=8, color=style.INK, va="bottom")
+            ax.text(0.15, rc - 0.08,
+                    f"{e['cin']}\u2192{e['cout']}  k{e['k']}  {e['hw']}\u00d7{e['hw']}",
+                    fontsize=7.5, color=style.INK_2, va="top")
+            ax.text(8.95, rc, f"{e['ms']:.1f}", fontsize=8.5, color=style.INK, va="center")
+    ax.add_patch(Rectangle((fx, 14.55 - 3 * rh), fw, 3 * rh, facecolor="none",
+                           edgecolor=style.INK, linewidth=1.3))
+    ax.text(fx + fw / 2, 11.5, "\u22ee", fontsize=10, color=style.INK_2, va="top", ha="center")
+    ax.text(ix + iw / 2, 11.5, "\u22ee", fontsize=10, color=style.INK_2, va="top", ha="center")
+    if rows:
+        ax.text(0.15, 11.45, f"+ {n_more} more convs", fontsize=7.5, color=style.INK_2,
+                va="top")
+        ax.text(8.95, 11.45, "ms", fontsize=7.5, color=style.INK_2, va="top")
+    ax.text(fx + fw / 2, 10.35, f"one engine\n{real_ms:.1f} ms", fontsize=8.5,
+            color=style.INK, va="top", ha="center", fontweight="bold")
+    ax.text(8.5, 10.35, f"summed\n{lut_ms:.1f} ms", fontsize=8.5,
+            color=style.INK, va="top", ha="center", fontweight="bold")
+    ax.text(0.15, 8.85, "fused, neighbours share input/output\n"
+                       "handling; alone, each conv pays its own\n"
+                       "(grey), so the right column costs more",
+            fontsize=7.5, color=style.INK_2, va="top")
 
-    ax.annotate("", xy=(1.5, 10.4), xytext=(1.5, 12.1), arrowprops=arrow)
-    ax.text(2.15, 11.25, "to fill the table, each layer is compiled\n"
-                        "as its own engine and timed alone,\n"
-                        "sweeping its output-channel count",
-            fontsize=9, color=style.INK_2, va="center", ha="left")
+    # One row of the table, shown with its real entries: NetAdapt consumes
+    # latency as a function of width, and the sweep is what fills that row.
+    pts = shape["points"]
+    picks = [pts[0], pts[len(pts) // 2], pts[-1]]
+    ax.text(0.15, 7.05, "sweeping a layer's width fills its table row", fontsize=8.5,
+            color=style.INK, va="top", fontweight="bold")
+    ax.text(0.15, 6.5,
+            f"a {shape['cin']}-in {shape['k']}\u00d7{shape['k']} conv at "
+            f"{shape['hw']}\u00d7{shape['hw']}, three of its entries:",
+            fontsize=7.5, color=style.INK_2, va="top")
+    ax.add_patch(Rectangle((0.5, 4.25), 8.6, 1.5, facecolor="white",
+                           edgecolor=style.INK_2, linewidth=1.0))
+    ax.plot([2.9, 2.9], [4.25, 5.75], color=style.INK_2, linewidth=1.0)
+    ax.plot([0.5, 9.1], [5.0, 5.0], color=style.INK_2, linewidth=1.0)
+    ax.text(0.7, 5.37, "out ch", fontsize=8, color=style.INK_2, va="center")
+    ax.text(0.7, 4.62, "ms", fontsize=8, color=style.INK_2, va="center")
+    for cx, pp in zip((4.0, 5.9, 7.8), picks):
+        ax.text(cx, 5.37, f"{pp['out_ch']}", fontsize=8.5, color=style.INK,
+                va="center", ha="center", fontweight="bold")
+        ax.text(cx, 4.62, f"{pp['ms']:.2f}", fontsize=8.5, color=style.INK,
+                va="center", ha="center")
+    ax.text(0.5, 3.9, "panel 2 plots this row in full", fontsize=7.5,
+            color=style.INK_2, va="top")
 
-    # The measurement: the same layers, pulled apart. The grey caps are the
-    # per-layer input/output handling that fusion had absorbed.
-    ax.text(0.3, 8.8, "measured for the table: every layer alone", fontsize=9.5,
-            color=style.INK, va="bottom", fontweight="bold")
-    for i in range(n):
-        x0 = 0.4 + i * 2.45
-        ax.add_patch(Rectangle((x0, 6.7), 0.4, 1.3, facecolor=style.MUTED,
-                               edgecolor="none"))
-        ax.add_patch(Rectangle((x0 + 1.65, 6.7), 0.4, 1.3, facecolor=style.MUTED,
-                               edgecolor="none"))
-        ax.add_patch(Rectangle((x0 + 0.4, 6.7), 1.25, 1.3, facecolor=style.BLUE,
-                               edgecolor="none"))
-        ax.text(x0 + 1.025, 6.3, f"t{chr(0x2080 + i + 1)}", fontsize=9.5,
-                color=style.INK_2, ha="center", va="top")
-    ax.text(0.3, 5.1, "alone, each layer pays its own input/output\n"
-                      "handling (grey) that the fused engine shared",
-            fontsize=9, color=style.INK_2, va="top")
-    ax.text(0.3, 3.0, "the question: does \u03a3 t\u1d62 describe the fused engine?",
-            fontsize=9.5, color=style.INK, va="top")
-    ax.set_xlim(0, 10)
-    ax.set_ylim(1.9, 17.5)
+    ax.text(0.15, 2.95, f"the question: can a table whose rows sum to\n"
+                       f"{lut_ms:.1f} ms describe an engine that runs in\n"
+                       f"{real_ms:.1f} ms? panels 2\u20135 take it apart",
+            fontsize=8.5, color=style.INK, va="top")
+    ax.set_xlim(0, 9.7)
+    ax.set_ylim(0.9, 16.2)
 
     # --- 2. shape -----------------------------------------------------------
     ax = axes[1]

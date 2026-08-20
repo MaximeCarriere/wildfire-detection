@@ -95,24 +95,566 @@
     ]
   },
   "slope": {
-    "unpruned_lut_ms": 72.812,
+    "unpruned_lut_ms": 72.834,
     "unpruned_real_ms": 33.855,
     "n_convs": 60,
     "ratio_lut_over_real": 2.151,
+    "unpruned_table": [
+      {
+        "layer": "model.0.conv",
+        "cin": 3,
+        "cout": 32,
+        "k": 6,
+        "stride": 2,
+        "hw": 512,
+        "ms": 7.9665
+      },
+      {
+        "layer": "model.1.conv",
+        "cin": 32,
+        "cout": 64,
+        "k": 3,
+        "stride": 2,
+        "hw": 256,
+        "ms": 5.1682
+      },
+      {
+        "layer": "model.2.cv1.conv",
+        "cin": 64,
+        "cout": 32,
+        "k": 1,
+        "stride": 1,
+        "hw": 128,
+        "ms": 2.0627
+      },
+      {
+        "layer": "model.2.m.0.cv1.conv",
+        "cin": 32,
+        "cout": 32,
+        "k": 1,
+        "stride": 1,
+        "hw": 128,
+        "ms": 1.6221
+      },
+      {
+        "layer": "model.2.m.0.cv2.conv",
+        "cin": 32,
+        "cout": 32,
+        "k": 3,
+        "stride": 1,
+        "hw": 128,
+        "ms": 2.0432
+      },
+      {
+        "layer": "model.2.cv2.conv",
+        "cin": 64,
+        "cout": 32,
+        "k": 1,
+        "stride": 1,
+        "hw": 128,
+        "ms": 2.0662
+      },
+      {
+        "layer": "model.2.cv3.conv",
+        "cin": 64,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 128,
+        "ms": 3.523
+      },
+      {
+        "layer": "model.3.conv",
+        "cin": 64,
+        "cout": 128,
+        "k": 3,
+        "stride": 2,
+        "hw": 128,
+        "ms": 2.827
+      },
+      {
+        "layer": "model.4.cv1.conv",
+        "cin": 128,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.1764
+      },
+      {
+        "layer": "model.4.m.0.cv1.conv",
+        "cin": 64,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.08
+      },
+      {
+        "layer": "model.4.m.0.cv2.conv",
+        "cin": 64,
+        "cout": 64,
+        "k": 3,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.1221
+      },
+      {
+        "layer": "model.4.m.1.cv1.conv",
+        "cin": 64,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.0796
+      },
+      {
+        "layer": "model.4.m.1.cv2.conv",
+        "cin": 64,
+        "cout": 64,
+        "k": 3,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.1188
+      },
+      {
+        "layer": "model.4.cv2.conv",
+        "cin": 128,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.171
+      },
+      {
+        "layer": "model.4.cv3.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.614
+      },
+      {
+        "layer": "model.5.conv",
+        "cin": 128,
+        "cout": 256,
+        "k": 3,
+        "stride": 2,
+        "hw": 64,
+        "ms": 1.6712
+      },
+      {
+        "layer": "model.6.cv1.conv",
+        "cin": 256,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.5754
+      },
+      {
+        "layer": "model.6.m.0.cv1.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.6459
+      },
+      {
+        "layer": "model.6.m.0.cv2.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 3,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.7017
+      },
+      {
+        "layer": "model.6.m.1.cv1.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.6445
+      },
+      {
+        "layer": "model.6.m.1.cv2.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 3,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.7105
+      },
+      {
+        "layer": "model.6.m.2.cv1.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.6447
+      },
+      {
+        "layer": "model.6.m.2.cv2.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 3,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.7008
+      },
+      {
+        "layer": "model.6.cv2.conv",
+        "cin": 256,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.5795
+      },
+      {
+        "layer": "model.6.cv3.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 1.0075
+      },
+      {
+        "layer": "model.7.conv",
+        "cin": 256,
+        "cout": 512,
+        "k": 3,
+        "stride": 2,
+        "hw": 32,
+        "ms": 1.3644
+      },
+      {
+        "layer": "model.8.cv1.conv",
+        "cin": 512,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.6889
+      },
+      {
+        "layer": "model.8.m.0.cv1.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.3287
+      },
+      {
+        "layer": "model.8.m.0.cv2.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 3,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.9061
+      },
+      {
+        "layer": "model.8.cv2.conv",
+        "cin": 512,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.6888
+      },
+      {
+        "layer": "model.8.cv3.conv",
+        "cin": 512,
+        "cout": 512,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.8059
+      },
+      {
+        "layer": "model.9.cv1.conv",
+        "cin": 512,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.69
+      },
+      {
+        "layer": "model.9.cv2.conv",
+        "cin": 1024,
+        "cout": 512,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 1.2056
+      },
+      {
+        "layer": "model.10.conv",
+        "cin": 512,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.6877
+      },
+      {
+        "layer": "model.13.cv1.conv",
+        "cin": 512,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.7959
+      },
+      {
+        "layer": "model.13.m.0.cv1.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.6445
+      },
+      {
+        "layer": "model.13.m.0.cv2.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 3,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.705
+      },
+      {
+        "layer": "model.13.cv2.conv",
+        "cin": 512,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.7948
+      },
+      {
+        "layer": "model.13.cv3.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 1.0094
+      },
+      {
+        "layer": "model.14.conv",
+        "cin": 256,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.577
+      },
+      {
+        "layer": "model.17.cv1.conv",
+        "cin": 256,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.7234
+      },
+      {
+        "layer": "model.17.m.0.cv1.conv",
+        "cin": 64,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.0799
+      },
+      {
+        "layer": "model.17.m.0.cv2.conv",
+        "cin": 64,
+        "cout": 64,
+        "k": 3,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.126
+      },
+      {
+        "layer": "model.17.cv2.conv",
+        "cin": 256,
+        "cout": 64,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.7286
+      },
+      {
+        "layer": "model.17.cv3.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 1.6154
+      },
+      {
+        "layer": "model.18.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 3,
+        "stride": 2,
+        "hw": 64,
+        "ms": 1.2505
+      },
+      {
+        "layer": "model.20.cv1.conv",
+        "cin": 256,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.5766
+      },
+      {
+        "layer": "model.20.m.0.cv1.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.6462
+      },
+      {
+        "layer": "model.20.m.0.cv2.conv",
+        "cin": 128,
+        "cout": 128,
+        "k": 3,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.7018
+      },
+      {
+        "layer": "model.20.cv2.conv",
+        "cin": 256,
+        "cout": 128,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.5771
+      },
+      {
+        "layer": "model.20.cv3.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 1.0096
+      },
+      {
+        "layer": "model.21.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 3,
+        "stride": 2,
+        "hw": 32,
+        "ms": 0.806
+      },
+      {
+        "layer": "model.23.cv1.conv",
+        "cin": 512,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.6876
+      },
+      {
+        "layer": "model.23.m.0.cv1.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.3276
+      },
+      {
+        "layer": "model.23.m.0.cv2.conv",
+        "cin": 256,
+        "cout": 256,
+        "k": 3,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.9073
+      },
+      {
+        "layer": "model.23.cv2.conv",
+        "cin": 512,
+        "cout": 256,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.6868
+      },
+      {
+        "layer": "model.23.cv3.conv",
+        "cin": 512,
+        "cout": 512,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.806
+      },
+      {
+        "layer": "model.24.m.0",
+        "cin": 128,
+        "cout": 21,
+        "k": 1,
+        "stride": 1,
+        "hw": 64,
+        "ms": 0.761
+      },
+      {
+        "layer": "model.24.m.1",
+        "cin": 256,
+        "cout": 21,
+        "k": 1,
+        "stride": 1,
+        "hw": 32,
+        "ms": 0.2695
+      },
+      {
+        "layer": "model.24.m.2",
+        "cin": 512,
+        "cout": 21,
+        "k": 1,
+        "stride": 1,
+        "hw": 16,
+        "ms": 0.1316
+      }
+    ],
     "arms": [
       {
         "arm": "round1",
-        "lut_ms": 74.578,
+        "lut_ms": 74.52,
         "real_ms": 44.089,
-        "predicted_saving_ms": -1.766,
+        "predicted_saving_ms": -1.687,
         "actual_saving_ms": -10.234,
         "sign_agrees": true
       },
       {
         "arm": "round32",
-        "lut_ms": 55.448,
+        "lut_ms": 55.458,
         "real_ms": 24.926,
-        "predicted_saving_ms": 17.364,
+        "predicted_saving_ms": 17.376,
         "actual_saving_ms": 8.929,
         "sign_agrees": true
       }
