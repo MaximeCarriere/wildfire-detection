@@ -1073,7 +1073,7 @@ def fig_xp06e6(records) -> Path | None:
     return save(fig, "xp06e6_allocation.png")
 
 
-def fig_xp06e9(records) -> Path | None:
+def fig_xp06e7b(records) -> Path | None:
     """The recoverable frontier: damage, one-shot and iterative across the ratio.
 
     This is the Han-style figure the E7 comparison implicitly lives inside. E7
@@ -1098,12 +1098,12 @@ def fig_xp06e9(records) -> Path | None:
     """
     import matplotlib.pyplot as plt
 
-    dmg_path = RAW / "xp06e9_damage.json"
+    dmg_path = RAW / "xp06e7b_damage.json"
     dmg = json.loads(dmg_path.read_text()) if dmg_path.exists() else None
 
     arms = {}
     for r in records:
-        if r.get("experiment") == "xp06e9" and r.get("arm"):
+        if r.get("experiment") == "xp06e7b" and r.get("arm"):
             m = r.get("prune_meta") or {}
             if m.get("params_reduction") is None or r.get("map50_dfire_test") is None:
                 continue
@@ -1150,7 +1150,7 @@ def fig_xp06e9(records) -> Path | None:
     ax.legend(frameon=False, fontsize=9.5, loc="lower left")
     style.tidy(ax)
     fig.tight_layout()
-    return save(fig, "xp06e9_frontier.png")
+    return save(fig, "xp06e7b_frontier.png")
 
 def fig_xp06e3(records) -> Path | None:
     """Rounding barely touches accuracy and nearly doubles throughput on the board."""
@@ -1437,7 +1437,7 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e9,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b,
             fig_xp06e6,
             fig_xp06e7]
 

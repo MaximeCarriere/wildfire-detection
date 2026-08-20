@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XP6 E9 — the recoverable frontier: damage, one-shot and iterative across the ratio.
+"""XP6 E7b — the recoverable frontier: damage, one-shot and iterative across the ratio.
 
 E7 compared one-shot against iterative pruning at a single point, 25% of channels,
 and found iterative losing. The classic figure this reproduces (Han et al., Deep
@@ -37,11 +37,11 @@ but it changes the achieved size, and this experiment's x-axis *is* achieved siz
 Apply rounding after choosing a point on this curve, not while measuring it.
 
 Usage
-    python e9_frontier.py --plan                    # ratios, sizes, time estimate
-    python e9_frontier.py --arm damage              # no training, safe anywhere
-    python e9_frontier.py --arm oneshot             # ~2.7 h on a 3090
-    python e9_frontier.py --arm iterative           # ~4.4 h on a 3090
-    python e9_frontier.py --arm oneshot --ratios 0.45 0.55   # resume a subset
+    python e7b_frontier.py --plan                    # ratios, sizes, time estimate
+    python e7b_frontier.py --arm damage              # no training, safe anywhere
+    python e7b_frontier.py --arm oneshot             # ~2.7 h on a 3090
+    python e7b_frontier.py --arm iterative           # ~4.4 h on a 3090
+    python e7b_frontier.py --arm oneshot --ratios 0.45 0.55   # resume a subset
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ sys.path.insert(0, str(HERE))
 from _screen import (BASE, RAW, RES, UNPRUNED, fresh_model,  # noqa: E402
                      log, recover_and_record, score_model)
 
-TAG = "e9"
+TAG = "e7b"
 
 #: Channel ratios, not parameter ratios. Measured on this network these land on
 #: 24.7 / 40.1 / 55.5 / 68.4 / 79.1 / 87.3 / 93.4 / 95.5 percent of the parameters
@@ -107,7 +107,7 @@ def run_damage(ratios, criterion) -> None:
     nothing here is deployable; the figure reads the file explicitly.
     """
     base = fresh_model()
-    ref = score_model(base, "e9_unpruned")
+    ref = score_model(base, "e7b_unpruned")
     log(TAG, f"unpruned here: mAP50 {ref['map50']:.4f} (record says {UNPRUNED['map50']})")
     del base
 
@@ -115,7 +115,7 @@ def run_damage(ratios, criterion) -> None:
     for r in ratios:
         model = fresh_model()
         meta = _pruned(model, r, criterion)
-        acc = score_model(model, f"e9_damage_{int(r * 100)}")
+        acc = score_model(model, f"e7b_damage_{int(r * 100)}")
         points.append({
             "channel_ratio": r,
             "params_m_after": meta["params_m_after"],
@@ -128,17 +128,17 @@ def run_damage(ratios, criterion) -> None:
                  f"mAP50 {acc['map50']:.4f}")
         del model
 
-    rec = {"experiment": "xp06e9_damage", "base_model": BASE, "input_res": RES,
+    rec = {"experiment": "xp06e7b_damage", "base_model": BASE, "input_res": RES,
            "criterion": CRITERION, "granularity": "channels",
            "unpruned_here": {"map50": ref["map50"],
                              "map50_tiny": ref["tiny_plume"]["map50"]},
            "points": points,
-           "notes": ("XP6 E9: channel pruning damage across the ratio, no recovery training. "
+           "notes": ("XP6 E7b: channel pruning damage across the ratio, no recovery training. "
                      "The unretrained series of the Han-style frontier figure. Scored against "
                      "an unpruned baseline measured on the same machine in the same run, so "
                      "the deltas hold even if the machine is not the screening box. No "
-                     "model_id: side data for the E9 figure, not a results record.")}
-    path = RAW / "xp06e9_damage.json"
+                     "model_id: side data for the E7b figure, not a results record.")}
+    path = RAW / "xp06e7b_damage.json"
     path.write_text(json.dumps(rec, indent=2) + "\n")
     log(TAG, f"wrote {path.name}")
 
@@ -186,9 +186,9 @@ def run_trained(mode: str, ratios, args) -> None:
                  f"({meta['params_reduction']:.1%}) · MACs -{meta['macs_reduction']:.1%}")
 
         recover_and_record(
-            model, tag=f"dfire_{BASE}_frontier_{mode}_{pct}", experiment="xp06e9",
+            model, tag=f"dfire_{BASE}_frontier_{mode}_{pct}", experiment="xp06e7b",
             prune_meta=meta, epochs=args.post_epochs,
-            notes=(f"XP6 E9: {mode} channel pruning at {r:.0%} with the {CRITERION} criterion, "
+            notes=(f"XP6 E7b: {mode} channel pruning at {r:.0%} with the {CRITERION} criterion, "
                    f"{args.post_epochs} epochs after the final cut. One point on the recoverable "
                    f"frontier; the arm is only interpretable against the other points at the "
                    f"same ratio, never alone. Post-cut budget is held equal across arms per E7, "
