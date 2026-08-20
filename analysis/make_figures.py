@@ -1073,6 +1073,85 @@ def fig_xp06e6(records) -> Path | None:
     return save(fig, "xp06e6_allocation.png")
 
 
+def fig_xp06e9(records) -> Path | None:
+    """The recoverable frontier: damage, one-shot and iterative across the ratio.
+
+    This is the Han-style figure the E7 comparison implicitly lives inside. E7
+    measured one-shot against iterative at a single point, 40% of parameters
+    removed, and found iterative losing; on the reference curve that point sits in
+    the flat region where the two arms are not expected to differ at all. Drawing
+    the whole sweep is what makes E7's result readable as "no difference where none
+    was predicted" rather than as a contradiction of the literature.
+
+    Plotted against **measured parameter reduction**, never the channel ratio the
+    experiment was configured with. A 25% channel cut removes 39.6% of this
+    network's parameters, and E5 and E6 both had to make that correction before
+    their comparisons meant anything.
+
+    The y-axis is accuracy *loss* against the unpruned model, matching the
+    reference, so every series starts at zero and falls. Each series carries its
+    own baseline: the damage sweep records the unpruned score measured in its own
+    run, and the trained arms are read against the screening record.
+
+    Returns None until at least the damage series exists, so the figure appears the
+    moment the cheap arm has run and fills in as the expensive ones land.
+    """
+    import matplotlib.pyplot as plt
+
+    dmg_path = RAW / "xp06e9_damage.json"
+    dmg = json.loads(dmg_path.read_text()) if dmg_path.exists() else None
+
+    arms = {}
+    for r in records:
+        if r.get("experiment") == "xp06e9" and r.get("arm"):
+            m = r.get("prune_meta") or {}
+            if m.get("params_reduction") is None or r.get("map50_dfire_test") is None:
+                continue
+            arms.setdefault(r["arm"], []).append(
+                (100 * m["params_reduction"], r["map50_dfire_test"]))
+    if not dmg and not arms:
+        return None
+
+    series = []
+    if dmg:
+        ref = dmg["unpruned_here"]["map50"]
+        series.append(("pruning (no retraining)", style.MUTED, ":", "o",
+                       sorted((100 * p["params_reduction"], p["map50"])
+                              for p in dmg["points"]), ref))
+    # RED is reserved in this palette for a failed configuration, so the two
+    # working arms take AQUA and BLUE and the unretrained series stays MUTED.
+    for arm, label, colour in (("oneshot", "pruning + finetuning", style.AQUA),
+                               ("iterative", "iterative pruning + finetuning", style.BLUE)):
+        if arm in arms:
+            series.append((label, colour, "-", "o", sorted(arms[arm]), 0.7764))
+
+    fig, ax = plt.subplots(figsize=(9.2, 5.0))
+    fig.suptitle("How far this detector can be pruned before the accuracy goes", y=1.04)
+    style.subtitle(fig, "Channel pruning, L1, at 512 px. Loss against the unpruned model, "
+                        "plotted against the parameters actually removed \u2014 not the "
+                        "channel ratio each cut was configured with.", y=0.975)
+
+    for label, colour, ls, mk, pts, ref in series:
+        xs = [x for x, _ in pts]
+        ys = [(v - ref) * 100 for _, v in pts]
+        ax.plot(xs, ys, ls, marker=mk, color=colour, label=label,
+                linewidth=2.0, markersize=6, markerfacecolor="white",
+                markeredgewidth=1.8, zorder=3)
+
+    ax.axhline(0, color=style.INK, linewidth=1.0, zorder=2)
+    # E7 measured exactly one point on this axis. Marking it is the whole reason
+    # the sweep exists: a reader should see which part of the curve it sampled.
+    ax.axvline(39.6, color=style.MUTED, linestyle="--", linewidth=1.2, zorder=1)
+    ax.text(39.6, ax.get_ylim()[0], "  E7 measured here", rotation=90,
+            va="bottom", ha="left", fontsize=8.5, color=style.INK_2)
+
+    ax.set_xlabel("parameters pruned away (%)")
+    ax.set_ylabel("accuracy loss (mAP50 points)")
+    ax.legend(frameon=False, fontsize=9.5, loc="lower left")
+    style.tidy(ax)
+    fig.tight_layout()
+    return save(fig, "xp06e9_frontier.png")
+
 def fig_xp06e3(records) -> Path | None:
     """Rounding barely touches accuracy and nearly doubles throughput on the board."""
     import matplotlib.pyplot as plt
@@ -1358,7 +1437,7 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e9,
             fig_xp06e6,
             fig_xp06e7]
 
