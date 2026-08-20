@@ -287,7 +287,8 @@ def export_onnx_from_model(model, onnx_path: Path, *, res: int = 512,
 
 
 def build_fp16_engine(onnx_path: Path, engine_path: Path, *, res: int,
-                      max_batch: int = 16, trtexec: str = "/usr/src/tensorrt/bin/trtexec",
+                      max_batch: int = 16, opt_batch: int = 1,
+                      trtexec: str = "/usr/src/tensorrt/bin/trtexec",
                       sparsity: bool = False, log_path: Path | None = None) -> Path:
     """FP16 engine via trtexec — the same path XP9's engines were built with, so
     the pruned models land on exactly the same measurement footing.
@@ -299,13 +300,22 @@ def build_fp16_engine(onnx_path: Path, engine_path: Path, *, res: int,
     build log so that decision can be read afterwards rather than assumed, which is
     the whole point of XP6 E4. Info level is enough: TensorRT names the layers it
     gave sparse implementations without being asked for verbose output.
+
+    ``opt_batch`` is the batch size TensorRT autotunes for, and it is separate from
+    ``max_batch``, which only sets the largest shape the engine will accept. The
+    builder times its candidate kernels at the *opt* shape and picks the winner
+    there, so an engine tuned at batch 1 and then measured at batch 16 had its
+    kernels chosen under conditions that were never measured. That gap matters most
+    for sparse tactics, whose fixed metadata-decode cost is amortised by batch:
+    tuning at batch 1 is the case where they are least likely to be selected. The
+    default stays 1 so every previously published engine still rebuilds byte-for-byte.
     """
     import subprocess
 
     engine_path = Path(engine_path)
     cmd = [trtexec, f"--onnx={onnx_path}", f"--saveEngine={engine_path}", "--fp16",
            f"--minShapes=images:1x3x{res}x{res}",
-           f"--optShapes=images:1x3x{res}x{res}",
+           f"--optShapes=images:{opt_batch}x3x{res}x{res}",
            f"--maxShapes=images:{max_batch}x3x{res}x{res}",
            "--skipInference"]
     if sparsity:
