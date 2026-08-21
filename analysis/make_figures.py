@@ -1296,32 +1296,46 @@ def fig_xp06e9(records) -> Path | None:
 
     # --- 2. shape -----------------------------------------------------------
     ax = axes[1]
-    # Plotted as a percentage of the layer's original width rather than a raw
-    # channel count, so the axis reads as a pruning ratio and is comparable to
-    # every other ratio on this page. The widest point swept is the full layer.
+    # Two changes from the obvious plot, both because the obvious plot is read
+    # backwards. The x-axis counts channels *removed*, so it runs in the direction
+    # a reader thinks of pruning; and the y-axis is a percentage of the unpruned
+    # layer's own time, so the 100% line means "no faster than not pruning at all"
+    # and every point above it is a cut that cost time instead of saving it. In raw
+    # milliseconds those points look unremarkable.
     full = max(p["out_ch"] for p in shape["points"])
-    chans = [p["out_ch"] for p in shape["points"]]
-    xs = [c / full * 100 for c in chans]
-    ys = [p["ms"] for p in shape["points"]]
-    ax.plot(xs, ys, "-o", color=style.BLUE, markersize=4, linewidth=1.8, zorder=3)
+    base = next(p["ms"] for p in shape["points"] if p["out_ch"] == full)
+    pts = sorted(shape["points"], key=lambda p: -p["out_ch"])
+    xs = [(1 - p["out_ch"] / full) * 100 for p in pts]
+    ys = [p["ms"] / base * 100 for p in pts]
+    chans = [p["out_ch"] for p in pts]
+
+    ax.axhspan(100, max(ys) * 1.08, color=style.RED, alpha=0.07, zorder=1)
+    ax.axhline(100, color=style.RED, linewidth=1.4, zorder=2)
+    ax.text(2, max(ys) * 1.05, "slower than not pruning at all", fontsize=8.5,
+            color=style.RED, ha="left", va="top")
+    ax.plot([0, 100], [100, 0], ":", color=style.MUTED, linewidth=1.5, zorder=2,
+            label="if time fell with the channels")
+    ax.plot(xs, ys, "-", color=style.BLUE, linewidth=1.6, zorder=3, alpha=0.75)
     for c, x, y in zip(chans, xs, ys):
-        if c % 32 == 0:
-            ax.plot([x], [y], "o", color=style.ORANGE, markersize=8,
-                    markerfacecolor="white", markeredgewidth=2, zorder=4)
-    # Proportional cost, anchored at the full width. The gap between this line and
-    # the measured curve is the fixed per-layer overhead.
-    ax.plot([0, 100], [0, max(ys)], ":", color=style.MUTED, linewidth=1.5,
-            zorder=2, label="if cost were proportional")
-    # "kept", not "removed": the sweep sets how wide the layer is left, so the
-    # rightmost point is the unpruned layer and cutting moves leftward. Labelling
-    # this axis "output channels" invites the opposite reading.
-    ax.set_xlabel(f"channels kept, % of the original {full}  (100% = unpruned)")
-    ax.set_ylabel("layer latency, ms  (lower = faster)")
-    ax.set_title("2. Sublinear, and not monotonic\n"
-                 "cutting the width in half saves far less than half", fontsize=10.5, pad=8)
-    ax.legend(fontsize=8, frameon=False, loc="upper left")
-    ax.text(0.97, 0.06, "orange = multiple of 32", transform=ax.transAxes,
-            ha="right", fontsize=8, color=style.ORANGE)
+        aligned = c % 32 == 0
+        ax.plot([x], [y], "o", color=style.ORANGE if aligned else style.BLUE,
+                markersize=9 if aligned else 5,
+                markerfacecolor="white" if aligned else style.BLUE,
+                markeredgewidth=2 if aligned else 0, zorder=4)
+    ax.set_xlabel("channels removed (%)")
+    ax.set_ylabel("layer time, % of unpruned")
+    ax.set_title("2. Cutting channels often costs time\n"
+                 "4 of 15 widths run slower than the full layer", fontsize=10.5, pad=8)
+    # The aligned-width marker goes in the legend rather than floating as a caption:
+    # at this panel size any free corner is already claimed by the proportional line.
+    from matplotlib.lines import Line2D
+    ax.legend(handles=[
+        Line2D([], [], linestyle=":", color=style.MUTED, linewidth=1.5,
+               label="if time fell with the channels"),
+        Line2D([], [], linestyle="none", marker="o", color=style.ORANGE,
+               markerfacecolor="white", markeredgewidth=2, markersize=8,
+               label="width is a multiple of 32")],
+        fontsize=8, frameon=False, loc="lower left")
     style.tidy(ax)
 
     # --- 3. noise -----------------------------------------------------------
