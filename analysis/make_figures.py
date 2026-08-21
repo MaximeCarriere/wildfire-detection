@@ -1851,9 +1851,41 @@ def fig_xp06e4b(records) -> Path | None:
     var = [by_id(records, f"yolov5s_var{r}") for r in ("a", "b", "c")]
     var = [r for r in var if r and usable(r)]
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.0, 4.3),
-                             gridspec_kw={"width_ratios": [1.55, 1.0]})
+    from matplotlib.patches import Rectangle, FancyArrowPatch
+    fig = plt.figure(figsize=(15.8, 4.3))
+    gs = fig.add_gridspec(1, 3, width_ratios=[0.62, 1.55, 1.0], wspace=0.30)
+    sch = fig.add_subplot(gs[0, 0])
+    axes = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
     fig.suptitle("The one pattern the hardware understands, measured on the hardware", y=1.11)
+
+    # --- panel 1: the choice the compiler makes ---------------------------
+    # The 2:4 weights are genuine, so 39 layers are eligible for a sparse kernel
+    # that skips the two zeros. But TensorRT times a sparse and a dense kernel for
+    # each and keeps the faster, and here it kept dense every time. The schematic
+    # shows the decision the data then quantifies.
+    sch.set_xlim(0, 10); sch.set_ylim(-0.6, 9.4); sch.axis("off")
+    sch.set_title("1. The choice the\ncompiler makes", fontsize=10.5, pad=6, loc="left")
+    sch.text(5, 8.7, "39 layers are in 2:4 form,\neligible for a sparse kernel",
+             ha="center", va="top", fontsize=8, color=style.INK, fontweight="bold")
+
+    def kbox(x, y, w, h, colour, title, sub):
+        sch.add_patch(Rectangle((x, y), w, h, facecolor="none", edgecolor=colour,
+                                linewidth=1.8, zorder=3))
+        sch.text(x + w / 2, y + h - 0.35, title, ha="center", va="top", fontsize=8,
+                 color=colour, fontweight="bold")
+        sch.text(x + w / 2, y + 0.55, sub, ha="center", va="center", fontsize=6.8,
+                 color=style.INK_2)
+
+    kbox(0.6, 4.6, 4.0, 2.2, style.ORANGE, "sparse kernel", "skips the 2 zeros,\nup to 2x")
+    kbox(5.4, 4.6, 4.0, 2.2, style.INK_2, "dense kernel", "multiplies all four,\nzeros included")
+    sch.text(5, 4.15, "TensorRT times both per layer, keeps the faster",
+             ha="center", va="top", fontsize=7.6, color=style.INK, style="italic")
+    sch.add_patch(FancyArrowPatch((5, 3.5), (5, 2.7), arrowstyle="-|>", mutation_scale=13,
+                                  color=style.INK_2, linewidth=1.4))
+    sch.add_patch(Rectangle((1.4, 0.6), 7.2, 1.7, facecolor=style.INK_2, alpha=0.10,
+                            edgecolor=style.INK_2, linewidth=1.3, zorder=2))
+    sch.text(5, 1.45, "it kept DENSE every time\n0 of 39 used the sparse kernel",
+             ha="center", va="center", fontsize=8.2, color=style.INK, fontweight="bold")
     style.subtitle(fig, "Same network, same shape, same arithmetic in all four: only which "
                         "weights are zero, and whether the compiler was allowed to exploit "
                         "them. Each set is measured against its own dense engine.", y=1.02)
