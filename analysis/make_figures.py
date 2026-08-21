@@ -1296,21 +1296,26 @@ def fig_xp06e9(records) -> Path | None:
 
     # --- 2. shape -----------------------------------------------------------
     ax = axes[1]
-    xs = [p["out_ch"] for p in shape["points"]]
+    # Plotted as a percentage of the layer's original width rather than a raw
+    # channel count, so the axis reads as a pruning ratio and is comparable to
+    # every other ratio on this page. The widest point swept is the full layer.
+    full = max(p["out_ch"] for p in shape["points"])
+    chans = [p["out_ch"] for p in shape["points"]]
+    xs = [c / full * 100 for c in chans]
     ys = [p["ms"] for p in shape["points"]]
     ax.plot(xs, ys, "-o", color=style.BLUE, markersize=4, linewidth=1.8, zorder=3)
-    for x, y in zip(xs, ys):
-        if x % 32 == 0:
+    for c, x, y in zip(chans, xs, ys):
+        if c % 32 == 0:
             ax.plot([x], [y], "o", color=style.ORANGE, markersize=8,
                     markerfacecolor="white", markeredgewidth=2, zorder=4)
-    # Proportional cost, anchored at the widest point. The gap between this line
-    # and the measured curve is the fixed per-layer overhead.
-    ax.plot([0, max(xs)], [0, max(ys)], ":", color=style.MUTED, linewidth=1.5,
+    # Proportional cost, anchored at the full width. The gap between this line and
+    # the measured curve is the fixed per-layer overhead.
+    ax.plot([0, 100], [0, max(ys)], ":", color=style.MUTED, linewidth=1.5,
             zorder=2, label="if cost were proportional")
     # "kept", not "removed": the sweep sets how wide the layer is left, so the
     # rightmost point is the unpruned layer and cutting moves leftward. Labelling
     # this axis "output channels" invites the opposite reading.
-    ax.set_xlabel(f"output channels kept  ({max(xs)} = unpruned)")
+    ax.set_xlabel(f"channels kept, % of the original {full}  (100% = unpruned)")
     ax.set_ylabel("layer latency (ms)")
     ax.set_title("2. Sublinear, and not monotonic\n"
                  "cutting the width in half saves far less than half", fontsize=10.5, pad=8)
