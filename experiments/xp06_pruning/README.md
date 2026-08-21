@@ -596,7 +596,8 @@ four steps, each able to end it.
    width grid worth searching. Merely re-timing an already-built engine moves it 3%.
 4. **Do the layers sum to the network?** No: 72.8 ms of layers against a 33.9 ms engine, **2.15x
    too high** — the grey overhead in panel 1, counted sixty times instead of once.
-5. **Does it get a real cut right?** Yes. Scored against two engines E3 already built and
+5. **Does it get a real cut right?** Yes. Note this panel plots a *saving* rather than a time,
+   unlike panel 2, so negative means slower. Scored against two engines E3 already built and
    measured, the table calls `round_to=1` **slower** than unpruned and `round_to=32` faster —
    both signs correct, and the full ranking correct.
 
