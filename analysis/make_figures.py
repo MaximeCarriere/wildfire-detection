@@ -1316,7 +1316,7 @@ def fig_xp06e9(records) -> Path | None:
     # rightmost point is the unpruned layer and cutting moves leftward. Labelling
     # this axis "output channels" invites the opposite reading.
     ax.set_xlabel(f"channels kept, % of the original {full}  (100% = unpruned)")
-    ax.set_ylabel("layer latency (ms)")
+    ax.set_ylabel("layer latency, ms  (lower = faster)")
     ax.set_title("2. Sublinear, and not monotonic\n"
                  "cutting the width in half saves far less than half", fontsize=10.5, pad=8)
     ax.legend(fontsize=8, frameon=False, loc="upper left")
@@ -1387,7 +1387,10 @@ def fig_xp06e9(records) -> Path | None:
     ax.set_yticks(ys)
     ax.set_yticklabels([f"round_to={a['arm'].replace('round', '')}" for a in arms],
                        fontsize=9.5)
-    ax.set_xlabel("latency saved vs unpruned (ms)\nnegative means slower")
+    # Deliberately says "saved": panel 2 plots a time and this plots a difference,
+    # and a reader carrying the first convention into the second reads it backwards.
+    ax.set_xlabel("latency SAVED vs unpruned, ms\n"
+                  "a difference, not a time \u2014 negative = slower")
     ax.set_xlim(-16, 24)
     ok = all(a["sign_agrees"] for a in arms)
     ax.set_title("5. But the direction is right\n"
