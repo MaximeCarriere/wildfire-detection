@@ -469,14 +469,23 @@ E1's map is the best tool on this page.
 
 ## E7. One-shot versus iterative, fairly
 
-> **Axis:** retraining &nbsp;·&nbsp; **Asks:** does iterative still lose when both arms train equally? &nbsp;·&nbsp; **Answer:** yes, it still loses
+> **Axis:** retraining &nbsp;·&nbsp; **Asks:** does iterative still lose when both arms train equally? &nbsp;·&nbsp; **Answer:** at this ratio yes — but the ratio turned out to be the wrong place to ask
 
-The original comparison was confounded: both arms got 12 epochs, but the iterative model's final
-shape existed for only 4 of them while one-shot trained all 12 in its final shape. Here both get
-**12 epochs after their final cut**, and iterative additionally keeps its 8 between-step epochs,
-so it gets *more* total training, not less.
+**Question. XP6 published iterative pruning losing by 5.4 points, from a comparison its own
+limitations flagged as unclean. Does the loss survive a fair rerun?**
+
+**Method**
+
+- The original confound: both arms got 12 epochs, but iterative reached its final shape only
+  after the last cut, so it trained just 4 epochs *in the shape that was measured*.
+- The fix: both arms get **12 epochs after their final cut**. Iterative additionally keeps its 8
+  between-step epochs, so it receives *more* total training, deliberately.
+- Criterion held at **L2** to match the published arms exactly — this is a clean rerun of a
+  specific comparison, not a search for the best model.
 
 ![Iterative pruning still loses once both arms train equally](../../results/figures/xp06e7_fair_rerun.png)
+
+**Results**
 
 | | params | epochs after final cut | total epochs | mAP50 | small plumes | tiny plumes |
 |---|---:|---:|---:|---:|---:|---:|
@@ -484,27 +493,18 @@ so it gets *more* total training, not less.
 | one-shot | 4.24 M | 12 | 12 | **0.7403** | 0.5617 | 0.0923 |
 | iterative | 4.53 M | 12 | **20** | 0.7262 | 0.5316 | 0.0812 |
 
-**The confound was real, and fixing it does not change the answer.** The published gap between
-the two arms was 5.4 accuracy points (0.7298 against 0.6763); on equal footing it is **1.4**. So
-roughly three quarters of iterative's apparent deficit was the shorter training in its final
-shape, exactly as the limitation on this page always suspected.
+- **The confound was real.** The published gap was 5.4 points (0.7298 against 0.6763); on equal
+  footing it is **1.4**. Three quarters of iterative's apparent deficit was the shorter training
+  in its final shape.
+- **Iterative still loses here**, while holding every advantage: 20 total epochs against 12, and
+  a larger model (4.53 M against 4.24 M).
 
-**But iterative still loses**, and it loses while holding every advantage: more total training
-(20 epochs against 12) and a larger model (4.53 M against 4.24 M). The textbook expectation is
-that gradual pruning preserves more accuracy at the same sparsity. On this detector it does not,
-and that is a clean result rather than a budgeting artefact.
-
-> **How far this generalises is not yet measured, and the limit is specific.** This is one point
-> on an axis: 40.1% of the parameters. The reference result for iterative pruning plots the two
-> arms from 40% to 95% removed and finds them lying on top of each other until roughly 90%,
-> separating only past it — so 40% is the part of the curve where no difference is predicted.
-> Two further choices narrow it: the arms are not size-matched the way [E6](#e6-how-to-spread-the-cut)
-> matched its own (4.53 M against 4.24 M), and the criterion is held at L2, which
-> [E2](#e2-which-channels-to-pick) found poor here and which an iterative arm applies once per
-> step rather than once. **[E7b](#e7b-the-recoverable-frontier-where-iterative-finally-wins) has now
-> swept the ratio and confirmed exactly this**: the two arms coincide until ~68% removed and
-> iterative pulls ahead past ~80%, so read this section as "one-shot is as good at 40%", not as a
-> general result.
+**Conclusion.** At 40.1% of parameters removed, with L2, one-shot is as good and cheaper. But
+that is one point on an axis, and it is the wrong one: the reference result plots these two arms
+from 40% to 95% removed and finds them coincident until ~90%, so 40% is exactly where no
+difference is predicted.
+**[E7b](#e7b-the-recoverable-frontier-where-iterative-finally-wins) swept the ratio and confirmed
+it** — read this section as "one-shot is as good at 40%", never as a general result.
 
 ---
 
@@ -512,20 +512,28 @@ and that is a clean result rather than a budgeting artefact.
 
 > **Axis:** retraining &nbsp;·&nbsp; **Asks:** does iterative *ever* beat one-shot, across the whole ratio? &nbsp;·&nbsp; **Answer:** yes, past ~84% of parameters removed once the arms are compared at matched size
 
-[E7](#e7-one-shot-versus-iterative-fairly) compared the two schedules at a single point, 40% of
-the parameters, and found one-shot ahead. But that point sits in the flat part of the reference
-curve where no difference is predicted. This sweeps the whole ratio, with post-cut training held
-**exactly equal** (12 epochs after the final cut for both arms), so the schedule is the only
-variable and any crossover is real.
+**Question. [E7](#e7-one-shot-versus-iterative-fairly) found one-shot ahead at 40% of parameters
+removed — but the reference curve predicts no difference there. Sweep the whole ratio: is there
+anywhere iterative earns its extra training?**
+
+**Method**
+
+- Eight channel ratios, landing on 24.7% to 95.5% of parameters removed.
+- Post-cut training held **exactly equal**: 12 epochs after the final cut for both arms, so the
+  schedule is the only variable.
+- Criterion moved to **L1**, not E7's L2 — an iterative arm applies the criterion once per step,
+  so a rule [E2](#e2-which-channels-to-pick) found poor would be applied four times instead of
+  once.
+- A third series measures damage with no training at all.
 
 ![The recoverable frontier: one-shot and iterative coincide until the aggressive-pruning tail, then iterative pulls ahead](../../results/figures/xp06e7b_frontier.png)
 
-**The two arms do not land on the same size.** Given the same channel ratio, iterative removes
-consistently *fewer* parameters than one-shot — 92.3% against 93.4%, 84.6% against 87.3% — because
-it re-scores the survivors at every step. So the arms cannot be read off a shared row: at every
-ratio, iterative is also the larger model. The last column corrects for that by interpolating
-one-shot onto iterative's actual size, which is the honest comparison and the one the verdict
-rests on.
+**Results**
+
+**The arms do not land on the same size.** At the same channel ratio iterative removes
+consistently *fewer* parameters — 92.3% against 93.4%, 84.6% against 87.3% — because it re-scores
+the survivors at every step. So it is also the larger model in every row, and the last column
+corrects for that by interpolating one-shot onto iterative's actual size.
 
 | channel cut | one-shot | | iterative | | one-shot at iterative's size | matched Δ |
 |---:|---:|---:|---:|---:|---:|---:|
@@ -539,24 +547,24 @@ rests on.
 | 75% | 93.4% | 0.4838 | 92.3% | 0.5974 | 0.5087 | **+0.089** |
 | 80% | 95.5% | 0.4476 | 95.2% | 0.4910 | 0.4534 | **+0.038** |
 
-- **E7's verdict was right for its point and wrong as a general claim.** Below about 80% of
-  parameters removed one-shot is ahead at matched size, every time; E7 measured at 40%, squarely
-  inside that region.
-- **Past ~84% removed, iterative pulls ahead**, peaking at **+0.089 mAP50 at 92% removed**.
-  Removing channels gradually lets the survivors keep redistributing the work, and that only
-  matters once the cut is deep enough to hurt.
-- **Size-matching moves the crossover and shrinks the win.** Read off the raw columns, iterative
-  looks ahead from 79% removed and by as much as 0.114. Both numbers are inflated by iterative
-  being the larger model in every row: corrected, the crossover is nearer 84% and the peak gap is
-  0.089. The direction of the result is unchanged, which is why it stands, but the raw columns
-  should not be quoted on their own. The one-shot curve is interpolated linearly between measured
-  points, so the corrected column is an estimate rather than a measurement.
-- **This reproduces the textbook curve** (Han et al.): the two arms lie on top of each other until
-  the extreme, then separate. It is also exactly what [E7](#e7-one-shot-versus-iterative-fairly)'s
-  own limitation box predicted before the sweep was run.
-- **It changes nothing for deployment here.** The useful range is moderate pruning, where one-shot
-  is as good and cheaper. Iterative earns its extra training only in a regime this detector cannot
-  afford accuracy-wise (0.60 mAP50 at 93% removed, far below the 0.78 frontier).
+- **E7's verdict was right for its point and wrong as a general claim.** Below ~80% removed
+  one-shot is ahead at matched size, every time; E7 measured at 40%, squarely inside that region.
+- **Past ~84% removed iterative pulls ahead**, peaking at **+0.089 mAP50 at 92% removed**.
+  Cutting gradually lets the survivors keep redistributing the work, and that only matters once
+  the cut is deep enough to hurt.
+- **Size-matching moves the crossover and shrinks the win.** Read off the raw columns iterative
+  looks ahead from 79% removed and by as much as 0.114; corrected, the crossover is nearer 84%
+  and the peak gap 0.089. The direction is unchanged, which is why it stands, but the raw columns
+  should not be quoted alone. The one-shot curve is interpolated linearly, so the corrected
+  column is an estimate.
+- **This reproduces the textbook curve** (Han et al.): the arms lie on top of each other until the
+  extreme, then separate — exactly what E7's own limitation box predicted before the sweep ran.
+
+**Conclusion.** Iterative pruning does earn its extra training, but only past ~84% of parameters
+removed — a regime this detector cannot afford, since accuracy there is 0.60 mAP50 and below
+against a 0.78 frontier. **For deployment nothing changes:** the useful range is moderate
+pruning, where one-shot is as good and cheaper. What changes is the claim XP6 was making, which
+was a general one drawn from a single point.
 
 ---
 
@@ -564,76 +572,60 @@ rests on.
 
 > **Axis:** allocation &nbsp;·&nbsp; **Asks:** can a search pick per-layer ratios against measured latency instead of a proxy? &nbsp;·&nbsp; **Answer:** the cost model works at whole-network scale and fails at the scale the search uses
 
-**What "allocation" means here.** Pruning this detector removes **channels**, and two decisions
-are separate: *how much* to remove in total, and *how to spread it* across the 60 convolutions.
-[E6](#e6-how-to-spread-the-cut) fixed the total and compared three hand-designed ways to spread
-it — the same percentage from every layer, one global magnitude threshold, or E1's sensitivity
-map — and after recovery those three strategies finished 0.4 points apart.
-
-The lecture's answer to hand-designing them is **NetAdapt**, which searches the *per-layer* ratio
-instead: at each step it asks which layer to cut next by looking up what that cut would save, in
-a table of layer latency versus channel count.
+**Question. Every allocation on this page is hand-designed. NetAdapt searches the per-layer ratio
+instead, asking a table of layer-latency-versus-channel-count which layer to cut next. Does that
+table describe this hardware?**
 
 It is the right method to want here, because XP6's recurring problem is that parameters and MACs
 do not predict speed — [E3](#e3-regular-channel-widths-recover-the-missing-speed) measured a
 3.52 M model running 1.77x faster than a 4.21 M one. NetAdapt is the one method in the lecture
 that optimises *measured latency* rather than a proxy for it.
 
-### What this experiment does, and does not, do
+**Method — it tests the table, not the search**
 
-**It tests the table, not the search.** The search is easy to write and worthless if the table it
-reads cannot describe the hardware, so the table is what gets measured.
-
-- **Nothing is pruned here, and nothing is trained.** No pruning algorithm runs in E9 and no
-  optimizer is ever created.
-- **What is measured:** single convolutions. Each one is compiled as its own small TensorRT
-  engine and timed alone on the board, swept across output-channel counts. That is how a
-  NetAdapt table is filled.
-- **What it is scored against:** two networks [E3](#e3-regular-channel-widths-recover-the-missing-speed)
-  already pruned and already measured. E3 did the prune-then-build-then-measure loop; E9 reads
-  the channel widths that cut produced, adds up the isolated times for those widths, and asks
-  whether that sum would have predicted the throughput E3 recorded.
-
-**That last point is the entire value of a lookup table.** Building and measuring one real engine
-takes about fifteen minutes on this board, and a search evaluates thousands of candidates. If a
-table of layer timings can rank them, the search becomes possible; if it cannot, NetAdapt has to
-compile a real engine per candidate and is not affordable here at any accuracy.
+- **Nothing is pruned and nothing is trained.** No pruning algorithm runs here and no optimizer
+  is created. The search is easy to write and worthless if its table cannot describe the hardware.
+- **What is measured:** single convolutions. Each is compiled as its own small TensorRT engine
+  and timed alone on the board, swept across output-channel counts. That is how a NetAdapt table
+  is filled.
+- **What it is scored against:** two networks
+  [E3](#e3-regular-channel-widths-recover-the-missing-speed) already pruned and already measured.
+  E3 did the prune-build-measure loop; E9 reads the widths that cut produced, sums the isolated
+  times, and asks whether that sum would have predicted E3's throughput.
+- **Why a table at all:** building and measuring one real engine takes ~15 minutes on this board
+  and a search evaluates thousands of candidates. If a table can rank them the search is
+  possible; if not, NetAdapt needs a real engine per candidate and is unaffordable at any
+  accuracy.
 
 ![Whether NetAdapt's latency table describes this board](../../results/figures/xp06e9_netadapt.png)
 
-**Reading the panels.** Panel 1 is how the table is built; the rest are the question asked in
-four steps, each able to end it.
+**Results**
 
 1. **How the table is built, and the question it raises.** Deployed, the detector is one engine
    and TensorRT fuses neighbouring layers into single kernels, so input and output handling is
    paid once and shared. To fill the table each layer must be compiled and timed *alone*, where
    it pays that handling by itself — `model.0.conv` alone is 8.0 ms, `model.1.conv` 5.2, and so
-   on for all 60. Sweeping one layer's width fills one row of the table. Those rows sum to
-   **72.8 ms** describing an engine that runs in **33.9**, and the rest of the figure is whether
-   that gap matters.
-2. **Is layer cost informative?** Barely, and not in the direction anyone expects. Removing half
-   this layer's channels leaves it costing **73%** of its original time, not 50% — and **four of
-   the fifteen widths are slower than not pruning at all**. Removing 37.5% of the channels makes
-   the layer **43% slower**. The clean sequence runs through the multiples of 32 (44%, 73%, 90%,
-   100% of the original time); every ragged width scatters above it. This is
-   [E3's](#e3-regular-channel-widths-recover-the-missing-speed) tiling effect visible inside a
-   single layer: a width that spills past a tile boundary pays for a whole extra tile that runs
-   mostly empty.
-3. **How good is one entry?** Rebuilding the same layer moves it up to **7%**. The search ranks
-   candidates whose predicted savings differ by less than that, so this number sets the finest
-   width grid worth searching. Merely re-timing an already-built engine moves it 3%.
-4. **Do the layers sum to the network?** No: 72.8 ms of layers against a 33.9 ms engine, **2.15x
-   too high** — the grey overhead in panel 1, counted sixty times instead of once.
-5. **Does it get a real cut right?** Yes. Note this panel plots a *saving* rather than a time,
-   unlike panel 2, so negative means slower. Scored against two engines E3 already built and
-   measured, the table calls `round_to=1` **slower** than unpruned and `round_to=32` faster —
-   both signs correct, and the full ranking correct.
+   on for all 60. Those rows sum to **72.8 ms** describing an engine that runs in **33.9**.
+2. **Cutting channels often costs time.** Removing half this layer's channels leaves it at
+   **73%** of its original time, not 50% — and **four of fifteen widths are slower than not
+   pruning at all**, one by **43%**. The clean sequence runs through the multiples of 32 (44%,
+   73%, 90%, 100%); every ragged width scatters above it. This is
+   [E3's](#e3-regular-channel-widths-recover-the-missing-speed) tiling effect inside a single
+   layer.
+3. **One entry is only good to ~7%.** Rebuilding the same layer moves it that much; merely
+   re-timing an already-built engine moves it 3%. So the instability is in the compiler's tactic
+   choice, not the stopwatch — and it sets the finest width grid worth searching.
+4. **Totals do not compose: 2.15x too high**, the grey overhead of panel 1 counted sixty times
+   instead of once.
+5. **But the direction is right.** Scored against E3's two real engines, the table calls
+   `round_to=1` **slower** than unpruned and `round_to=32` faster — both signs correct, and the
+   full ranking correct. Note this panel plots a *saving*, not a time, so negative means slower.
 
 **Panels 4 and 5 disagree on purpose.** NetAdapt never uses absolute latency, only the difference
 a cut makes, so a per-layer overhead that does not change with width cancels out. A total that is
 2.15x wrong is survivable; a wrong direction would not be.
 
-### Conclusion
+**Conclusion**
 
 - **Cutting channels often costs time.** Four of fifteen widths ran *slower* than the full layer,
   and removing 37.5% of them made it **43% slower**. What a layer costs is set by how its width
