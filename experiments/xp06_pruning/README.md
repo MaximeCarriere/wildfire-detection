@@ -538,19 +538,40 @@ and that is a clean result rather than a budgeting artefact.
 
 > **Axis:** allocation &nbsp;·&nbsp; **Asks:** can a search pick per-layer ratios against measured latency instead of a proxy? &nbsp;·&nbsp; **Answer:** the cost model works at whole-network scale and fails at the scale the search uses
 
-Every allocation on this page is hand-designed, and [E6](#e6-how-to-spread-the-cut) found three of
-them 0.4 points apart after recovery. The lecture's answer to guessing is **NetAdapt**: choose
-per-layer ratios by measuring what each candidate cut actually saves, using a table of layer
-latency versus channel count.
+**What "allocation" means here.** Pruning this detector removes **channels**, and two decisions
+are separate: *how much* to remove in total, and *how to spread it* across the 60 convolutions.
+[E6](#e6-how-to-spread-the-cut) fixed the total and compared three hand-designed ways to spread
+it — the same percentage from every layer, one global magnitude threshold, or E1's sensitivity
+map — and after recovery those three strategies finished 0.4 points apart.
+
+The lecture's answer to hand-designing them is **NetAdapt**, which searches the *per-layer* ratio
+instead: at each step it asks which layer to cut next by looking up what that cut would save, in
+a table of layer latency versus channel count.
 
 It is the right method to want here, because XP6's recurring problem is that parameters and MACs
 do not predict speed — [E3](#e3-regular-channel-widths-recover-the-missing-speed) measured a
 3.52 M model running 1.77x faster than a 4.21 M one. NetAdapt is the one method in the lecture
 that optimises *measured latency* rather than a proxy for it.
 
-**This tests the table, not the search.** The search is easy to write and worthless if the table
-it reads cannot describe the hardware. Every convolution in the detector was compiled and timed
-on the board as a standalone engine; no model was trained.
+### What this experiment does, and does not, do
+
+**It tests the table, not the search.** The search is easy to write and worthless if the table it
+reads cannot describe the hardware, so the table is what gets measured.
+
+- **Nothing is pruned here, and nothing is trained.** No pruning algorithm runs in E9 and no
+  optimizer is ever created.
+- **What is measured:** single convolutions. Each one is compiled as its own small TensorRT
+  engine and timed alone on the board, swept across output-channel counts. That is how a
+  NetAdapt table is filled.
+- **What it is scored against:** two networks [E3](#e3-regular-channel-widths-recover-the-missing-speed)
+  already pruned and already measured. E3 did the prune-then-build-then-measure loop; E9 reads
+  the channel widths that cut produced, adds up the isolated times for those widths, and asks
+  whether that sum would have predicted the throughput E3 recorded.
+
+**That last point is the entire value of a lookup table.** Building and measuring one real engine
+takes about fifteen minutes on this board, and a search evaluates thousands of candidates. If a
+table of layer timings can rank them, the search becomes possible; if it cannot, NetAdapt has to
+compile a real engine per candidate and is not affordable here at any accuracy.
 
 ![Whether NetAdapt's latency table describes this board](../../results/figures/xp06e9_netadapt.png)
 
