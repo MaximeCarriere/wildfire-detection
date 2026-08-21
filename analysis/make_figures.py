@@ -930,11 +930,43 @@ def fig_xp06e5(records) -> Path | None:
     wgt_e = eseries(["weight50", "weight90"])
 
     CH, WG = style.RED, style.AQUA
-    fig, axes = plt.subplots(1, 3, figsize=(15.2, 4.3))
+    import numpy as np
+    from matplotlib.patches import Rectangle
+    fig = plt.figure(figsize=(17.6, 4.4))
+    gs = fig.add_gridspec(1, 4, width_ratios=[0.62, 1, 1, 1], wspace=0.32)
+    sch = fig.add_subplot(gs[0, 0])
+    axes = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]), fig.add_subplot(gs[0, 3])]
     fig.suptitle("Deleting channels and zeroing weights are not the same operation", y=1.09)
     style.subtitle(fig, "One axis throughout: how much of the model is actually gone. Weights "
                         "survive damage that channels cannot, and channels buy speed that "
                         "weights never do.", y=1.01)
+
+    # --- panel 1: the two operations, on the same weight grid -------------
+    sch.set_xlim(0, 8); sch.set_ylim(0, 15.4); sch.axis("off")
+    sch.set_title("1. Two ways to\ndelete half a layer", fontsize=10.5, pad=6, loc="left")
+    R, C, cell = 6, 6, 0.78
+
+    def grid(y0, dead, colour, title, note):
+        for r in range(R):
+            for c in range(C):
+                on = (r, c) not in dead
+                sch.add_patch(Rectangle((1 + c * cell, y0 + (R - 1 - r) * cell),
+                                        cell * 0.86, cell * 0.86,
+                                        facecolor=colour if on else "#dfe3e4",
+                                        edgecolor="none"))
+        sch.text(1, y0 + R * cell + 0.15, title, fontsize=9, fontweight="bold",
+                 color=colour, va="bottom")
+        sch.text(1, y0 - 0.55, note, fontsize=7.8, color=style.INK_2, va="top")
+
+    # channels: whole columns removed (a slice). weights: scattered, same count.
+    chan_dead = {(r, c) for r in range(R) for c in (1, 4)}
+    grid(9.4, chan_dead, CH, "channels: whole slices",
+         "the layer genuinely\nnarrows, 7.03 M to 4.2 M")
+    rng = np.random.default_rng(1)
+    flat = rng.permutation(R * C)[: R * C // 2]
+    wgt_dead = {(i // C, i % C) for i in flat}
+    grid(1.8, wgt_dead, WG, "weights: scattered holes",
+         "same count gone, but the\ngrid keeps its full shape")
 
     ax = axes[0]
     ax.plot(*zip(*([(0.0, UNPRUNED_MAP50)] + list(chan_acc))), "o-", color=CH,
