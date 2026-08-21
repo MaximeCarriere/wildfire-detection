@@ -1060,13 +1060,45 @@ def fig_xp06e6(records) -> Path | None:
                         arms[a].get("map50_tiny_plume") or 0) for a in order},
                    0.7764))
 
-    fig, axes = plt.subplots(1, len(panels), figsize=(6.5 * len(panels), 4.9),
-                             sharey=True, squeeze=False)
-    axes = axes[0]
+    from matplotlib.patches import Rectangle
+    fig = plt.figure(figsize=(4.6 + 6.2 * len(panels), 4.9))
+    gs = fig.add_gridspec(1, len(panels) + 1, width_ratios=[0.7] + [1] * len(panels),
+                          wspace=0.16)
+    sch = fig.add_subplot(gs[0, 0])
+    axes = [fig.add_subplot(gs[0, i + 1], sharey=(None)) for i in range(len(panels))]
+    if len(axes) > 1:
+        axes[1].sharey(axes[0])
     fig.suptitle("Where the cut lands, before and after the retraining that hides it", y=1.06)
     style.subtitle(fig, "All three models are the same size (~4.21 M, 40% removed), pruned "
                         "with the same L1 criterion. Only the per-layer distribution differs.",
                    y=0.995)
+
+    # --- panel 1: the three ways to spread one fixed total cut ------------
+    # Six layers, early ones narrow and fragile (E1), deep ones wide. Each row is
+    # a strategy: the bar height is how much of that layer it removes. All three
+    # remove the same TOTAL; they differ only in where. Illustrative shape, the
+    # point the two data panels then score.
+    sch.set_xlim(-2.4, 6.3); sch.set_ylim(-0.6, 10.4); sch.axis("off")
+    sch.set_title("1. Three ways to spread\nthe same total cut", fontsize=10.5, pad=6,
+                  loc="left")
+    profiles = [("uniform", style.INK_2, [.40, .40, .40, .40, .40, .40]),
+                ("global", style.RED, [.72, .60, .42, .34, .30, .30]),
+                ("sensitivity", style.BLUE, [.05, .12, .38, .52, .60, .66])]
+    for row, (name, colour, prof) in enumerate(profiles):
+        yb = 7.2 - row * 3.4
+        sch.axvspan(-0.4, 1.4, ymin=(yb) / 11.0, ymax=(yb + 2.0) / 11.0,
+                    color=style.RED, alpha=0.07, zorder=0)
+        for x, cut in enumerate(prof):
+            sch.add_patch(Rectangle((x - 0.34, yb), 0.68, 1.8, facecolor="#e6eaec",
+                                    edgecolor="none", zorder=2))
+            sch.add_patch(Rectangle((x - 0.34, yb), 0.68, 1.8 * cut, facecolor=colour,
+                                    edgecolor="none", zorder=3))
+        sch.text(-0.7, yb + 0.9, name, ha="right", va="center", fontsize=8.8,
+                 fontweight="bold", color=colour)
+    sch.text(0.5, 7.2 + 2.15, "fragile\n(E1)", ha="center", fontsize=7,
+             color=style.RED, va="bottom")
+    sch.text(2.75, -0.5, "early layers  ->  deep layers", ha="center", fontsize=7.3,
+             color=style.INK_2)
 
     series = (("overall", style.BLUE), ("tiny plumes", style.AQUA))
     x = np.arange(len(order))
