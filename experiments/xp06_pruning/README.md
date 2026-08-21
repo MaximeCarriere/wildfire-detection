@@ -662,6 +662,39 @@ table's own noise. That constraint is not a workaround: it is
 [E3's result](#e3-regular-channel-widths-recover-the-missing-speed) arrived at independently,
 which is the strongest evidence so far that E3's tiling explanation is the right one.
 
+### What the search's table should be, if it gets built
+
+**The sweep above is a diagnostic, not the table.** It deliberately measured ragged widths — 48,
+52, 72, 80 — because the finding *is* that those cost more than the full layer, and a sweep that
+only visited multiples of 32 would have drawn a clean curve and discovered nothing. The table a
+search actually consumes should be built the opposite way:
+
+| | the diagnostic (this experiment) | the search's table |
+|---|---|---|
+| widths measured | 15 arbitrary, ragged included | multiples of 32 only |
+| entries | one layer, swept | 60 layers x ~5 widths |
+| board time | minutes | roughly 90 minutes |
+| purpose | is the cost model valid? | rank candidate cuts |
+
+Restricting the grid fixes all three problems this experiment found, and fixes them by
+construction rather than by calibration:
+
+- **The entries become rankable.** Adjacent options differ by about 20 points of the layer's
+  original time (44%, 73%, 90%, 100%), which clears the 7% noise floor by a wide margin. On a
+  single-channel grid neighbouring entries differ by less than the noise and the ranking is a
+  coin flip.
+- **A bad width becomes unreachable.** A search free to pick any width will eventually choose 80
+  channels and spend 143% of the original time to remove 37.5% of the arithmetic. If the grid
+  does not contain 80, that mistake cannot be made.
+- **The table gets cheap enough to rebuild.** Five widths per layer rather than fifteen, and the
+  build noise is the dominant term, so entries can be measured more than once and averaged
+  within the same budget.
+
+The magnitude errors this experiment found — the 2.15x total, the 2-4x on predicted savings —
+are not fixed by any of this, and they are the reason the search should be treated as a *ranker*
+and not as a way to hit a latency target. Ask it which layer to cut next, not how many
+milliseconds the result will take.
+
 ---
 
 ## Speed: removing arithmetic is still not gaining it
