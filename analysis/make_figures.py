@@ -697,14 +697,46 @@ def fig_xp06e2(records) -> Path | None:
     cells = {(r["criterion"], r["ratio"]): r for r in d["rows"] if "val_map50" in r}
     shown = [c for c in order if (c, 0.05) in cells]
 
-    fig, axes = plt.subplots(1, 2, figsize=(15.2, 4.8),
-                             gridspec_kw={"width_ratios": [1, 1.35]})
+    from matplotlib.patches import Rectangle
+    fig = plt.figure(figsize=(19.0, 4.8))
+    gs = fig.add_gridspec(1, 3, width_ratios=[0.62, 1, 1.35], wspace=0.24)
+    sch = fig.add_subplot(gs[0, 0])
+    axes = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
     fig.suptitle("The importance criterion decides whether pruning is survivable", y=1.13)
     style.subtitle(fig, "Left: a 5% cut, no retraining. Right: a DIFFERENT, deeper 25% cut, "
                         "after 12 epochs. Same eight rules in both.\nThe cuts differ on "
                         "purpose: at 25% almost nothing survives untrained, so a damage panel "
                         "there would rank nothing.",
                    y=1.07)
+
+    # --- panel 1: what a criterion does, and why the rule matters ---------
+    # Every rule scores each channel and deletes the lowest. Two rules given the
+    # SAME six channels score them differently, so they delete different ones:
+    # L2 squares the weights (one big weight rescues a channel), L1 does not.
+    # Illustrative scores chosen so the two disagree on which two die.
+    sch.set_xlim(-1.7, 6.2); sch.set_ylim(-1.3, 8.7); sch.axis("off")
+    sch.set_title("1. A rule scores every\nchannel, cuts the lowest", fontsize=10.5, pad=6,
+                  loc="left")
+    chans = list("ABCDEF")
+    scores = {"L2": [0.90, 0.50, 0.85, 0.30, 0.62, 0.20],
+              "L1": [0.90, 0.50, 0.42, 0.58, 0.62, 0.20]}
+    for row, rule in enumerate(("L2", "L1")):
+        yb = 4.6 - row * 4.6
+        vals = scores[rule]
+        cut = set(sorted(range(6), key=lambda i: vals[i])[:2])
+        sch.text(-1.5, yb + 1.4, rule, ha="left", va="center", fontsize=9.5,
+                 fontweight="bold", color=style.INK)
+        for i, v in enumerate(vals):
+            col = style.RED if i in cut else style.AQUA
+            sch.add_patch(Rectangle((i - 0.32, yb), 0.64, 2.6 * v, facecolor=col,
+                                    edgecolor="none", zorder=3))
+            if i in cut:
+                sch.text(i, yb - 0.12, "cut", ha="center", va="top", fontsize=6.8,
+                         color=style.RED, fontweight="bold")
+            if row == 1:
+                sch.text(i, -1.15, chans[i], ha="center", fontsize=7.5, color=style.INK_2)
+    sch.text(2.5, 8.15, "same channels, different scores,\ndifferent survivors (C vs D)",
+             ha="center", fontsize=7.3, color=style.INK_2, style="italic")
 
     ax = axes[0]
     vals = [cells[(c, 0.05)]["val_map50"] for c in shown]
