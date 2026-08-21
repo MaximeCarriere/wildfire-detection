@@ -202,17 +202,36 @@ is genuinely underpublished — likely the most cited artifact of Phase 2.
 *Note:* 2:4 speedup only materializes inside TensorRT sparse engines — PyTorch
 numbers here are accuracy-only; speed verdict lands in XP10.
 
-**XP8 — FLOPs vs reality**
-Jetson measurement of every pruned variant (channel-pruned ladder; 2:4 waits for
-TensorRT in XP10). Plot theoretical FLOPs reduction vs measured FPS gain — the gap
-is the finding (GPU tile-size friendliness ≠ FLOPs). If a 50% FLOPs cut yields
-15% FPS, report exactly that.
-*Deliverable:* the FLOPs-vs-FPS honesty plot; blog post 2 ships after this XP.
+**XP8 — FLOPs vs reality — CANCELLED, superseded by XP6**
+Was: measure every pruned variant on the Jetson and plot theoretical FLOPs
+reduction against measured FPS gain, the gap being the finding (GPU tile-size
+friendliness ≠ FLOPs).
+
+*Why cancelled:* the measurement it depended on could not have meant anything when
+it was scheduled. XP2 found PyTorch eager inference on this board is
+kernel-launch-bound at batch 1, so model size barely moves measured speed at all —
+the honesty plot would have shown ~0% FPS gain from any FLOPs cut, a flat line
+that looks exactly like the intended finding while having an entirely different
+cause. Phase 3 moved ahead of Phases 1–2 for this reason (see "What XP2 changed"
+below), and by the time TensorRT removed the bottleneck the question had a better
+home.
+
+*Where the question was answered instead:* XP6's extension, on TensorRT engines
+rather than PyTorch timings, and with the mechanism measured rather than assumed.
+XP6 E3 is the honesty plot in its sharpest form — 4.21 M parameters at 363 img/s
+against 3.52 M at 642, so fewer parameters and 1.77x the speed. XP6 E5 carries the
+gap itself: 88.9% of the multiply-adds removed bought 1.55x, not the ~9x the
+arithmetic implies. XP6 E9 found the cause XP8 could only have hypothesised, by
+timing one convolution across widths: four of fifteen run *slower* than the
+unpruned layer, and the clean sequence runs through the multiples of 32.
+
+*If it is ever wanted as an artifact*, it is now a synthesis figure over data that
+already exists, not a run.
 
 ### Phase 3 — Quantization (the deployment squeeze)
 
 **XP9 — TensorRT FP16**
-Export XP8 winner (pruned+recovered S\*, call it P\*) → ONNX → TensorRT FP16 on
+Export the XP6 winner (pruned+recovered S\*, call it P\*) → ONNX → TensorRT FP16 on
 the Jetson. Also convert the unpruned S\* and YOLOv8n control for comparison.
 *Expected:* accuracy ~free, large speedup (X-ray repo saw 25× over naive PyTorch —
 detection will differ, measure it).
@@ -313,7 +332,7 @@ requirements.txt  desktop-GPU env + Jetson env (two sections, like the X-ray rep
 | After | Blog post |
 |---|---|
 | XP5 | Post 1 — Distillation: how small can a fire detector get? (the ladder curve, vs the resolution null hypothesis) |
-| XP8 | Post 2 — Pruning: FLOPs lie, FPS doesn't |
+| ~~XP8~~ XP6 | Post 2 — Pruning: FLOPs lie, FPS doesn't (XP8 cancelled; XP6 E3/E5/E9 carry it) |
 | XP10/11 | Post 3 — INT8 + 2:4 sparsity: fast, frugal, and where it fails (the slice analysis + the sparsity showdown) |
 | XP13 | Finale — The full stack, one table, live demo (Show HN candidate) |
 | XP14 | Bonus post — The detector that sleeps: watts, not FPS (solar-mast story) |
@@ -338,7 +357,8 @@ speedup — and at 320px *eight* images complete in the same wall-clock as one (
 21.70 ms). The ~200 kernel launches per forward, not the arithmetic, set the floor.
 
 Consequence: in that regime model size barely moves measured speed. **XP8's "FLOPs vs FPS
-honesty plot" would have shown ~0% FPS gain from any FLOPs cut** — a flat line resembling
+honesty plot" would have shown ~0% FPS gain from any FLOPs cut** — which is why XP8 was
+cancelled outright rather than rescheduled — a flat line resembling
 the intended finding while having an entirely different cause. XP5's size→speed table would
 have been equally hollow.
 
