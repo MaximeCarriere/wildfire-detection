@@ -687,7 +687,10 @@ cannot be chosen: multiples of 32 only, 60 layers x ~5 widths, roughly 90 minute
 
 ## Verdict
 
-![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
+Each experiment above carries its own figure; there is no summary plot, because no single chart
+covers nine experiments on four different axes honestly. The fullest single view is
+[E7b's frontier](#e7b-the-recoverable-frontier-where-iterative-finally-wins), which sweeps damage
+and both recovery schedules across the whole ratio.
 
 - **Pruning still loses.** The best model is 44% smaller and gives up 2.2 accuracy points, and
   simply running the unpruned network at 512 px remains the better deployment. What changed over
