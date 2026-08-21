@@ -66,7 +66,7 @@ fault of one badly chosen setting.
 | **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **the compiler refuses the sparse kernels** |
 | **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
 | **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ decides the damage (15x), but 12 epochs erase it |
-| **E7** | retraining | does iterative still lose when both arms train equally? | ✅ at 40% params yes; **[E7b](#e7b-the-recoverable-frontier-where-iterative-finally-wins) shows it wins past 80%** |
+| **E7** | retraining | does iterative still lose when both arms train equally? | ✅ at 40% params yes; **[E7b](#e7b-the-recoverable-frontier-where-iterative-finally-wins) shows it wins past ~84%** |
 | **E8** | criterion | pick channels by reconstructing the layer's output | ❌ **not attempted** |
 | **E9** | allocation | can a search pick ratios against measured latency? | ✅ cost model right per network, too noisy per layer |
 
@@ -536,7 +536,7 @@ and that is a clean result rather than a budgeting artefact.
 
 ## E7b. The recoverable frontier: where iterative finally wins
 
-> **Axis:** retraining &nbsp;·&nbsp; **Asks:** does iterative *ever* beat one-shot, across the whole ratio? &nbsp;·&nbsp; **Answer:** yes, past ~80% of parameters removed, and the gap grows
+> **Axis:** retraining &nbsp;·&nbsp; **Asks:** does iterative *ever* beat one-shot, across the whole ratio? &nbsp;·&nbsp; **Answer:** yes, past ~84% of parameters removed once the arms are compared at matched size
 
 [E7](#e7-one-shot-versus-iterative-fairly) compared the two schedules at a single point, 40% of
 the parameters, and found one-shot ahead. But that point sits in the flat part of the reference
@@ -546,22 +546,37 @@ variable and any crossover is real.
 
 ![The recoverable frontier: one-shot and iterative coincide until the aggressive-pruning tail, then iterative pulls ahead](../../results/figures/xp06e7b_frontier.png)
 
-| params removed | one-shot | iterative | winner |
-|---:|---:|---:|---:|
-| 24.7% | 0.7520 | 0.7533 | tie |
-| 40.1% | 0.7543 | 0.7505 | one-shot |
-| 55.5% | 0.7455 | 0.7383 | one-shot |
-| 68.4% | 0.7306 | 0.7298 | tie |
-| 79.1% | 0.6966 | 0.7017 | **iterative** |
-| 87.3% | 0.6199 | 0.6690 | **iterative +0.049** |
-| 93.4% | 0.4838 | 0.5974 | **iterative +0.114** |
-| 95.5% | 0.4476 | 0.4910 | **iterative +0.043** |
+**The two arms do not land on the same size.** Given the same channel ratio, iterative removes
+consistently *fewer* parameters than one-shot — 92.3% against 93.4%, 84.6% against 87.3% — because
+it re-scores the survivors at every step. So the arms cannot be read off a shared row: at every
+ratio, iterative is also the larger model. The last column corrects for that by interpolating
+one-shot onto iterative's actual size, which is the honest comparison and the one the verdict
+rests on.
 
-- **E7's verdict was right for its point and wrong as a general claim.** Up to ~68% of parameters
-  removed the two schedules tie or one-shot edges it; E7 measured at 40%, squarely in that region.
-- **Past ~80% removed, iterative pulls ahead and the gap widens** to **0.11 mAP50 at 93%
-  removed**. Removing channels gradually lets the survivors keep redistributing the work, and that
-  only matters once the cut is deep enough to hurt.
+| channel cut | one-shot | | iterative | | one-shot at iterative's size | matched Δ |
+|---:|---:|---:|---:|---:|---:|---:|
+| | *removed* | *mAP50* | *removed* | *mAP50* | *mAP50* | |
+| 15% | 24.7% | 0.7520 | 22.1% | 0.7533 | — | — |
+| 25% | 40.1% | 0.7543 | 36.1% | 0.7505 | 0.7537 | −0.003 |
+| 35% | 55.5% | 0.7455 | 49.7% | 0.7383 | 0.7488 | −0.011 |
+| 45% | 68.4% | 0.7306 | 63.0% | 0.7298 | 0.7368 | −0.007 |
+| 55% | 79.1% | 0.6966 | 74.7% | 0.7017 | 0.7106 | −0.009 |
+| 65% | 87.3% | 0.6199 | 84.6% | 0.6690 | 0.6452 | **+0.024** |
+| 75% | 93.4% | 0.4838 | 92.3% | 0.5974 | 0.5087 | **+0.089** |
+| 80% | 95.5% | 0.4476 | 95.2% | 0.4910 | 0.4534 | **+0.038** |
+
+- **E7's verdict was right for its point and wrong as a general claim.** Below about 80% of
+  parameters removed one-shot is ahead at matched size, every time; E7 measured at 40%, squarely
+  inside that region.
+- **Past ~84% removed, iterative pulls ahead**, peaking at **+0.089 mAP50 at 92% removed**.
+  Removing channels gradually lets the survivors keep redistributing the work, and that only
+  matters once the cut is deep enough to hurt.
+- **Size-matching moves the crossover and shrinks the win.** Read off the raw columns, iterative
+  looks ahead from 79% removed and by as much as 0.114. Both numbers are inflated by iterative
+  being the larger model in every row: corrected, the crossover is nearer 84% and the peak gap is
+  0.089. The direction of the result is unchanged, which is why it stands, but the raw columns
+  should not be quoted on their own. The one-shot curve is interpolated linearly between measured
+  points, so the corrected column is an estimate rather than a measurement.
 - **This reproduces the textbook curve** (Han et al.): the two arms lie on top of each other until
   the extreme, then separate. It is also exactly what [E7](#e7-one-shot-versus-iterative-fairly)'s
   own limitation box predicted before the sweep was run.
