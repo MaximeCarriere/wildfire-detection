@@ -261,17 +261,25 @@ launch-bound board to show little, and it is the single result here worth applyi
 
 > **Axis:** granularity &nbsp;·&nbsp; **Asks:** does 2:4, the one pattern the hardware understands, hold up? &nbsp;·&nbsp; **Answer:** accuracy holds, and the compiler refuses the sparse kernels
 
-**2:4 sparsity: of every four neighbouring weights, exactly two must be zero.** Half the numbers
-go, but *where* they go is fixed, and that constraint is the point: Ampere GPUs, the Orin's
-included, have circuitry that skips those zeros for up to twice the throughput. Scattered zeros
-(E5) get no such support; whole channels need none. The weights are **masked, not removed** — the
-model still stores 7.03 M numbers, 3.53 M of them non-zero.
+**Question. Ampere GPUs have circuitry that skips zeros — but only in one rigid pattern, 2:4:
+of every four neighbouring weights, exactly two must be zero. Does this detector survive that
+constraint, and does the hardware actually pay out?**
+
+**Method**
+
+- Mask half the weights in 57 layers under the 2:4 rule. **Masked, not removed** — the model
+  still stores 7.03 M numbers, 3.53 M of them non-zero.
+- Compare against the same 3.49 M weights deleted with *free* choice of where.
+- 12 epochs of recovery, then the accuracy question.
+- For speed: four TensorRT engines — dense, free-form 50%, 2:4 without `--sparsity=enable`, and
+  2:4 with it — measured on the board, then all four rebuilt at `--optShapes` batch 16.
 
 ![What 2:4 sparsity is, and what constraining the pattern costs](../../results/figures/xp06e4_sparsity24.png)
 
-**Half the weights removed, three ways.** Every row below deletes the same 3.49 M of 6.99 M
-weights, from the same 57 layers, by magnitude. Only the rule about *where* changes: the top grid
-in the figure may put its zeros anywhere, the bottom one must place exactly two in every four.
+*Both grids delete half the weights. The top may put its zeros anywhere; the bottom must place
+exactly two in every group of four.*
+
+**Results — accuracy**
 
 | 50% of the weights deleted | non-zero | mAP50 | tiny plumes |
 |---|---:|---:|---:|
@@ -280,15 +288,13 @@ in the figure may put its zeros anywhere, the bottom one must place exactly two 
 | **forced into a 2:4 pattern** | 3.53 M | **0.0000** | 0.0000 |
 | forced into a 2:4 pattern, then 12 epochs | 3.53 M | 0.7527 | 0.1249 |
 
-Choosing freely costs **1.4 points**. Following the pattern costs **everything**, until 12 epochs
-win it back to 97% of unpruned. **It is not how much you remove, it is whether the removal has to
-follow a shape.**
-
-### Why the patterned half collapses
-
-A global threshold is **adaptive**: it spends per-layer sparsity anywhere from **8.4% to 87.6%**,
-stripping layers full of small weights and sparing layers full of large ones. 2:4 takes exactly
-half of every layer, because a group of four cannot know it sits somewhere fragile.
+- **Choosing freely costs 1.4 points; following the pattern costs everything** — until 12 epochs
+  win it back to 97% of unpruned. It is not how much you remove, it is whether the removal has to
+  follow a shape.
+- **The pattern cannot see where it is.** A global threshold spends per-layer sparsity from 8.4%
+  to 87.6%; 2:4 takes exactly half of every layer, because a group of four cannot know it sits
+  somewhere fragile. Free-form takes 9.0% of the first convolution, 2:4 takes 50% — and
+  [E1](#e1-which-layers-can-be-cut) measured that halving that layer alone costs **84%**.
 
 | what actually got deleted | free choice | 2:4 pattern |
 |---|---:|---:|
@@ -297,59 +303,47 @@ half of every layer, because a group of four cannot know it sits somewhere fragi
 | weights removed from the network's strongest 10% | **0** | **64,990** |
 | per-layer sparsity | 8.4% to 87.6% | 50.0% everywhere |
 
-It lands hardest where this network can least afford it: free-form takes 9.0% of the first
-convolution, 2:4 takes 50%. [E1](#e1-which-layers-can-be-cut) measured that halving that one
-layer costs **84%** of the accuracy.
+- **The 0.0000 is a calibration failure, not a destroyed network.** Maximum objectness over 48
+  images: unpruned **0.911**, free choice **0.895**, 2:4 **0.00022**. The model still draws
+  boxes, at confidences too low to clear any threshold, so mAP falls off a cliff instead of
+  sliding. Retraining rescales the head and the accuracy returns — the capacity was never lost.
 
-**That is why the score is exactly 0.0000 and not merely low.** Maximum objectness over 48
-images: unpruned **0.911**, free choice **0.895**, 2:4 **0.00022**. The model still draws boxes,
-at confidences far too low to clear any threshold, so mAP falls off a cliff instead of sliding.
-Retraining rescales the head and the accuracy comes back — the capacity was never lost, the
-calibration was.
-
-### Does it run faster on the board?
+**Results — speed**
 
 ![2:4 sparsity on the board](../../results/figures/xp06e4b_sparsity_speed.png)
 
-No. Both 2:4 engines were built from the same ONNX, and the only difference between them is
-`--sparsity=enable` — which is permission to *consider* sparse kernels, not an instruction to use
-them. TensorRT considered, and declined:
+- **The compiler declined.** `--sparsity=enable` is permission to *consider* sparse kernels, not
+  an instruction to use them. TensorRT considered, and refused every layer:
 
 ```
 (Sparsity) Found 39 layer(s) eligible to use sparse tactics
 (Sparsity) Chose 0 layer(s) using sparse tactics
 ```
 
-**Those two lines are about different things, and the difference is the result.** Line one
-confirms the weights really are in 2:4 form; faulty masking would have found none eligible. Line
-two is the autotuner deciding: every eligible layer had a **sparse** code path that skips the
-zeros on the tensor cores and an ordinary **dense** one that multiplies all four numbers
-including the two zeros, and TensorRT timed both and kept dense every time. So the sparsity is in
-the data and absent from the execution. The engine multiplies by zero 3.49 M times per frame,
-gets the right answer, and takes exactly as long as if nothing had been pruned.
+  Line one confirms the masking is correct — faulty masking would have found none eligible. Line
+  two is the autotuner timing the sparse path against the ordinary dense one and keeping dense
+  every time. The sparsity is in the data and absent from the execution: the engine multiplies by
+  zero 3.49 M times per frame and takes as long as if nothing had been pruned.
+- **The first build set had a hole, and closing it changed nothing.** TensorRT autotunes at the
+  `--optShapes` batch size, and that was **1** while throughput is reported at **16** — the one
+  regime where a sparse kernel cannot win, its metadata-decode cost being fixed while the
+  arithmetic it saves grows with batch. Rebuilt at `--optShapes=16`: 39 eligible, **0 chosen**.
+- **Why dense wins.** Sparse kernels must decode metadata recording which two of four survived,
+  which only repays itself when a layer is large enough for multiplication to dominate. At 512 px
+  the layers are small and the limit is moving data and launching kernels — what
+  [XP9](../xp09_tensorrt_fp16/) found across the whole runtime. Halving the multiplies of
+  something that was never multiply-bound buys nothing.
+- **The spread between the bars is not sparsity either.** Three engines from one unchanged ONNX
+  land within **0.6%**, so a same-build comparison is good to well under a percent. The four arms
+  are not that, and their ranking does not survive rebuilding: 2:4 with the flag off runs
+  **+2.1%** against dense tuned at batch 1 and **−1.4%** tuned at 16, from byte-identical
+  weights. A gap that changes sign under a recompile belongs to tactic selection, not to zeros.
 
-**The first build set had a hole in it, and closing the hole did not change the answer.**
-TensorRT autotunes at the `--optShapes` batch size, and that was **1** while throughput is
-reported at **16** — so the kernels were chosen in the one regime where a sparse kernel cannot
-win, its metadata-decode cost being fixed while the arithmetic it saves grows with batch. Every
-arm was rebuilt at `--optShapes=16` to put tuning and measurement in the same place. The verdict
-is unchanged: 39 eligible, **0 chosen**.
-
-**Why dense wins.** Sparse kernels must load and decode metadata recording which two of four
-survived, and that only repays itself when a layer is large enough for multiplication to
-dominate. At 512 px on an Orin Nano the layers are small and the limit is moving data and
-launching kernels, which is what [XP9](../xp09_tensorrt_fp16/) found across the whole runtime.
-Halving the multiplies of something that was never multiply-bound buys nothing.
-
-**The spread between the bars is not sparsity either, and there is now a control that says so.**
-Three engines compiled from one unchanged ONNX with identical flags land within **0.6%** of each
-other, so a same-build comparison is trustworthy to well under a percent. The four arms are not a
-same-build comparison, and their ranking does not survive being rebuilt: `50% as 2:4, ordinary
-build` runs **+2.1%** against dense when tuned at batch 1 and **−1.4%** when tuned at 16, from
-byte-identical weights. A gap that changes sign under a recompile belongs to which kernels the
-autotuner happened to pick, not to which weights are zero.
-
-**So the verdict stands.** 2:4 was the last candidate with a hardware story behind it.
+**Conclusion.** Accuracy survives the pattern once retrained, and the hardware still pays
+nothing. 2:4 was the last candidate on this page with a hardware story behind it, and the story
+requires a compiler that chooses to use it. Zeroing weights buys nothing here without dedicated
+silicon — which is precisely why dedicated silicon was built for it
+([EIE](https://dl.acm.org/doi/10.1145/3007787.3001163), Han et al., ISCA 2016).
 
 ---
 
@@ -357,28 +351,29 @@ autotuner happened to pick, not to which weights are zero.
 
 > **Axis:** granularity &nbsp;·&nbsp; **Asks:** is the collapse a capacity limit or a structural one? &nbsp;·&nbsp; **Answer:** structural, decisively
 
-E1, E2, E6 and E7 deleted **whole channels**. E4 zeroed **individual weights** under a pattern.
-This zeros them with no pattern at all. A convolution's weights are a grid
-`[out, in, height, width]`:
+**Question. Channel pruning collapses this detector at ratios weight pruning shrugs off. Is that
+because the network runs out of capacity, or because deleting a *channel* is a different kind of
+damage from deleting a weight?**
 
-- **Channel pruning deletes a whole slice.** The network genuinely narrows: 7.03 M parameters
-  really do become 4.2 M, smaller on disk, in memory and in arithmetic.
-- **Weight pruning punches holes.** Every channel still exists and is still computed. The grid
-  keeps its exact shape.
+> **Channel pruning deletes a whole slice** and the network genuinely narrows — 7.03 M parameters
+> become 4.2 M, smaller on disk, in memory and in arithmetic. **Weight pruning punches holes**:
+> every channel still exists and is still computed, and the grid keeps its exact shape. A zero
+> occupies the same two bytes as any other number, and shrinking the file would need a sparse
+> storage format that PyTorch, ONNX and TensorRT do not use.
+> [E4's](#e4-the-one-pattern-the-hardware-understands) 2:4 is the exception only because
+> two-of-four positions fit in a couple of bits.
 
-> **Why zeroing 90% of the weights leaves the file the same size.** A zero occupies the same two
-> bytes as any other number. Shrinking the file needs a **sparse storage format** that keeps only
-> the non-zeros plus indices saying where they belong, and nothing here uses one: PyTorch, ONNX
-> and TensorRT are all dense. Indices are not free either, since a naive one costs more than the
-> value it points to. **2:4 is the exception**, because two-of-four positions fit in a couple of
-> bits, which is why [E4](#e4-the-one-pattern-the-hardware-understands) is its own experiment.
+**Method**
 
-Everything below is on one axis, **percent of the model actually removed**, because a 25% channel
-cut removes 39.6% of the parameters and the nominal ratios do not compare.
+- Two series at matched sizes: channels deleted, and weights zeroed with no pattern.
+- Plotted against **percent of the model actually removed**, because a 25% channel cut removes
+  39.6% of the parameters and nominal ratios do not compare.
+- Damage measured with **no retraining in either series**, so neither is flattered.
+- TensorRT engines built on the board for the speed and energy columns.
 
 ![Deleting channels and zeroing weights are not the same operation](../../results/figures/xp06e5_granularity.png)
 
-**What it costs** (damage, no retraining in either series):
+**Results — what it costs** (damage, no retraining)
 
 | removed | channels deleted | weights zeroed |
 |---:|---:|---:|
@@ -389,15 +384,15 @@ cut removes 39.6% of the parameters and the nominal ratios do not compare.
 | ~70% | 0.0000 | 0.5066 |
 | ~90% | 0.0000 | 0.1447 |
 
-- **Weights absorb damage that channels cannot.** Half the model zeroed costs 1.4 points; 7% of
-  the model deleted as channels costs almost everything.
-- **The capacity was never the constraint; the structure is.** A channel is a unit everything
-  downstream is built around. A weight is not.
-- **Retraining closes most of the gap**, which is why the table above is damage only. Recovered,
-  90% of weights reaches 0.7425 and 25% of channels reaches 0.7297. The structural advantage is
-  real before recovery and largely gone after it.
+- **Weights absorb damage channels cannot.** Half the model zeroed costs 1.4 points; **7%**
+  deleted as channels costs almost everything.
+- **Capacity was never the constraint, structure is.** A channel is a unit everything downstream
+  is built around; a weight is not.
+- **Retraining closes most of the gap.** Recovered, 90% of weights reaches 0.7425 and 25% of
+  channels reaches 0.7297 — the structural advantage is real before recovery and largely gone
+  after it.
 
-**What it buys, and what it draws** (TensorRT engines on the board):
+**Results — what it buys** (TensorRT engines on the board)
 
 | removed | how | non-zero | throughput | energy |
 |---:|---|---:|---:|---:|
@@ -409,14 +404,17 @@ cut removes 39.6% of the parameters and the nominal ratios do not compare.
 | 91.2% | channels deleted | 0.62 M | **730.4 ± 8.6** | **28.6** |
 
 - **Zeroing weights is a flat line.** 89.5% of the parameters gone moves throughput by 2.3%.
-- **Channels do buy speed, but only past about 70% removed**: **1.55x** at 91%, on 45% less energy.
-- **In between it goes backwards.** At 39.6% removed the engine runs **18% slower than unpruned**,
-  reproducing the 381 img/s XP6 measured earlier. Widths like 47 instead of 64 are what
-  [E3](#e3-regular-channel-widths-recover-the-missing-speed) tests.
-- **The speed arrives only after the accuracy has gone.** Read the three panels at 90% removed:
-  channels are 1.55x faster at 0.0000 mAP50, weights hold 0.1447 and gain nothing.
+- **Channels buy speed only past ~70% removed**: **1.55x** at 91%, on 45% less energy.
+- **In between it goes backwards.** At 39.6% removed the engine runs **18% slower than
+  unpruned** — the ragged widths [E3](#e3-regular-channel-widths-recover-the-missing-speed) fixes.
+- **The speed arrives only after the accuracy has gone.** At 90% removed, channels are 1.55x
+  faster at 0.0000 mAP50; weights hold 0.1447 and gain nothing.
 
-**Neither granularity has a setting where both work.** That is the verdict of XP6 in one figure.
+**Conclusion.** The two granularities fail in opposite directions and neither has a setting where
+both work: weights keep accuracy and buy no speed, channels buy speed only past the point the
+accuracy is gone. The structural advantage weights appear to hold is also mostly an artefact of
+measuring damage — twelve epochs erase it, the same pattern [E6](#e6-how-to-spread-the-cut) finds
+on a different axis.
 
 ---
 
@@ -424,16 +422,23 @@ cut removes 39.6% of the parameters and the nominal ratios do not compare.
 
 > **Axis:** ratio &nbsp;·&nbsp; **Asks:** same cut spread three ways, does allocation rescue it? &nbsp;·&nbsp; **Answer:** it decides almost everything about the damage, and almost nothing about what survives retraining
 
-Using E1's map, protect the fragile layers and cut hard where there is slack. All three arms are
-matched to the same measured size by search — 40.1% of the parameters removed, 7.03 M down to
-about 4.21 M — so only the distribution varies. The criterion is held at L1 rather than LAMP,
-because LAMP normalises magnitudes per layer and would smuggle in an allocation decision of its
-own.
+**Question. Pruning removes channels, and how much to remove is separate from how to spread it
+across the 60 convolutions. Does spreading it well — using [E1](#e1-which-layers-can-be-cut)'s
+map to protect the fragile layers — rescue the result?**
+
+**Method**
+
+- Three ways to spread one fixed total: **uniform** (same percentage everywhere), **global** (one
+  magnitude threshold, per-layer ratios fall out), **sensitivity** (E1's map).
+- All three matched to the same measured size by search — 40.1% of parameters removed, 7.03 M to
+  ~4.21 M — so only the distribution varies.
+- Criterion held at **L1, not LAMP**, because LAMP normalises per layer and would smuggle in an
+  allocation decision of its own.
+- Scored **twice**: at the moment of the cut, and after 12 epochs of recovery.
 
 ![Where the cut lands](../../results/figures/xp06e6_allocation.png)
 
-**The same three models, scored twice.** Left, at the moment they were cut. Right, after the 12
-epochs E6 originally published.
+**Results**
 
 | allocation | damage, no retraining | after 12 epochs |
 |---|---:|---:|
@@ -442,31 +447,23 @@ epochs E6 originally published.
 | **sensitivity-driven** | **0.1689** | **0.7522** |
 | *spread across the three* | *0.158* | *0.004* |
 
-**Allocation is not second-order. Recovery is just strong enough to hide that it is not.**
-Sensitivity-driven allocation leaves a model **15x** better than uniform and **2.3x** better than
-global — and after twelve epochs all three land within 0.4 points of each other, which is the
-number E6 first reported. Both measurements are of the same three models. Only the second one
-was ever published, and on its own it says allocation barely matters.
+- **As damage, allocation decides almost everything.** Sensitivity leaves a model **15x** better
+  than uniform and **2.3x** better than global.
+- **After recovery it decides almost nothing.** All three land within **0.4 points**. Both
+  measurements are of the same three models; only the second was ever published, and on its own
+  it says allocation barely matters.
+- **E1's map is right, and acting on it works.** Sensitivity wins on *both* sides of the figure —
+  an allocation derived from single-layer sensitivity really does produce the least-damaged
+  network. What it does not do is produce a better one once the optimizer has run.
+- **Sensitivity buys one thing outright:** correct silence on empty frames returns to the
+  unpruned **97.4%**, undoing the extra false alarms the other two leave behind.
 
-**E1's map is right, and acting on it works.** Sensitivity wins on both sides of the figure,
-which is the check that matters: an allocation derived from single-layer sensitivity really does
-produce the least-damaged network. What it does not do is produce a *better* network once the
-optimizer has been allowed to run.
-
-> **This is E5's finding again on a different axis.** There, weight and channel pruning looked
-> nothing alike as damage and converged once both retrained. Here, three allocations spanning
-> 0.158 mAP50 converge to 0.004. On this detector, twelve epochs is enough to absorb almost any
-> structural choice made before them — which makes "how much retraining can you afford" the
-> question that determines whether any of these decisions matter. [E7](#e7-one-shot-versus-iterative-fairly)
-> takes that up directly.
-
-**So the practical reading depends entirely on your budget.** With a retraining budget, spend
-your effort on the criterion — [E2](#e2-which-channels-to-pick) showed that is worth 4.5 points where
-allocation is worth 0.4. Without one, allocation is the difference between a model at 0.169 and
-a model at 0.011, and E1's map is the best tool on this page.
-
-Sensitivity buys one thing outright: correct silence on empty frames returns to the unpruned
-97.4%, undoing the extra false alarms the other two allocations leave behind.
+**Conclusion.** This is [E5](#e5-whole-channels-versus-individual-weights)'s finding again on a
+different axis: twelve epochs absorb almost any structural choice made before them. So the
+practical reading depends entirely on budget — **with** retraining, spend your effort on the
+criterion, which [E2](#e2-which-channels-to-pick) shows is worth 4.5 points against allocation's
+0.4; **without** it, allocation is the difference between a model at 0.169 and one at 0.011, and
+E1's map is the best tool on this page.
 
 ---
 
