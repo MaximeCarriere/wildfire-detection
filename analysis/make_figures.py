@@ -619,13 +619,51 @@ def fig_xp06e1(records) -> Path | None:
     cmap = LinearSegmentedColormap.from_list(
         "retained", ["#fdf3ee", "#f6c9ae", "#8ec9b4", "#1baf7a", "#0d5f43"])
 
-    fig, axes = plt.subplots(1, 2, figsize=(15.5, 4.6),
-                             gridspec_kw={"width_ratios": [1.55, 1]})
+    from matplotlib.patches import Rectangle, FancyArrowPatch
+    fig = plt.figure(figsize=(17.6, 4.6))
+    gs = fig.add_gridspec(1, 3, width_ratios=[0.52, 1.55, 1], wspace=0.40)
+    sch = fig.add_subplot(gs[0, 0])
+    axes = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
     fig.suptitle("The layers that break first are the layers that save the least", y=1.10)
     style.subtitle(fig, "Each cell prunes ONE layer and leaves the rest alone. Left: the map. "
                         "Right: what each cut actually buys you.", y=1.015)
 
-    # ---- panel 1: the map ------------------------------------------------
+    # --- panel 1: how the map is built ------------------------------------
+    # One layer is pruned while the other 56 are left whole, the model is scored,
+    # and that one number becomes one cell of the heatmap. Repeat for every layer
+    # at every depth. The schematic shows a single trial and names the sweep.
+    sch.set_xlim(0, 10); sch.set_ylim(-1.0, 9.4); sch.axis("off")
+    sch.set_title("1. How the map\nis built", fontsize=10.5, pad=6, loc="left")
+    cut_idx = 1
+    for k in range(5):
+        y = 7.4 - k * 1.45
+        cut = k == cut_idx
+        sch.add_patch(Rectangle((0.4, y), 3.2, 1.15, facecolor="#e6eaec",
+                                edgecolor="none", zorder=2))
+        if cut:
+            sch.add_patch(Rectangle((0.4, y), 3.2 * 0.5, 1.15, facecolor=style.RED,
+                                    edgecolor="none", zorder=3))
+            sch.text(3.8, y + 0.55, "cut", ha="left", va="center", fontsize=8,
+                     color=style.RED, fontweight="bold")
+        else:
+            sch.add_patch(Rectangle((0.4, y), 3.2, 1.15, facecolor=style.AQUA,
+                                    edgecolor="none", zorder=3, alpha=0.85))
+    sch.text(2.0, 7.4 + 1.5, "the network", ha="center", fontsize=8.5,
+             fontweight="bold", color=style.INK)
+    sch.text(2.0, -0.9, "prune ONE layer,\nleave the other 56", ha="center", va="top",
+             fontsize=7.8, color=style.INK_2)
+    # arrow to a single heatmap cell
+    sch.add_patch(FancyArrowPatch((6.0, 5.6), (7.4, 5.6), arrowstyle="-|>",
+                                  mutation_scale=12, color=style.INK_2, linewidth=1.3))
+    sch.text(6.7, 6.15, "score", ha="center", fontsize=7.8, color=style.INK_2)
+    sch.add_patch(Rectangle((7.8, 4.9), 1.4, 1.4, facecolor="#8ec9b4", edgecolor="white",
+                            linewidth=1.5, zorder=3))
+    sch.text(8.5, 3.9, "one cell\nof the map", ha="center", va="top", fontsize=7.8,
+             color=style.INK_2)
+    sch.text(5.0, 1.4, "repeat: 57 layers x 5 depths", ha="center", fontsize=8,
+             color=style.INK, fontweight="bold")
+
+    # ---- panel 2 (data): the map -----------------------------------------
     ax = axes[0]
     im = ax.imshow(grid, aspect="auto", cmap=cmap, vmin=0, vmax=1,
                    interpolation="nearest")
