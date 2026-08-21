@@ -78,34 +78,36 @@ Each section below is one experiment. The unpruned model is the top row of every
 
 > **Axis:** ratio &nbsp;·&nbsp; **Asks:** which layers can be cut at all? &nbsp;·&nbsp; **Answer:** the fragile ones are exactly those that free the least
 
-Prune one layer, leave the other 56 alone, measure, put it back, move on. 57 layers x 5 depths
-of cut, on the **validation** split, since the result chooses a configuration and test has to
-stay clean.
+**Question. Pruning takes its budget from somewhere — is any layer a cheap place to take it
+from?**
+
+**Method**
+
+- Prune one layer, leave the other 56 alone, measure, put it back, move on.
+- 57 layers x 5 depths of cut.
+- On the **validation** split, since the result chooses a configuration and test must stay clean.
 
 ![Every layer pruned on its own](../../results/figures/xp06e1_sensitivity.png)
 
-**How to read it.** On the left, every column is one layer and every row is how hard that single
-layer was cut. Dark green means the network barely noticed, pale means it fell over. The black
-line separates the early layers from the deeper ones. On the right, each dot is one layer
-halved: how much of the model that freed, against how much accuracy survived. **Good cuts are
-top-right. Bottom-left means you destroyed the detector and saved nothing.**
+*Left: each column is one layer, each row how hard it was cut — dark green means the network
+barely noticed, pale means it fell over. Right: each dot is one layer halved, plotting how much
+of the model that freed against how much accuracy survived. Good cuts are top-right; bottom-left
+destroyed the detector and saved nothing.*
 
-Two things jump out, and the second is the useful one.
+**Results**
 
-**Fragility follows depth.** Early layers go pale as soon as you cut them; deeper layers stay
-dark green even at 70%. Stages 0 to 4 keep 59% of accuracy under a 50% cut, stages 6 to 23 keep
-94%.
+- **Fragility follows depth.** Stages 0–4 keep **59%** of accuracy under a 50% cut; stages 6–23
+  keep **94%**.
+- **The fragile layers have nothing to give.** Halving the first convolution frees **0.16%** of
+  the model and costs **84%** of the accuracy.
+- **The robust layers are where the model actually is.** Halving `model.21.conv` costs **0.9%**
+  and frees **5.13%** — fifty times the saving for a hundredth of the damage.
 
-**The fragile layers are also the ones with nothing to give.** Every red dot is jammed against
-the left edge of the right-hand panel: halving the first convolution frees **0.16%** of the
-model and costs **84%** of the accuracy. Halving `model.21.conv` costs **0.9%** and frees
-**5.13%**. That is fifty times the saving for a hundredth of the damage.
-
-**Conclusion.** There is no reason to ever cut the early layers of this detector. They are the
-most expensive place to take damage and the least profitable place to save. A single global
-threshold ranks channels by weight size and knows none of this, so part of its budget lands
-exactly there, which is what produced the original collapse. E6 tests whether acting on this map
-is enough to fix it.
+**Conclusion.** There is no reason to cut the early layers of this detector: most expensive place
+to take damage, least profitable place to save. A global magnitude threshold ranks channels by
+weight size and knows none of this, so part of its budget lands exactly there — which is what
+produced the original collapse. [E6](#e6-how-to-spread-the-cut) tests whether acting on this map
+fixes it.
 
 ---
 
@@ -113,12 +115,18 @@ is enough to fix it.
 
 > **Axis:** criterion &nbsp;·&nbsp; **Asks:** which channels to pick, and does it beat random? &nbsp;·&nbsp; **Answer:** it decides everything, 99% kept against 12%
 
-This page used to say a 5% cut costs 88% of the accuracy. That is mostly a fact about **L2**,
-the one selection rule that had ever been tried.
+**Question. This page used to say a 5% cut costs 88% of the accuracy. Is that a fact about
+pruning, or a fact about the one selection rule that had ever been tried?**
 
-**Every rule is a different theory of what makes a channel worth keeping.** Each scores every
-channel, and the lowest scores are deleted. $w$ is a channel's weights, $g$ its gradients,
-$\gamma$ its batch-norm scale.
+**Method**
+
+- Eight rules, each scoring every channel; the lowest scores are deleted.
+- One **global** threshold across the network, not a per-layer quota, so each rule decides for
+  itself where the damage lands.
+- 25% channel cut, 12 epochs of recovery, plus a damage-only sweep at 5%.
+- `random` is included as the control that proves the others are doing work.
+
+$w$ is a channel's weights, $g$ its gradients, $\gamma$ its batch-norm scale.
 
 | rule | score | why you would use it | why you might not |
 |---|---|---|---|
@@ -126,47 +134,21 @@ $\gamma$ its batch-norm scale.
 | **L2** | $\sqrt{\sum_i w_i^2}$ | the usual default, equally free | squaring lets **one** large weight rescue an otherwise-dead channel. On this model that was catastrophic |
 | **LAMP** | $w_i^2 \big/ \sum_{j\ge i} w_j^2$ | layer-adaptive for free: layers compete on their own terms, so narrow critical layers survive | still pure magnitude, still ignores the data |
 | **FPGM** | $\sum_j \lVert W_i - W_j \rVert_2$ | catches **redundancy** magnitude cannot: two large but near-identical channels | costs a pairwise distance per layer, the slowest of the cheap rules |
-| **Taylor** | $\lvert g_i w_i \rvert$ | actually estimates the loss change, and is the only family that looks at the data | needs a backward pass over calibration data, and the loss is dominated by common cases, so rare ones get under-weighted |
-| **Hessian** | $\tfrac{1}{2} h_{ii} w_i^2$ | the most principled on paper (Optimal Brain Damage) | assumes training converged and that weights are independent, both shaky for a fine-tuned detector. Worst real rule here |
-| **BN scale** | $\lvert \gamma_c \rvert$ | free, reuses a number the network already learned | **requires** training with a penalty that spreads the scales apart. Without it the signal does not exist |
-| **random** | $\sim U(0,1)$ | the control that proves the others are doing work | no signal, by construction |
-
-The short version of the trade-off: **magnitude rules are free but data-blind, gradient rules see
-the data but cost a backward pass and over-weight the common case, and FPGM is the only one
-asking a different question entirely.** On this detector the free layer-adaptive rule beat every
-expensive one.
+| **Taylor** | $\lvert g_i w_i \rvert$ | actually estimates the loss change, the only family that looks at the data | needs a backward pass, and the loss is dominated by common cases, so rare ones get under-weighted |
+| **Hessian** | $\tfrac{1}{2} h_{ii} w_i^2$ | most principled on paper (Optimal Brain Damage) | assumes training converged and weights are independent, both shaky for a fine-tuned detector |
+| **BN scale** | $\lvert \gamma_c \rvert$ | free, reuses a number the network already learned | **requires** training with a penalty that spreads the scales apart |
+| **random** | $\sim U(0,1)$ | the control | no signal, by construction |
 
 ![The importance criterion decides whether pruning is survivable](../../results/figures/xp06e2_criteria.png)
 
-**At a 5% cut, L1 keeps 99% of the accuracy where L2 keeps 12%.** In code the difference is
-`p=2` against `p=1`.
+**Results**
 
-### Where each rule actually cut
+- **The criterion decides survivability.** At a 5% cut **L1 keeps 99% of the accuracy where L2
+  keeps 12%.** In code that difference is `p=2` against `p=1`.
+- **Retrained, the spread is 4.5 points** — and **nearly double on tiny plumes**, so the choice
+  barely matters for easy cases and matters enormously for distant smoke.
 
-The cut is one **global** threshold across the whole network, not a per-layer quota, so each rule
-decides for itself where the damage lands. That turns out to explain the ranking.
-
-| rule | early (0-4) | mid (5-9) | deep (10-23) | mAP50 |
-|---|---:|---:|---:|---:|
-| **LAMP** | **0.1%** | 28.8% | 22.9% | **0.7543** |
-| L1 | 18.3% | 16.1% | 32.6% | 0.7531 |
-| Taylor | 22.1% | 11.5% | 35.5% | 0.7460 |
-| FPGM | 12.8% | 8.5% | 40.4% | 0.7438 |
-| BN scale | 33.2% | 18.5% | 29.0% | 0.7153 |
-| Hessian | 22.3% | 33.2% | 15.8% | 0.7111 |
-| **random** | **48.5%** | 18.6% | 25.6% | **0.7093** |
-
-**LAMP barely touches the early layers and wins; random hammers them and loses.** Across the
-seven rules, the correlation between how much of the early network they cut and their final
-accuracy is **r = -0.79**.
-
-That is E1's prediction confirmed by a completely separate experiment. E1 measured layers one at
-a time and concluded the early ones must be protected; E2 never used that map, yet the rules that
-happened to protect them are the rules that won. Two independent routes to the same mechanism,
-which is much stronger than either alone. (Seven points, so treat the coefficient as direction
-rather than a precise effect size.)
-
-| selection rule (all at a **25% channel cut**, 12 epochs) | params left | mAP50 | small plumes | tiny plumes |
+| selection rule (25% channel cut, 12 epochs) | params left | mAP50 | small plumes | tiny plumes |
 |---|---:|---:|---:|---:|
 | **none (unpruned)** | 7.03 M | **0.7764** | 0.6038 | 0.1380 |
 | LAMP | **3.91 M** | 0.7543 | 0.5783 | 0.1294 |
@@ -178,20 +160,33 @@ rather than a precise effect size.)
 | Hessian | 3.83 M | 0.7111 | 0.5152 | 0.0810 |
 | random (the control) | 4.45 M | 0.7093 | 0.4812 | 0.0676 |
 
-**Before retraining these rules range from 0.94 to 0.00; after it, from 0.754 to 0.709.**
-Retraining is a great leveller, which is why damage measured without it is a poor guide to a
-deployed model.
+- **The ranking is explained by where each rule cut.** Across the seven rules, the correlation
+  between how much of the early network they cut and their final accuracy is **r = -0.79**.
+  LAMP barely touches the early layers and wins; random hammers them and loses.
 
-**BN scale scored near random, and the reason is measurable.** It ranks channels by the scale
-batch norm already learned, which works only if training pushed some of those scales toward zero
-to mark channels as dead. In these weights **not one of the 9,504 channels has a scale below
-0.1**. The signal does not exist, so it selects almost arbitrarily. An unmet prerequisite, not a
-failed method.
+| rule | early (0-4) | mid (5-9) | deep (10-23) | mAP50 |
+|---|---:|---:|---:|---:|
+| **LAMP** | **0.1%** | 28.8% | 22.9% | **0.7543** |
+| L1 | 18.3% | 16.1% | 32.6% | 0.7531 |
+| Taylor | 22.1% | 11.5% | 35.5% | 0.7460 |
+| FPGM | 12.8% | 8.5% | 40.4% | 0.7438 |
+| BN scale | 33.2% | 18.5% | 29.0% | 0.7153 |
+| Hessian | 22.3% | 33.2% | 15.8% | 0.7111 |
+| **random** | **48.5%** | 18.6% | 25.6% | **0.7093** |
 
-**Random is in the table on purpose.** Without it you cannot tell whether a rule is clever or
-whether any cut plus retraining lands in the same place. On overall accuracy the good rules beat
-it by 4.5 points, but **on tiny plumes by nearly double**. The choice barely matters for easy
-cases and matters enormously for distant smoke.
+- **That is [E1](#e1-which-layers-can-be-cut)'s prediction confirmed by a separate experiment.**
+  E2 never used E1's map, yet the rules that happened to protect the early layers are the rules
+  that won. (Seven points: treat the coefficient as direction, not effect size.)
+- **BN scale failed a prerequisite, not a test.** It ranks by the scale batch norm already
+  learned, which only works if training pushed some scales toward zero. **Not one of the 9,504
+  channels has a scale below 0.1**, so the signal does not exist and it selects near-arbitrarily.
+- **Retraining levels everything.** Before it the rules range 0.94 to 0.00; after, 0.754 to
+  0.709. Damage measured without recovery is a poor guide to a deployed model.
+
+**Conclusion.** The criterion is the highest-leverage decision in pruning this detector — worth
+4.5 points where [E6](#e6-how-to-spread-the-cut) shows allocation is worth 0.4. The free
+layer-adaptive rule beat every expensive one, and the mechanism is not cleverness about channels
+but restraint about *layers*: the winners are the rules that leave the early network alone.
 
 ---
 
@@ -199,28 +194,24 @@ cases and matters enormously for distant smoke.
 
 > **Axis:** channel widths &nbsp;·&nbsp; **Asks:** does snapping odd widths (52) to clean ones (32) run faster? &nbsp;·&nbsp; **Answer:** yes, 1.77x on the board, for no accuracy cost
 
-**It is the channel *count* that gets rounded, never the weights.** No weight value is altered,
-and no weight is rounded to anything. What changes is *how many* channels a layer is allowed to
-keep.
+**Question. Pruning leaves layers on whatever widths the scores happened to produce — 52, 97,
+99. GPU kernels are written for regular sizes. Does forcing the survivors onto clean widths buy
+speed back?**
 
-> **`round_to=N` means the surviving count must be a multiple of N. It is not a number of
-> channels.** So `round_to=1` is the **control with no rounding at all**, because every integer
-> is a multiple of 1 and any width is allowed. `round_to=32` permits only 32, 64, 96, 128 and so
-> on. Bigger N is a *stricter* constraint, and since a width is snapped down to the multiple
-> below it, **bigger N keeps fewer channels**, not more.
+> **`round_to=N` means the surviving *count* must be a multiple of N — it is not a number of
+> channels, and no weight value is ever altered.** `round_to=1` is the control with no rounding
+> at all. Bigger N is a *stricter* constraint and, since widths snap down, **bigger N keeps
+> fewer channels.**
 
-Take `model.1.conv`, a real layer in this detector. Its weight tensor is `[64, 32, 3, 3]`: **64
-output channels**, each one a 32x3x3 filter.
+**Method**
 
-1. **Unpruned.** 64 channels, tensor `[64, 32, 3, 3]`.
-2. **Pruned 25%, `round_to=1`.** The criterion scores all 64 channels and deletes the weakest.
-   **52 survive**, tensor `[52, 32, 3, 3]`. 52 is whatever the scores happened to leave.
-3. **Pruned 25%, `round_to=32`.** Same scores, same order, but the survivor count must be a
-   multiple of 32. **32 survive**, tensor `[32, 32, 3, 3]`.
+- Same 25% cut and same L1 criterion in every arm; only the rounding constraint changes.
+- Four arms: `round_to` = 1, 8, 16, 32. 12 epochs of recovery each.
+- Each exported to ONNX and built as a TensorRT FP16 engine at 512 px, measured on the board.
 
-Measured on this model, L1 criterion, 25% cut:
+Worked through one real layer, `model.1.conv`, whose tensor is `[64, 32, 3, 3]`:
 
-| layer | unpruned | `round_to=1`<br>(no rounding) | `round_to=32`<br>(multiples of 32 only) |
+| layer | unpruned | `round_to=1` | `round_to=32` |
 |---|---:|---:|---:|
 | `model.0.conv` | 32 | 20 | **32** |
 | `model.1.conv` | 64 | 52 | **32** |
@@ -229,54 +220,40 @@ Measured on this model, L1 criterion, 25% cut:
 | `model.4.cv3.conv` | 128 | 99 | **96** |
 | **whole model** | **9,567** | **7,319** | **6,559** |
 
-- Usually it rounds **down**, 52 to 32 and 97 to 96, deleting more channels than the ratio asked
-  for.
-- Occasionally **up**, 20 to 32, because a layer is never taken below one full group of 32.
-- Across the whole model it nets out smaller: 7,319 surviving channels become 6,559.
+Rounding usually goes **down** (52→32, 97→96), occasionally **up** (20→32, since a layer is
+never taken below one full group), and nets out smaller overall.
 
-**Why anyone would.** A GPU kernel does not walk a layer channel by channel. It covers it in
-fixed-size tiles, and any leftover is padded out and computed anyway. A width of 52 is one full
-tile of 32 plus a ragged 20 that still costs a whole second tile, so 20 of those 32 lanes compute
-nothing useful. Widths of 32 and 96 fill their tiles exactly. XP6 even saw a *larger* pruned model run *faster* than a smaller one, which points at
-exactly this. The test: do the clean widths run faster?
+**Why it should matter:** a GPU kernel covers a layer in fixed-size tiles and pads the leftover.
+A width of 52 is one full tile of 32 plus a ragged 20 that still costs a whole second tile, so 20
+of those 32 lanes compute nothing.
 
 ![Rounding channel counts reshapes the model for almost no accuracy](../../results/figures/xp06e3_regularity.png)
 
-- **Rounding transforms the shape for free.** From 0 of 60 conv layers on a multiple of 32 at
-  `round_to=1` to 57 of 60 at `round_to=32`, while accuracy moves 0.7458 to 0.7377, under one
-  point and inside recovery noise.
-- **On the board it nearly doubles throughput.** Same 25% cut, same accuracy. Parameters and
-  engine size are in the table because the point of this experiment is that **they do not
-  predict the speed**:
+**Results**
 
-  | round_to | widths allowed | params | engine | aligned | mAP50 | Jetson throughput | energy |
-  |---:|---|---:|---:|---:|---:|---:|---:|
-  | *(unpruned)* | *not pruned* | *7.03 M* | *17.0 MB* | *n/a* | *0.7764* | *472.6 img/s* | *51.8 J/1k* |
-  | 1 | any (no rounding) | 4.21 M | 12.3 MB | 0 / 60 | 0.7458 | 362.9 img/s | 58.4 J/1k |
-  | 8 | multiples of 8 | 4.03 M | 11.0 MB | 13 / 60 | 0.7436 | 532.3 | 42.0 |
-  | 16 | multiples of 16 | 3.79 M | 10.2 MB | 28 / 60 | 0.7351 | 622.4 | 37.5 |
-  | 32 | multiples of 32 | **3.52 M** | **9.8 MB** | 57 / 60 | 0.7377 | **641.9 img/s** | **38.0 J/1k** |
+| round_to | widths allowed | params | engine | aligned | mAP50 | throughput | energy |
+|---:|---|---:|---:|---:|---:|---:|---:|
+| *(unpruned)* | *not pruned* | *7.03 M* | *17.0 MB* | *n/a* | *0.7764* | *472.6 img/s* | *51.8 J/1k* |
+| 1 | any (no rounding) | 4.21 M | 12.3 MB | 0 / 60 | 0.7458 | 362.9 img/s | 58.4 J/1k |
+| 8 | multiples of 8 | 4.03 M | 11.0 MB | 13 / 60 | 0.7436 | 532.3 | 42.0 |
+| 16 | multiples of 16 | 3.79 M | 10.2 MB | 28 / 60 | 0.7351 | 622.4 | 37.5 |
+| 32 | multiples of 32 | **3.52 M** | **9.8 MB** | 57 / 60 | 0.7377 | **641.9 img/s** | **38.0 J/1k** |
 
-- **Parameter count does not predict speed, and the table shows it three ways.**
-  - Across the four arms, **parameters fall 16%** (4.21 M to 3.52 M) while **speed rises 77%**.
-    Size cannot account for a gain four times larger than itself.
-  - **The unpruned model has 67% more parameters than `round_to=1` and runs 30% faster**
-    (7.03 M at 472.6 img/s against 4.21 M at 362.9). Deleting a third of the network made it
-    slower.
-  - `round_to=32` beats the unpruned model by 1.36x while also being half its size, so the two
-    effects are separable and shape is the one doing the work.
+- **Rounding reshapes the model for free.** 0 of 60 conv layers aligned to a multiple of 32
+  becomes 57 of 60, while accuracy moves 0.7458 → 0.7377 — under one point, inside recovery noise.
+- **On the board it is worth 1.77x**, 362.9 → 641.9 img/s, on 35% less energy per frame.
+- **Size does not explain it.** `round_to=32` is 16% smaller than `round_to=1` and 77% faster.
+- **Deleting a third of the network made it slower.** The unpruned model has 67% more parameters
+  than `round_to=1` and runs 30% faster.
+- **Shape and size are separable.** `round_to=32` beats the *unpruned* model by 1.36x while being
+  half its size.
 
-  **So a bigger model can be the faster one.** If a rounded arm had come out larger than the
-  ragged one, it could still have been the right choice, because what the hardware charges for
-  is the shape of each layer, not the number of weights in it. Here rounding happened to shrink
-  the model as well, which is a bonus rather than the mechanism.
-- **This is a different mechanism from [E4](#e4-the-one-pattern-the-hardware-understands).** 2:4
-  needed sparse tensor cores, which the compiler declined. Regularity works on the ordinary
-  *dense* kernels: the width decides which tile the kernel picks, and a clean multiple of 32
-  fills tiles that 52 leaves ragged. It was the one prediction on this page I got wrong, having
-  expected a launch-bound board to show little.
-- **It confirms XP6's oddest observation.** A larger pruned model really can run faster than a
-  smaller one, because *how* the channels are shaped matters more than *how many* survive.
+**Conclusion.** What the hardware charges for is the shape of each layer, not the number of
+weights in it — a bigger model can be the faster one. This is a different mechanism from
+[E4](#e4-the-one-pattern-the-hardware-understands): 2:4 needed sparse tensor cores the compiler
+declined, while regularity works on ordinary *dense* kernels, because the width decides which
+tile the kernel picks. It was the one prediction on this page I got wrong, having expected a
+launch-bound board to show little, and it is the single result here worth applying by default.
 
 ---
 
