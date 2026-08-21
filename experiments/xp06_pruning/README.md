@@ -66,7 +66,7 @@ fault of one badly chosen setting.
 | **E4** | granularity | does 2:4 sparsity, the pattern hardware understands, hold up? | ✅ accuracy holds; **the compiler refuses the sparse kernels** |
 | **E5** | granularity | is the collapse a capacity limit or a structural one? | ✅ structural, decisively |
 | **E6** | ratio | same cut, spread three ways. Does allocation rescue it? | ✅ decides the damage (15x), but 12 epochs erase it |
-| **E7** | retraining | does iterative still lose when both arms train equally? | ✅ yes, it still loses |
+| **E7** | retraining | does iterative still lose when both arms train equally? | ✅ at 40% params yes; **[E7b](#e7b-the-recoverable-frontier-where-iterative-finally-wins) shows it wins past 80%** |
 | **E8** | criterion | pick channels by reconstructing the layer's output | ❌ **not attempted** |
 | **E9** | allocation | can a search pick ratios against measured latency? | ✅ cost model right per network, too noisy per layer |
 
@@ -527,10 +527,47 @@ and that is a clean result rather than a budgeting artefact.
 > Two further choices narrow it: the arms are not size-matched the way [E6](#e6-how-to-spread-the-cut)
 > matched its own (4.53 M against 4.24 M), and the criterion is held at L2, which
 > [E2](#e2-which-channels-to-pick) found poor here and which an iterative arm applies once per
-> step rather than once. **E7b sweeps the ratio to settle it**; the script and its handover are
-> written and waiting on GPU time, in [`HANDOFF_TO_RTX3090.md`](HANDOFF_TO_RTX3090.md). Until it
-> runs, read this section as "iterative does not pay for itself at 40% with L2", not as a
+> step rather than once. **[E7b](#e7b-the-recoverable-frontier-where-iterative-finally-wins) has now
+> swept the ratio and confirmed exactly this**: the two arms coincide until ~68% removed and
+> iterative pulls ahead past ~80%, so read this section as "one-shot is as good at 40%", not as a
 > general result.
+
+---
+
+## E7b. The recoverable frontier: where iterative finally wins
+
+> **Axis:** retraining &nbsp;·&nbsp; **Asks:** does iterative *ever* beat one-shot, across the whole ratio? &nbsp;·&nbsp; **Answer:** yes, past ~80% of parameters removed, and the gap grows
+
+[E7](#e7-one-shot-versus-iterative-fairly) compared the two schedules at a single point, 40% of
+the parameters, and found one-shot ahead. But that point sits in the flat part of the reference
+curve where no difference is predicted. This sweeps the whole ratio, with post-cut training held
+**exactly equal** (12 epochs after the final cut for both arms), so the schedule is the only
+variable and any crossover is real.
+
+![The recoverable frontier: one-shot and iterative coincide until the aggressive-pruning tail, then iterative pulls ahead](../../results/figures/xp06e7b_frontier.png)
+
+| params removed | one-shot | iterative | winner |
+|---:|---:|---:|---:|
+| 24.7% | 0.7520 | 0.7533 | tie |
+| 40.1% | 0.7543 | 0.7505 | one-shot |
+| 55.5% | 0.7455 | 0.7383 | one-shot |
+| 68.4% | 0.7306 | 0.7298 | tie |
+| 79.1% | 0.6966 | 0.7017 | **iterative** |
+| 87.3% | 0.6199 | 0.6690 | **iterative +0.049** |
+| 93.4% | 0.4838 | 0.5974 | **iterative +0.114** |
+| 95.5% | 0.4476 | 0.4910 | **iterative +0.043** |
+
+- **E7's verdict was right for its point and wrong as a general claim.** Up to ~68% of parameters
+  removed the two schedules tie or one-shot edges it; E7 measured at 40%, squarely in that region.
+- **Past ~80% removed, iterative pulls ahead and the gap widens** to **0.11 mAP50 at 93%
+  removed**. Removing channels gradually lets the survivors keep redistributing the work, and that
+  only matters once the cut is deep enough to hurt.
+- **This reproduces the textbook curve** (Han et al.): the two arms lie on top of each other until
+  the extreme, then separate. It is also exactly what [E7](#e7-one-shot-versus-iterative-fairly)'s
+  own limitation box predicted before the sweep was run.
+- **It changes nothing for deployment here.** The useful range is moderate pruning, where one-shot
+  is as good and cheaper. Iterative earns its extra training only in a regime this detector cannot
+  afford accuracy-wise (0.60 mAP50 at 93% removed, far below the 0.78 frontier).
 
 ---
 
@@ -660,10 +697,6 @@ pruning pipeline should apply by default.
 
 - **E8, regression-based selection, was not attempted.** The most implementation-heavy item, and
   deliberately last.
-- **E7b, the recoverable frontier, is written but not run.** It sweeps the pruning ratio so E7's
-  one-shot versus iterative comparison can be read as a curve rather than a single point at 40%.
-  About 7 hours on a 3090; the board cannot do it at a comparable batch size. See
-  [`HANDOFF_TO_RTX3090.md`](HANDOFF_TO_RTX3090.md).
 - **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
   to a GPU out-of-memory error.
 - **E6's damage scores were taken on the Orin, not the screening box** that produced its
