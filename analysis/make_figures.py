@@ -698,21 +698,25 @@ def fig_xp06e1(records) -> Path | None:
 
     worst = min(half, key=lambda r: r["retained"])
     best = max(half, key=lambda r: r["params_reduction"])
-    for r, dx, dy, ha in ((worst, 16, 10, "left"), (best, -14, -26, "right")):
+    xmax = 100 * max(r["params_reduction"] for r in half) * 1.22
+    # Place both callouts in the empty middle band, clear of the point clouds
+    # (deep layers sit high, early layers hug the left edge).
+    for r, tx, ty, ha in ((worst, 0.26 * xmax, 26, "left"),
+                          (best, 0.60 * xmax, 60, "center")):
         ax.annotate(f"{r['layer'].replace('model.', '')}\n"
                     f"keeps {r['retained']:.0%}, frees {r['params_reduction']:.1%}",
-                    (100 * r["params_reduction"], 100 * min(1, r["retained"])),
-                    xytext=(dx, dy), textcoords="offset points", fontsize=9,
-                    color=style.INK, fontweight="bold", ha=ha,
+                    xy=(100 * r["params_reduction"], 100 * min(1, r["retained"])),
+                    xytext=(tx, ty), textcoords="data", fontsize=8.8,
+                    color=style.INK, fontweight="bold", ha=ha, va="center",
                     arrowprops=dict(arrowstyle="->", color=style.INK, linewidth=1.1))
 
     ax.set_xlabel("parameters freed by that cut (%)")
     ax.set_ylabel("accuracy kept (%)")
-    ax.set_title("Every layer halved: bottom-left destroys accuracy and saves nothing",
-                 fontsize=11, pad=10)
-    ax.set_xlim(-0.5, 100 * max(r["params_reduction"] for r in half) * 1.22)
+    ax.set_title("Every layer halved:\nbottom-left destroys accuracy, saves nothing",
+                 fontsize=11, pad=8)
+    ax.set_xlim(-0.5, xmax)
     ax.set_ylim(-6, 114)
-    ax.legend(loc="center right", fontsize=9.5)
+    ax.legend(loc="lower right", fontsize=9)
     style.tidy(ax)
 
     fig.tight_layout()
