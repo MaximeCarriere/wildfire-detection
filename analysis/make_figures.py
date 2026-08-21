@@ -1540,14 +1540,47 @@ def fig_xp06e3(records) -> Path | None:
     labels = [f"round to\n{r}" for r in rs]
     have_speed = len(spd) == len(rs)
 
-    ncol = 3 if have_speed else 2
-    fig, axes = plt.subplots(1, ncol, figsize=(5.4 * ncol, 4.4))
+    from matplotlib.patches import Rectangle
+    ndata = 3 if have_speed else 2
+    fig = plt.figure(figsize=(4.7 + 5.0 * ndata, 4.4))
+    gs = fig.add_gridspec(1, ndata + 1, width_ratios=[0.82] + [1] * ndata, wspace=0.30)
+    sch = fig.add_subplot(gs[0, 0])
+    axes = [fig.add_subplot(gs[0, i + 1]) for i in range(ndata)]
     fig.suptitle("Rounding channel widths: free accuracy, and 1.77x the speed on the board",
                  y=1.03)
     style.subtitle(fig, "Same 25% cut, same accuracy. Snapping the surviving widths to clean "
                         "multiples nearly doubles throughput on the Jetson.", y=0.965)
 
-    # Panel 1: alignment.
+    # --- panel 1: what round_to does to one layer -------------------------
+    # A layer pruned to 52 channels spills past the 32-wide tile the GPU works
+    # in, paying for a second tile it barely fills; snapping to 32 fills one tile
+    # exactly. This is the mechanism the three data panels then measure.
+    sch.set_xlim(-3, 68); sch.set_ylim(-1.2, 9.2); sch.axis("off")
+    sch.set_title("1. What round_to does\nto one layer's width", fontsize=10.5, pad=6,
+                  loc="left")
+    for t in (0, 32, 64):                                   # tile boundaries
+        sch.plot([t, t], [-0.4, 8.4], color=style.INK_2, linewidth=1.0,
+                 linestyle=(0, (3, 3)), zorder=1)
+    sch.text(16, 8.6, "tile 1", ha="center", fontsize=7.5, color=style.INK_2)
+    sch.text(48, 8.6, "tile 2", ha="center", fontsize=7.5, color=style.INK_2)
+
+    def lane(y, width, colour, label):
+        sch.add_patch(Rectangle((0, y), width, 1.5, facecolor=colour, edgecolor="white",
+                                linewidth=1.0, zorder=3))
+        sch.text(-2, y + 0.75, label, ha="right", va="center", fontsize=8.5,
+                 fontweight="bold", color=colour)
+
+    lane(5.4, 52, style.RED, "pruned\nto 52")
+    # the wasted remainder of tile 2
+    sch.add_patch(Rectangle((52, 5.4), 12, 1.5, facecolor="none", edgecolor=style.RED,
+                            hatch="////", linewidth=0.0, zorder=2))
+    sch.text(58, 4.7, "wasted", ha="center", va="top", fontsize=7.5, color=style.RED)
+    lane(1.2, 32, style.BLUE, "rounded\nto 32")
+    sch.text(16, 0.2, "fills tile 1 exactly", ha="center", va="top", fontsize=7.5,
+             color=style.BLUE)
+    sch.text(32, -0.9, "channels ->", ha="center", fontsize=7.5, color=style.INK_2)
+
+    # Panel 1 (data): alignment.
     ax = axes[0]
     bars = ax.bar(xs, [acc[r]["aligned"] for r in rs], width=0.62, color=style.BLUE, zorder=3)
     for b, r in zip(bars, rs):
