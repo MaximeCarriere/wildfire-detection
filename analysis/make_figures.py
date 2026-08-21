@@ -1307,10 +1307,13 @@ def fig_xp06e9(records) -> Path | None:
     # and the measured curve is the fixed per-layer overhead.
     ax.plot([0, max(xs)], [0, max(ys)], ":", color=style.MUTED, linewidth=1.5,
             zorder=2, label="if cost were proportional")
-    ax.set_xlabel("output channels")
+    # "kept", not "removed": the sweep sets how wide the layer is left, so the
+    # rightmost point is the unpruned layer and cutting moves leftward. Labelling
+    # this axis "output channels" invites the opposite reading.
+    ax.set_xlabel(f"output channels kept  ({max(xs)} = unpruned)")
     ax.set_ylabel("layer latency (ms)")
     ax.set_title("2. Sublinear, and not monotonic\n"
-                 "8x the channels costs 2.1x the time", fontsize=10.5, pad=8)
+                 "cutting the width in half saves far less than half", fontsize=10.5, pad=8)
     ax.legend(fontsize=8, frameon=False, loc="upper left")
     ax.text(0.97, 0.06, "orange = multiple of 32", transform=ax.transAxes,
             ha="right", fontsize=8, color=style.ORANGE)
