@@ -752,17 +752,17 @@ def fig_xp06e2(records) -> Path | None:
     # SAME six channels score them differently, so they delete different ones:
     # L2 squares the weights (one big weight rescues a channel), L1 does not.
     # Illustrative scores chosen so the two disagree on which two die.
-    sch.set_xlim(-1.7, 6.2); sch.set_ylim(-1.3, 8.7); sch.axis("off")
-    sch.set_title("1. A rule scores every\nchannel, cuts the lowest", fontsize=10.5, pad=6,
-                  loc="left")
+    sch.set_xlim(-2.3, 6.3); sch.set_ylim(-2.0, 10.4); sch.axis("off")
+    sch.set_title("1. A rule gives every channel\na score, then cuts the lowest",
+                  fontsize=10.5, pad=6, loc="left")
     chans = list("ABCDEF")
     scores = {"L2": [0.90, 0.50, 0.85, 0.30, 0.62, 0.20],
               "L1": [0.90, 0.50, 0.42, 0.58, 0.62, 0.20]}
     for row, rule in enumerate(("L2", "L1")):
-        yb = 4.6 - row * 4.6
+        yb = 5.2 - row * 4.5
         vals = scores[rule]
         cut = set(sorted(range(6), key=lambda i: vals[i])[:2])
-        sch.text(-1.5, yb + 1.4, rule, ha="left", va="center", fontsize=9.5,
+        sch.text(-2.1, yb + 1.2, rule, ha="left", va="center", fontsize=10,
                  fontweight="bold", color=style.INK)
         for i, v in enumerate(vals):
             col = style.RED if i in cut else style.AQUA
@@ -771,10 +771,19 @@ def fig_xp06e2(records) -> Path | None:
             if i in cut:
                 sch.text(i, yb - 0.12, "cut", ha="center", va="top", fontsize=6.8,
                          color=style.RED, fontweight="bold")
-            if row == 1:
-                sch.text(i, -1.15, chans[i], ha="center", fontsize=7.5, color=style.INK_2)
-    sch.text(2.5, 8.15, "same channels, different scores,\ndifferent survivors (C vs D)",
-             ha="center", fontsize=7.3, color=style.INK_2, style="italic")
+    # channel labels once, under the lower row
+    for i in range(6):
+        sch.text(i, -1.15, chans[i], ha="center", fontsize=7.5, color=style.INK_2)
+    sch.text(2.5, -1.85, "one bar = one channel (A-F);  green kept, red cut",
+             ha="center", fontsize=7, color=style.INK_2)
+    # single callout: a bar's height is the score
+    sch.annotate("bar height = that rule's\nimportance score for the channel",
+                 xy=(0, 5.2 + 2.6 * 0.9), xytext=(0.9, 9.8), textcoords="data",
+                 fontsize=6.9, color=style.INK_2, ha="left", va="top",
+                 arrowprops=dict(arrowstyle="->", color=style.INK_2, linewidth=1.0))
+    # the punchline, in the clear band between the two rows
+    sch.text(2.3, 3.55, "same 6 channels, different scores:\nL2 cuts D, L1 cuts C",
+             ha="center", va="center", fontsize=7, color=style.INK, style="italic")
 
     ax = axes[0]
     vals = [cells[(c, 0.05)]["val_map50"] for c in shown]
