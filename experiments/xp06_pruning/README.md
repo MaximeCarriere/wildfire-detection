@@ -585,12 +585,14 @@ four steps, each able to end it.
    on for all 60. Sweeping one layer's width fills one row of the table. Those rows sum to
    **72.8 ms** describing an engine that runs in **33.9**, and the rest of the figure is whether
    that gap matters.
-2. **Is layer cost informative?** The x-axis is the fraction of the layer's original width it
-   is left **keeping**, so 100% is the unpruned layer and a cut moves leftward. Latency is
-   strongly sublinear: keeping 50% of the channels still costs 73% of the time (1.61 ms down to
-   1.17), so a cut buys far less time than it removes arithmetic. It is also not monotonic —
-   keeping 50% is *faster* than keeping 41%, and 25% faster than 19% — which is E3's tiling
-   effect visible inside a single layer.
+2. **Is layer cost informative?** Barely, and not in the direction anyone expects. Removing half
+   this layer's channels leaves it costing **73%** of its original time, not 50% — and **four of
+   the fifteen widths are slower than not pruning at all**. Removing 37.5% of the channels makes
+   the layer **43% slower**. The clean sequence runs through the multiples of 32 (44%, 73%, 90%,
+   100% of the original time); every ragged width scatters above it. This is
+   [E3's](#e3-regular-channel-widths-recover-the-missing-speed) tiling effect visible inside a
+   single layer: a width that spills past a tile boundary pays for a whole extra tile that runs
+   mostly empty.
 3. **How good is one entry?** Rebuilding the same layer moves it up to **7%**. The search ranks
    candidates whose predicted savings differ by less than that, so this number sets the finest
    width grid worth searching. Merely re-timing an already-built engine moves it 3%.
@@ -604,6 +606,11 @@ four steps, each able to end it.
 **Panels 4 and 5 disagree on purpose.** NetAdapt never uses absolute latency, only the difference
 a cut makes, so a per-layer overhead that does not change with width cancels out. A total that is
 2.15x wrong is survivable. A wrong direction would not be, and the direction is right.
+
+**Removing arithmetic is not the same as removing time.** Panel 2 is the sharpest statement of
+XP6's recurring theme this page has: on this hardware a layer's cost is dominated by how its
+width lands against the kernel's tiling, not by how much arithmetic it contains. Cutting channels
+is as likely to cost time as to save it unless the surviving width is chosen deliberately.
 
 **The conclusion is that the table works at the wrong scale.** It correctly ranks whole networks
 — it knows that ragged widths make a *smaller* model slower, which no parameter count or MAC
