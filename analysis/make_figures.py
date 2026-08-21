@@ -1175,13 +1175,20 @@ def fig_xp06e7b(records) -> Path | None:
         ax1.plot(xs, ys, ls, marker=mk, color=colour, label=label, linewidth=2.0,
                  markersize=6, markerfacecolor="white", markeredgewidth=1.8, zorder=3)
     ax1.axhline(0, color=style.INK, linewidth=1.0, zorder=2)
+    # Mark E7's single point without crossing the data: a short tick at the top of
+    # the axis and a horizontal label in the empty band below the trained curves.
     ax1.axvline(39.6, color=style.MUTED, linestyle="--", linewidth=1.2, zorder=1)
-    ax1.text(39.6, ax1.get_ylim()[0], "  E7's one point", rotation=90, va="bottom",
-             ha="left", fontsize=8.5, color=style.INK_2)
+    ax1.annotate("E7 measured only here", xy=(39.6, -2), xytext=(44, -13),
+                 textcoords="data", fontsize=8.5, color=style.INK_2, ha="left",
+                 va="center", arrowprops=dict(arrowstyle="->", color=style.INK_2,
+                                               linewidth=1.0))
     ax1.set_xlabel("parameters pruned away (%)")
     ax1.set_ylabel("accuracy loss (mAP50 points)")
     ax1.set_title("2. How far it can be pruned", fontsize=11, pad=8, loc="left")
-    ax1.legend(frameon=False, fontsize=9, loc="lower left")
+    # Legend in the empty rectangle on the right, clear of both the trained curves
+    # (top) and the plunging no-retraining curve (left).
+    ax1.legend(frameon=False, fontsize=8.5, loc="center right",
+               bbox_to_anchor=(1.0, 0.42))
     style.tidy(ax1)
 
     # --- panel 3: the gap that crosses zero -------------------------------
