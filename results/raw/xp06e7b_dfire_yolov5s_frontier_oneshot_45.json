@@ -1,0 +1,186 @@
+{
+  "protocol_version": "1.1",
+  "model_id": "dfire_yolov5s_frontier_oneshot_45",
+  "params_m": 2.2228,
+  "size_disk_mb": 9.373,
+  "format": "pt",
+  "input_res": 512,
+  "nms_iou": 0.45,
+  "eval_conf": 0.001,
+  "max_det": 300,
+  "seed": 42,
+  "map50_dfire_test": 0.7306,
+  "map5095_dfire_test": 0.3733,
+  "map50_fire_class": 0.6796,
+  "map50_smoke_class": 0.7816,
+  "map50_small_plume": 0.5289,
+  "map50_tiny_plume": 0.1,
+  "bg_false_alarm_rate": 0.0559,
+  "bg_correctly_silent_rate": 0.9441,
+  "map50_ood_flame": null,
+  "map50_ood_boreal": null,
+  "jetson": null,
+  "accuracy_detail": {
+    "map5095": 0.3733,
+    "map50": 0.7306,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.4291,
+        "map50": 0.7816
+      },
+      "fire": {
+        "map5095": 0.3175,
+        "map50": 0.6796
+      }
+    },
+    "small_plume": {
+      "map5095": 0.2137,
+      "map50": 0.5289
+    },
+    "tiny_plume": {
+      "map5095": 0.0263,
+      "map50": 0.1
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 2005,
+      "n_alarmed": 112,
+      "false_alarm_rate": 0.0559,
+      "correctly_silent_rate": 0.9441,
+      "false_boxes_per_bg_image": 0.0618
+    },
+    "n_images": 4306,
+    "n_images_small_plume": 1229,
+    "n_images_tiny_plume": 298,
+    "n_detections": 71246,
+    "fingerprint": "cf61b402ff5285ba"
+  },
+  "ood_detail": null,
+  "notes": "XP6 E7b: oneshot channel pruning at 45% with the l1 criterion, 12 epochs after the final cut. One point on the recoverable frontier; the arm is only interpretable against the other points at the same ratio, never alone. Post-cut budget is held EXACTLY equal to one-shot (12 epochs after the final cut for both); iterative pays 2 epochs on each earlier increment as intrinsic overhead (12 total). Equal final-shape training makes the schedule the only variable, so a win or loss at any ratio is unambiguous. Criterion is L1 rather than E7's L2 because E2 found L2 poor on this detector and an iterative arm would apply it once per step. Plotted against measured parameter reduction, not the channel ratio. Unpruned reference 0.7764 mAP50. 3090 SCREENING MEASUREMENT, off-device: accuracy only. No latency, throughput or energy is recorded here because a TensorRT engine is compiled per GPU architecture and a 3090 figure says nothing about a 15 W Orin. torch 2.13.0+cu126, batch 32, 12 epochs at 512px.",
+  "prune_meta": {
+    "requested_channel_ratio": 0.45,
+    "importance": "l1",
+    "round_to": 1,
+    "global_pruning": true,
+    "per_layer_ratios": false,
+    "params_m_before": 7.025,
+    "params_m_after": 2.2228,
+    "params_reduction": 0.6836,
+    "gmacs_before": 5.075,
+    "gmacs_after": 1.73,
+    "macs_reduction": 0.6592,
+    "method": "oneshot",
+    "channel_ratio": 0.45,
+    "post_cut_epochs": 12,
+    "total_epochs": 12
+  },
+  "train_meta": {
+    "epochs": 12,
+    "res": 512,
+    "batch": 32,
+    "hyp": {
+      "lr0": 0.0032,
+      "lrf": 0.12,
+      "momentum": 0.937,
+      "weight_decay": 0.0005,
+      "warmup_epochs": 2.0,
+      "warmup_momentum": 0.5,
+      "warmup_bias_lr": 0.05,
+      "box": 0.05,
+      "cls": 0.012500000000000002,
+      "cls_pw": 1.0,
+      "obj": 0.6400000000000001,
+      "obj_pw": 1.0,
+      "iou_t": 0.2,
+      "anchor_t": 4.0,
+      "fl_gamma": 0.0,
+      "label_smoothing": 0.0,
+      "hsv_h": 0.015,
+      "hsv_s": 0.7,
+      "hsv_v": 0.4,
+      "degrees": 0.0,
+      "translate": 0.1,
+      "scale": 0.5,
+      "shear": 0.0,
+      "perspective": 0.0,
+      "flipud": 0.0,
+      "fliplr": 0.5,
+      "mosaic": 0.5,
+      "mixup": 0.0,
+      "copy_paste": 0.0
+    },
+    "accumulate": 2,
+    "ema": true,
+    "total_minutes": 19.37,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 2.83035,
+        "minutes": 1.69
+      },
+      {
+        "epoch": 2,
+        "loss": 2.01686,
+        "minutes": 1.59
+      },
+      {
+        "epoch": 3,
+        "loss": 1.94932,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 4,
+        "loss": 1.8772,
+        "minutes": 1.58
+      },
+      {
+        "epoch": 5,
+        "loss": 1.81499,
+        "minutes": 1.6
+      },
+      {
+        "epoch": 6,
+        "loss": 1.78759,
+        "minutes": 1.59
+      },
+      {
+        "epoch": 7,
+        "loss": 1.74253,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 8,
+        "loss": 1.7077,
+        "minutes": 1.63
+      },
+      {
+        "epoch": 9,
+        "loss": 1.67239,
+        "minutes": 1.61
+      },
+      {
+        "epoch": 10,
+        "loss": 1.64715,
+        "minutes": 1.62
+      },
+      {
+        "epoch": 11,
+        "loss": 1.62295,
+        "minutes": 1.63
+      },
+      {
+        "epoch": 12,
+        "loss": 1.60074,
+        "minutes": 1.59
+      }
+    ]
+  },
+  "machine": "rtx3090_screening",
+  "experiment": "xp06e7b",
+  "arm": "oneshot",
+  "criterion": "l1",
+  "channel_ratio": 0.45,
+  "post_cut_epochs": 12,
+  "total_epochs": 12,
+  "frontier_point": true
+}
