@@ -685,76 +685,88 @@ cannot be chosen: multiples of 32 only, 60 layers x ~5 widths, roughly 90 minute
 
 ---
 
-## Speed: removing arithmetic is still not gaining it
+## Verdict
 
 ![Pruning: the damage is immediate, the speed-up is not](../../results/figures/xp06_pruning.png)
 
-On the board, removing **88.9% of the multiply-adds bought 1.55x the throughput**, not the ~9x
-the arithmetic implies. (That figure was 1.7x while it rested on PyTorch timings; measured as a
-TensorRT engine in E5b above it is 1.55x, and the engine is the number that counts.) Pruned layers land on awkward widths (47 channels instead of 64) and GPU
-kernels are written for regular sizes. Parameter counts and MAC counts are structural facts
-here, never performance claims.
-
----
-
-## Verdict
-
-**Pruning still loses.** The best model is 44% smaller and gives up 2.2 accuracy points, and
-simply running the unpruned network at 512 px is still the better deployment. What changed is
-the size of the loss (4.8 points to 2.2) and the reason for it.
-
-The honest summary: **this detector can be pruned far harder than this page used to claim, and
-it still should not be**, because the cheap knob (smaller pictures) is still ahead.
-
-**But E3 is the one result worth carrying into practice.** If you do prune, rounding the
-surviving widths to a multiple of 32 costs nothing in accuracy and runs 1.77x faster on the
-board, turning a pruned model that was *slower* than unpruned into one that is 1.36x faster.
-It does not beat the frontier on accuracy, but it is a free, hardware-aware speedup that any
-pruning pipeline should apply by default.
-
----
-
-## What was not finished
-
-- **E8, regression-based selection, was not attempted.** The most implementation-heavy item, and
-  deliberately last.
-- **Two sparsity levels in E5 have damage numbers only** (50% and 70%), after two runs were lost
-  to a GPU out-of-memory error.
-- **E6's damage scores were taken on the Orin, not the screening box** that produced its
-  recovered numbers, because the 3090 was not reachable when the gap was found. The unpruned
-  baseline was re-scored alongside them and agrees to 0.0011 mAP50, so the two panels of the E6
-  figure are comparable; they are not, however, the same machine.
+- **Pruning still loses.** The best model is 44% smaller and gives up 2.2 accuracy points, and
+  simply running the unpruned network at 512 px remains the better deployment. What changed over
+  this page is the size of the loss — 4.8 points down to 2.2 — and the reason for it.
+- **Removing arithmetic is not the same as gaining speed.** Removing **88.9% of the multiply-adds
+  bought 1.55x** the throughput, not the ~9x the arithmetic implies. Parameter counts and MAC
+  counts are structural facts here, never performance claims.
+- **What buys speed is the width, not the size.** Pruned layers land on awkward widths (47
+  channels instead of 64) and GPU kernels are written for regular ones.
+  [E9](#e9-can-the-ratio-be-searched-automatically) measured the same effect inside a single
+  layer: four of fifteen widths ran *slower* than the unpruned layer, one of them by 43%.
+- **No hardware here exploits zeros.** [E4](#e4-the-one-pattern-the-hardware-understands) put the
+  weights in the one pattern Ampere silicon can skip, and TensorRT found 39 eligible layers and
+  chose **0** — under both tuning batches.
+- **Twelve epochs of retraining absorb almost any structural choice made before them.**
+  [E6](#e6-how-to-spread-the-cut)'s three allocations span 0.158 mAP50 as damage and 0.004 after
+  recovery; [E5](#e5-whole-channels-versus-individual-weights) found the same collapse between
+  granularities. Which decisions matter here depends mostly on what retraining you can afford.
+- **Gradual pruning only pays where this detector cannot go.**
+  [E7b](#e7b-the-recoverable-frontier-where-iterative-finally-wins) puts the crossover past ~84%
+  of parameters removed, at accuracies far below the frontier.
+- **The one result worth carrying into practice is [E3](#e3-regular-channel-widths-recover-the-missing-speed).**
+  If you prune, round the surviving widths to a multiple of 32: it costs nothing in accuracy,
+  runs **1.77x** faster on the board, and turns a pruned model that was *slower* than unpruned
+  into one that is 1.36x faster. Free, hardware-aware, and it should be a default.
 
 ---
 
 ## Limitations
 
-- **E3 and E4 now have board speed numbers.** The remaining new results on this page (E5's
-  granularity, E6, E7) are accuracy only and still need the board for throughput.
-- **The spread between the four E4 engines is bounded now, not explained.** The control that was
-  missing has run: one ONNX compiled three times varies by 0.6%, and the arms' ranking inverts
-  when they are retuned at batch 16, which is enough to rule the zeros out as the cause. What
-  tactic the autotuner picks for a given weight file, and why that is worth a few percent, is
-  still not measured — only shown to be unrelated to sparsity.
-- **The batch-16 build set was measured after an hour of continuous engine building** and sits
-  about 2.6% below the batch-1 set across all four arms, the die being warm rather than the
-  engines being slower. Only within-set comparisons are quoted, and the figure plots each set
-  against its own dense engine for that reason.
-- **A 25% cut does not mean the same size for every rule**, which is why E2's parameter column is
-  not constant. The cut is a *channel* target, and channels are not equal in cost: one in the
-  first layer carries about 100 weights, one deep in the network about 2,300. A rule that
-  concentrates its cuts in the wide late layers strips far more parameters than one nibbling at
-  narrow early ones. LAMP removes 44.4% of the parameters and FPGM 35.3% from the identical
-  setting. **Compare rules at similar sizes, not by the label they share**, which is why E6
-  matches its arms by measured size.
+- **E6, E7 and E7b are accuracy only.** E3, E4, E5 and E9 have board numbers; the rest still need
+  the board for throughput.
+- **The spread between the four E4 engines is bounded, not explained.** One ONNX compiled three
+  times varies by 0.6%, and the arms' ranking inverts when retuned at batch 16, which rules the
+  zeros out as the cause. Which tactic the autotuner picks for a given weight file, and why that
+  is worth a few percent, is still unmeasured.
+- **The batch-16 E4 set was measured after an hour of continuous engine building** and sits ~2.6%
+  below the batch-1 set across all four arms — a warm die, not slower engines. Only within-set
+  comparisons are quoted.
+- **A 25% cut is not the same size for every rule.** The cut is a *channel* target and channels
+  are not equal in cost: one in the first layer carries ~100 weights, one deep in the network
+  ~2,300. LAMP removes 44.4% of the parameters and FPGM 35.3% from the identical setting.
+  **Compare rules at similar sizes, not by the label they share.**
 - **Nothing is matched on arithmetic.** LAMP is the smallest model but cuts only 20.1% of the
   MACs where L1 cuts 38.7%. On hardware where speed tracks neither, that is a third axis nobody
-  here controlled for.
+  controlled for.
+- **E7b's arms are size-matched only by interpolation.** Iterative ends larger than one-shot at
+  every ratio, so its win is corrected rather than measured at equal size.
 - **Damage is a poor guide to a retrained model.** It separates the good tier from the bad tier
-  reliably, but not the order within a tier: BN scale has the worst damage of all eight and
-  still finishes above Hessian.
-- **Recovery is 12 epochs**, what the board allows overnight; **one dataset, one architecture.**
-  "Early layers are fragile" is a claim about this network.
+  reliably, but not the order within a tier: BN scale has the worst damage of all eight and still
+  finishes above Hessian.
+- **E6's damage scores came from the Orin, its recovered scores from the 3090.** The unpruned
+  baseline was re-scored on both and agrees to 0.0011 mAP50, so the panels are comparable — but
+  they are not the same machine.
+- **One dataset, one architecture, 12 epochs of recovery.** "Early layers are fragile" is a claim
+  about this network.
+
+---
+
+## Future work
+
+- **Build the NetAdapt search.** [E9](#e9-can-the-ratio-be-searched-automatically) validated the
+  cost model and specified the table: multiples of 32 only, 60 layers x ~5 widths, ~90 minutes of
+  board time. Treat the result as a ranker, never a latency target.
+- **E8, regression-based selection, was never attempted** — pick channels by reconstructing the
+  layer's output rather than by a formula over weights. The most implementation-heavy item on the
+  original list, and deliberately last.
+- **Network Slimming, done properly.** [E2](#e2-which-channels-to-pick)'s `bn` arm applies the
+  criterion to an already-trained model, which is half the method: the published version *trains*
+  with smooth-L1 regularization on the BN scaling factors first, so the gammas separate before
+  they are ranked. One training run would settle whether the weak result is the criterion or the
+  missing regularizer.
+- **A from-scratch small-architecture baseline.** Nothing on this page answers whether a natively
+  small detector beats a pruned-down one at the same size, because no yolov5n was ever trained on
+  D-Fire. That is the comparison that would tell you whether pruning is the right tool at all.
+- **Two E5 sparsity levels have damage numbers only** (50% and 70%), after two runs were lost to a
+  GPU out-of-memory error.
+- **Why the autotuner favours one weight file over another.** E4 bounded the effect and excluded
+  sparsity as the cause; nothing has explained it.
 
 ---
 
