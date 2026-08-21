@@ -1074,29 +1074,16 @@ def fig_xp06e6(records) -> Path | None:
 
 
 def fig_xp06e7b(records) -> Path | None:
-    """The recoverable frontier: damage, one-shot and iterative across the ratio.
+    """The recoverable frontier: what the two schedules are, and where they diverge.
 
-    This is the Han-style figure the E7 comparison implicitly lives inside. E7
-    measured one-shot against iterative at a single point, 40% of parameters
-    removed, and found iterative losing; on the reference curve that point sits in
-    the flat region where the two arms are not expected to differ at all. Drawing
-    the whole sweep is what makes E7's result readable as "no difference where none
-    was predicted" rather than as a contradiction of the literature.
-
-    Plotted against **measured parameter reduction**, never the channel ratio the
-    experiment was configured with. A 25% channel cut removes 39.6% of this
-    network's parameters, and E5 and E6 both had to make that correction before
-    their comparisons meant anything.
-
-    The y-axis is accuracy *loss* against the unpruned model, matching the
-    reference, so every series starts at zero and falls. Each series carries its
-    own baseline: the damage sweep records the unpruned score measured in its own
-    run, and the trained arms are read against the screening record.
-
-    Returns None until at least the damage series exists, so the figure appears the
-    moment the cheap arm has run and fills in as the expensive ones land.
+    Three panels. First the method, drawn as two training timelines so a reader
+    can see what "one-shot" and "iterative" physically differ by, with the equal
+    post-cut budget made visible. Then the Han-style frontier, accuracy loss
+    against measured parameter reduction. Then the gap between the arms, which
+    crosses zero: the single number E7 could not see from its one point.
     """
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle, FancyArrowPatch
 
     dmg_path = RAW / "xp06e7b_damage.json"
     dmg = json.loads(dmg_path.read_text()) if dmg_path.exists() else None
@@ -1108,47 +1095,121 @@ def fig_xp06e7b(records) -> Path | None:
             if m.get("params_reduction") is None or r.get("map50_dfire_test") is None:
                 continue
             arms.setdefault(r["arm"], []).append(
-                (100 * m["params_reduction"], r["map50_dfire_test"]))
+                (100 * m["params_reduction"], r["map50_dfire_test"],
+                 r.get("channel_ratio")))
     if not dmg and not arms:
         return None
+    have_gap = "oneshot" in arms and "iterative" in arms
 
+    fig = plt.figure(figsize=(16.5, 4.9))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.02, 1.05, 0.95], wspace=0.28)
+    ax0, ax1 = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])
+    ax2 = fig.add_subplot(gs[0, 2]) if have_gap else None
+    fig.suptitle("One-shot versus iterative pruning, across the whole ratio", y=1.05)
+    style.subtitle(fig, "Same criterion, same final size, same 12 epochs of final training. "
+                        "The only difference is whether the channels come out all at once or "
+                        "gradually.", y=0.965)
+
+    # --- panel 1: the two schedules as timelines --------------------------
+    ax0.set_xlim(0, 21); ax0.set_ylim(0, 10); ax0.axis("off")
+    ax0.set_title("1. What the two schedules do", fontsize=11, pad=8, loc="left")
+    th = 1.3   # block height
+
+    def cut(x, y, label=None):
+        ax0.add_patch(Rectangle((x - 0.12, y - 0.25), 0.24, th + 0.5,
+                                facecolor=style.RED, edgecolor="none", zorder=4))
+        if label:
+            ax0.text(x, y + th + 0.55, label, ha="center", fontsize=8,
+                     color=style.RED, fontweight="bold")
+
+    def train(x, w, y, colour, label=None):
+        ax0.add_patch(Rectangle((x, y), w, th, facecolor=colour, edgecolor="white",
+                                linewidth=1.2, zorder=3))
+        if label:
+            ax0.text(x + w / 2, y + th / 2, label, ha="center", va="center",
+                     fontsize=8, color="white", fontweight="bold")
+
+    # one-shot lane (top): one cut, then 12 epochs. Aligned so its 12-epoch block
+    # ends at x=20, the same place iterative's does.
+    yo = 6.4
+    ax0.text(0, yo + th + 1.0, "one-shot", fontsize=10, fontweight="bold", color=style.AQUA)
+    cut(8, yo, "cut 40%\nat once")
+    train(8.2, 11.8, yo, style.AQUA, "12 epochs")
+
+    # iterative lane (bottom): 4 small cuts, 2 epochs between the first three, then
+    # the same 12-epoch block, ending at the same x.
+    yi = 2.2
+    ax0.text(0, yi + th + 1.0, "iterative", fontsize=10, fontweight="bold", color=style.BLUE)
+    x = 1.0
+    for k in range(3):
+        cut(x, yi, "cut" if k == 0 else None)
+        train(x + 0.2, 1.7, yi, style.BLUE, "2")
+        x += 2.1
+    cut(x, yi, None)
+    train(x + 0.2, 11.8, yi, style.BLUE, "12 epochs")
+
+    # bracket showing the equal post-cut budget under both final blocks
+    ax0.add_patch(FancyArrowPatch((8.4, yo - 0.5), (8.4, yi + th + 0.35),
+                                  arrowstyle="-", color=style.INK_2, linewidth=1.0,
+                                  linestyle=(0, (3, 3)), zorder=2))
+    ax0.text(14.2, 0.7, "same 12 epochs after the final cut", ha="center",
+             fontsize=8.5, color=style.INK_2, style="italic")
+    ax0.text(4.4, 0.7, "iterative pays extra\nbetween-step training", ha="center",
+             fontsize=8, color=style.BLUE)
+
+    # --- panel 2: the frontier --------------------------------------------
     series = []
     if dmg:
         ref = dmg["unpruned_here"]["map50"]
-        series.append(("pruning (no retraining)", style.MUTED, ":", "o",
+        series.append(("pruned, no retraining", style.MUTED, ":", "o",
                        sorted((100 * p["params_reduction"], p["map50"])
-                              for p in dmg["points"]), ref))
-    # RED is reserved in this palette for a failed configuration, so the two
-    # working arms take AQUA and BLUE and the unretrained series stays MUTED.
-    for arm, label, colour in (("oneshot", "pruning + finetuning", style.AQUA),
-                               ("iterative", "iterative pruning + finetuning", style.BLUE)):
+                              for p in dmg["points"])))
+    for arm, label, colour in (("oneshot", "one-shot + retraining", style.AQUA),
+                               ("iterative", "iterative + retraining", style.BLUE)):
         if arm in arms:
-            series.append((label, colour, "-", "o", sorted(arms[arm]), 0.7764))
+            series.append((label, colour, "-", "o",
+                           sorted((x, v) for x, v, _ in arms[arm])))
 
-    fig, ax = plt.subplots(figsize=(9.2, 5.0))
-    fig.suptitle("How far this detector can be pruned before the accuracy goes", y=1.04)
-    style.subtitle(fig, "Channel pruning, L1, at 512 px. Loss against the unpruned model, "
-                        "plotted against the parameters actually removed \u2014 not the "
-                        "channel ratio each cut was configured with.", y=0.975)
+    for label, colour, ls, mk, pts in series:
+        xs = [x for x, _ in pts]; ys = [(v - 0.7764) * 100 for _, v in pts]
+        ax1.plot(xs, ys, ls, marker=mk, color=colour, label=label, linewidth=2.0,
+                 markersize=6, markerfacecolor="white", markeredgewidth=1.8, zorder=3)
+    ax1.axhline(0, color=style.INK, linewidth=1.0, zorder=2)
+    ax1.axvline(39.6, color=style.MUTED, linestyle="--", linewidth=1.2, zorder=1)
+    ax1.text(39.6, ax1.get_ylim()[0], "  E7's one point", rotation=90, va="bottom",
+             ha="left", fontsize=8.5, color=style.INK_2)
+    ax1.set_xlabel("parameters pruned away (%)")
+    ax1.set_ylabel("accuracy loss (mAP50 points)")
+    ax1.set_title("2. How far it can be pruned", fontsize=11, pad=8, loc="left")
+    ax1.legend(frameon=False, fontsize=9, loc="lower left")
+    style.tidy(ax1)
 
-    for label, colour, ls, mk, pts, ref in series:
-        xs = [x for x, _ in pts]
-        ys = [(v - ref) * 100 for _, v in pts]
-        ax.plot(xs, ys, ls, marker=mk, color=colour, label=label,
-                linewidth=2.0, markersize=6, markerfacecolor="white",
-                markeredgewidth=1.8, zorder=3)
+    # --- panel 3: the gap that crosses zero -------------------------------
+    if have_gap:
+        om = {rr: (x, v) for x, v, rr in arms["oneshot"]}
+        im = {rr: (x, v) for x, v, rr in arms["iterative"]}
+        pts = sorted((om[k][0], (im[k][1] - om[k][1]) * 100) for k in om if k in im)
+        xs = [x for x, _ in pts]; gaps = [g for _, g in pts]
+        ax2.axhline(0, color=style.INK, linewidth=1.0, zorder=2)
+        # Shade where iterative wins for good: after the last point it trails at.
+        # The low-ratio wobble around zero is noise, not a win for either arm.
+        last_neg = max((x for x, g in pts if g < 0), default=xs[0])
+        nxt = next((x for x, _ in pts if x > last_neg), last_neg)
+        cross = (last_neg + nxt) / 2
+        ax2.axvspan(cross, 100, color=style.BLUE, alpha=0.09, zorder=0)
+        ax2.plot(xs, gaps, "-o", color=style.BLUE, linewidth=2.0, markersize=6,
+                 markerfacecolor="white", markeredgewidth=1.8, zorder=3)
+        top = max(gaps)
+        ax2.set_ylim(min(gaps) - 1.2, top + 2.4)
+        ax2.text((cross + 100) / 2, top + 1.1, "iterative wins", ha="center", fontsize=9.5,
+                 color=style.BLUE, fontweight="bold")
+        ax2.text(cross - 2, top + 1.1, "tie / one-shot", ha="right", fontsize=9.5,
+                 color=style.INK_2, fontweight="bold")
+        ax2.set_xlabel("parameters pruned away (%)")
+        ax2.set_ylabel("iterative advantage (mAP50 points)")
+        ax2.set_title("3. Where iterative starts to win", fontsize=11, pad=8, loc="left")
+        style.tidy(ax2)
 
-    ax.axhline(0, color=style.INK, linewidth=1.0, zorder=2)
-    # E7 measured exactly one point on this axis. Marking it is the whole reason
-    # the sweep exists: a reader should see which part of the curve it sampled.
-    ax.axvline(39.6, color=style.MUTED, linestyle="--", linewidth=1.2, zorder=1)
-    ax.text(39.6, ax.get_ylim()[0], "  E7 measured here", rotation=90,
-            va="bottom", ha="left", fontsize=8.5, color=style.INK_2)
-
-    ax.set_xlabel("parameters pruned away (%)")
-    ax.set_ylabel("accuracy loss (mAP50 points)")
-    ax.legend(frameon=False, fontsize=9.5, loc="lower left")
-    style.tidy(ax)
     fig.tight_layout()
     return save(fig, "xp06e7b_frontier.png")
 
