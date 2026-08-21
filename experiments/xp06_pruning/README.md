@@ -585,12 +585,12 @@ four steps, each able to end it.
    on for all 60. Sweeping one layer's width fills one row of the table. Those rows sum to
    **72.8 ms** describing an engine that runs in **33.9**, and the rest of the figure is whether
    that gap matters.
-2. **Is layer cost informative?** The x-axis is how many output channels the layer is left
-   **keeping**, so the rightmost point is the unpruned layer and cutting moves leftward. Latency
-   is strongly sublinear: dropping that layer from 128 channels to 64 halves it and saves only
-   1.61 to 1.17 ms, so a cut buys far less time than it removes arithmetic. It is also not
-   monotonic — keeping 64 is *faster* than keeping 52, and 32 faster than 24 — which is E3's
-   tiling effect visible inside a single layer.
+2. **Is layer cost informative?** The x-axis is the fraction of the layer's original width it
+   is left **keeping**, so 100% is the unpruned layer and a cut moves leftward. Latency is
+   strongly sublinear: keeping 50% of the channels still costs 73% of the time (1.61 ms down to
+   1.17), so a cut buys far less time than it removes arithmetic. It is also not monotonic —
+   keeping 50% is *faster* than keeping 41%, and 25% faster than 19% — which is E3's tiling
+   effect visible inside a single layer.
 3. **How good is one entry?** Rebuilding the same layer moves it up to **7%**. The search ranks
    candidates whose predicted savings differ by less than that, so this number sets the finest
    width grid worth searching. Merely re-timing an already-built engine moves it 3%.
