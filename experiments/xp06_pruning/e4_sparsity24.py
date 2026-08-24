@@ -5,9 +5,13 @@ Every other granularity in this study trades accuracy for a speed-up that
 ordinary hardware may or may not deliver. 2:4 is different: the rule is that of
 every four neighbouring weights exactly two must be zero, and Ampere GPUs have
 dedicated circuitry that skips those zeros for up to twice the peak throughput.
-The rigidity is the feature. NVIDIA's published table reports a detector,
-SSD-RN50, going from 24.8 to 24.8 box AP on COCO -- no measurable accuracy cost
-at 50% sparsity.
+The rigidity is the feature. 2:4 is one case of N:M sparsity -- at most N non-zero
+weights in every group of M -- and the only case with silicon behind it, since
+Ampere's sparse tensor cores implement that ratio and no other. The method and the
+recovery recipe used here are Mishra et al., "Accelerating Sparse Deep Neural
+Networks" (NVIDIA, 2021, arXiv:2104.08378): train dense, prune to 2:4, retrain
+with the same hyperparameters. Their table reports a detector, SSD-RN50, going
+from 24.8 to 24.8 box AP on COCO -- no measurable accuracy cost at 50% sparsity.
 
 The target board's GPU is Ampere class, so the hardware path exists on paper.
 Whether TensorRT actually selects sparse kernels for *this* network on *this*

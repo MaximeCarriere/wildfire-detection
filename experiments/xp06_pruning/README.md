@@ -265,6 +265,15 @@ launch-bound board to show little, and it is the single result here worth applyi
 of every four neighbouring weights, exactly two must be zero. Does this detector survive that
 constraint, and does the hardware actually pay out?**
 
+> **2:4 is one case of *N:M sparsity*** — at most N non-zero weights in every group of M — the
+> semi-structured middle ground between deleting any weight you like and deleting whole channels.
+> The family generalises (1:2, 4:8), but **only 2:4 has silicon behind it**: Ampere's sparse
+> tensor cores implement that ratio and no other. The method and its training recipe are
+> [Mishra et al., *Accelerating Sparse Deep Neural Networks*](https://arxiv.org/abs/2104.08378)
+> (NVIDIA, 2021) — train dense, prune to 2:4, then retrain with the *same* hyperparameters and
+> schedule. The SSD-RN50 figure their table reports, 24.8 to 24.8 box AP on COCO, is the claim
+> this experiment is testing.
+
 **Method**
 
 - Mask half the weights in 57 layers under the 2:4 rule. **Masked, not removed** — the model
@@ -339,8 +348,10 @@ exactly two in every group of four.*
   **+2.1%** against dense tuned at batch 1 and **−1.4%** tuned at 16, from byte-identical
   weights. A gap that changes sign under a recompile belongs to tactic selection, not to zeros.
 
-**Conclusion.** Accuracy survives the pattern once retrained, and the hardware still pays
-nothing. 2:4 was the last candidate on this page with a hardware story behind it, and the story
+**Conclusion.** [Mishra et al.](https://arxiv.org/abs/2104.08378)'s accuracy claim reproduces
+here — the standard recipe takes 0.0000 back to 0.7527, 97% of unpruned — and the throughput
+claim does not, because it depends on a compiler choosing to use the hardware. Accuracy survives
+the pattern once retrained, and the hardware still pays nothing. 2:4 was the last candidate on this page with a hardware story behind it, and the story
 requires a compiler that chooses to use it. Zeroing weights buys nothing here without dedicated
 silicon — which is precisely why dedicated silicon was built for it
 ([EIE](https://dl.acm.org/doi/10.1145/3007787.3001163), Han et al., ISCA 2016).
