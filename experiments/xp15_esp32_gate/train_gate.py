@@ -320,6 +320,14 @@ def main() -> None:
            "params": n_par, "train_minutes": round((time.perf_counter() - t0) / 60, 2),
            "device": dev, "metrics": m, "decision_rule_passed": passes,
            "threshold_sweep": sw, "operating_point": best,
+           # Per-frame scores, so a confusion matrix at any threshold can be built
+           # afterwards without a rescore. 4306 floats is a rounding error next to
+           # the checkpoint, and aggregates alone cannot be re-cut later.
+           "per_frame": {"score": [round(float(v), 5) for v in p_scores],
+                         "label": [int(v) for v in yte],
+                         "content": [str(c) for c in content],
+                         "tiny": [bool(v) for v in tiny],
+                         "small": [bool(v) for v in small]},
            # The confusion at the threshold the gate would actually ship with,
            # which is rarely the one a run happens to default to.
            "metrics_at_operating_point": (

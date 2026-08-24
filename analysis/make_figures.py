@@ -1788,6 +1788,126 @@ def fig_xp15(records) -> Path | None:
     fig.tight_layout()
     return save(fig, "xp15_gate.png")
 
+def fig_xp15_confusion(records) -> Path | None:
+    """The gate's confusion matrix proper, at both thresholds, with what follows from it.
+
+    Separate from the four-panel summary because this is the standard artefact and
+    deserves to be readable on its own: the binary matrix a classifier is normally
+    judged by, plus the four-way breakdown of what the positives actually were.
+
+    Counts *and* row percentages are printed in every cell. The percentage is what
+    the behaviour looks like; the count is what it rests on, and 'fire' has only
+    220 frames, so a row read as a percentage alone would hide how thin it is.
+
+    Built from the per-frame scores stored in the record rather than from its
+    aggregates, so the matrix can be cut at any threshold without a rescore.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.patches import Rectangle
+
+    src = sorted(RAW.glob("xp15_gate_*.json"))
+    if not src:
+        return None
+    d = json.loads(max(src, key=lambda f: f.stat().st_mtime).read_text())
+    pf = d.get("per_frame")
+    if not pf:
+        return None
+
+    score = np.array(pf["score"], float)
+    y = np.array(pf["label"], int)
+    content = np.array(pf["content"])
+
+    def matrix(t):
+        """sklearn where it is importable, numpy where it is not.
+
+        The confusion matrix is four comparisons and does not need a dependency, but
+        sklearn is the reference implementation and worth deferring to when present.
+        """
+        pred = (score >= t).astype(int)
+        try:
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                from sklearn.metrics import confusion_matrix
+            return confusion_matrix(y, pred, labels=[0, 1])
+        except Exception:
+            return np.array([[int(((y == a) & (pred == b)).sum()) for b in (0, 1)]
+                             for a in (0, 1)])
+
+    thrs = [d["metrics"]["threshold"]]
+    if d.get("operating_point"):
+        thrs.append(d["operating_point"]["threshold"])
+
+    fig, axes = plt.subplots(1, len(thrs) + 1, figsize=(5.0 * (len(thrs) + 1), 4.9),
+                             gridspec_kw={"width_ratios": [1] * len(thrs) + [1.25]})
+    fig.suptitle("The ESP32 gate on the D-Fire test set: 4,306 frames, one binary decision",
+                 y=1.06)
+    style.subtitle(fig, f"{d['input_res']}px grayscale, {d['params']/1000:.0f}k parameters. "
+                        f"Cells show count and row percentage; each row sums to 100%.", y=0.98)
+
+    labels = ["no fire/smoke", "fire or smoke"]
+    for ax, t in zip(axes, thrs):
+        cm = matrix(t)
+        tn, fp, fn, tp = cm.ravel()
+        rows = cm.sum(1, keepdims=True)
+        pct = cm / np.maximum(rows, 1) * 100
+        for i in range(2):
+            for j in range(2):
+                # Correct on the diagonal here, because this matrix really is
+                # true-versus-predicted with the same two classes on both axes.
+                col = style.AQUA if i == j else style.RED
+                ax.add_patch(Rectangle((j, 1 - i), 1, 1, facecolor=col,
+                                       alpha=0.15 + 0.75 * pct[i, j] / 100,
+                                       edgecolor="white", linewidth=2, zorder=3))
+                ax.text(j + 0.5, 1 - i + 0.58, f"{pct[i, j]:.1f}%", ha="center",
+                        va="center", fontsize=15, fontweight="bold", zorder=4,
+                        color="white" if pct[i, j] > 55 else style.INK)
+                ax.text(j + 0.5, 1 - i + 0.28, f"n = {cm[i, j]:,}", ha="center",
+                        va="center", fontsize=9.5, zorder=4,
+                        color="white" if pct[i, j] > 55 else style.INK_2)
+        ax.set_xlim(0, 2); ax.set_ylim(0, 2); ax.set_aspect("equal")
+        ax.set_xticks([0.5, 1.5]); ax.set_xticklabels(["stayed asleep", "woke"], fontsize=10)
+        ax.set_yticks([1.5, 0.5]); ax.set_yticklabels(labels, fontsize=10)
+        ax.set_xlabel("what the gate did"); ax.set_ylabel("what was really there")
+        prec = tp / max(tp + fp, 1)
+        rec = tp / max(tp + fn, 1)
+        f1 = 2 * prec * rec / max(prec + rec, 1e-9)
+        ax.set_title(f"threshold {t}\nprecision {prec:.2f} · recall {rec:.2f} · F1 {f1:.2f}",
+                     fontsize=11, pad=10)
+        for sp in ax.spines.values():
+            sp.set_visible(False)
+        ax.tick_params(length=0)
+
+    # --- what the positives actually were -----------------------------------
+    ax = axes[-1]
+    cats = [c for c in ("smoke", "fire", "both") if (content == c).any()]
+    ys = np.arange(len(cats))[::-1]
+    h = 0.36
+    for k, t in enumerate(thrs):
+        woke = [float(((content == c) & (score >= t)).sum())
+                / max((content == c).sum(), 1) * 100 for c in cats]
+        off = (0.5 - k) * h if len(thrs) > 1 else 0
+        ax.barh(ys + off, woke, height=h * 0.9, color=style.AQUA,
+                hatch=None if k == 0 else "///", edgecolor="white", linewidth=0.6,
+                zorder=3, label=f"threshold {t}")
+        for yy, w in zip(ys, woke):
+            ax.text(w + 1.5, yy + off, f"{w:.0f}%", va="center", fontsize=9,
+                    color=style.INK_2)
+    ax.set_yticks(ys)
+    ax.set_yticklabels([f"{c}\n(n={int((content == c).sum())})" for c in cats], fontsize=10)
+    ax.set_xlim(0, 112); ax.set_xlabel("% woken on")
+    ax.set_title("Which positives it caught\nthe binary matrix pools these three",
+                 fontsize=11, pad=10)
+    # Above the bars, not inside them: every bar here runs past 65% so the lower
+    # right corner a legend would normally take is occupied.
+    ax.legend(fontsize=8.5, frameon=False, loc="upper center",
+              bbox_to_anchor=(0.5, -0.13), ncol=2)
+    style.tidy(ax); ax.grid(axis="y", visible=False)
+
+    fig.tight_layout()
+    return save(fig, "xp15_confusion.png")
+
 def fig_xp06e3(records) -> Path | None:
     """Rounding barely touches accuracy and nearly doubles throughput on the board."""
     import matplotlib.pyplot as plt
@@ -2141,7 +2261,7 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9, fig_xp15,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9, fig_xp15, fig_xp15_confusion,
             fig_xp06e6,
             fig_xp06e7]
 
