@@ -140,7 +140,27 @@ python experiments/xp15_esp32_gate/make_headers.py --per-class 10
 python experiments/xp15_esp32_gate/check_board.py board_log.txt
 ```
 
-### Flashing it, first time
+### Flashing it with PlatformIO
+
+`firmware/platformio.ini` is set up for this board; `src_dir` points at the Arduino sketch
+folder, so there is one copy of the source and it opens in either toolchain.
+
+```bash
+cd experiments/xp15_esp32_gate/firmware
+pio run -t upload && pio device monitor | tee ../board_log.txt
+```
+
+**The setting that catches people:** `board_build.arduino.memory_type = qio_opi`. On the S3,
+`-DBOARD_HAS_PSRAM` only tells the sketch PSRAM ought to exist — this line is what initialises
+the octal-SPI controller the XIAO's 8 MB part is actually wired to. Without it `psramFound()` is
+false, the arena allocation returns null, and the sketch stops at its `FATAL` line, which reads
+like a code fault and is a build-config one.
+
+The `lib_deps` identifier is the one thing in that file written without a PlatformIO install to
+check it against. If it fails to resolve, `pio pkg search tflite esp32` and substitute; nothing
+else depends on which port is used.
+
+### Flashing it from the Arduino IDE instead
 
 Start small. Generate **8 frames**, not 200 — `make_headers.py --per-class 2`. The header is
 0.4 MB instead of 11 and the Arduino IDE compiles it in a reasonable time; the point of the first
