@@ -31,6 +31,7 @@
 //          Tools -> Partition Scheme -> "Huge APP" (540 KB of data in flash)
 
 #include <TensorFlowLite_ESP32.h>
+#include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/system_setup.h"
@@ -52,6 +53,12 @@ namespace {
 // erring high on the first flash is the cheaper mistake.
 constexpr size_t kArenaSize = 500 * 1024;
 uint8_t* g_arena = nullptr;
+
+// Required by this vintage of TFLite Micro. Upstream later gave the interpreter a
+// default error reporter and then removed the parameter, so a newer TFLM will
+// reject this argument -- which is the sort of thing that makes a sketch look
+// broken when only the library moved underneath it.
+tflite::MicroErrorReporter g_error_reporter;
 
 const tflite::Model* g_tflite_model = nullptr;
 tflite::MicroInterpreter* g_interpreter = nullptr;
@@ -103,7 +110,8 @@ void setup() {
   resolver.AddFullyConnected();
 
   static tflite::MicroInterpreter interpreter(g_tflite_model, resolver,
-                                              g_arena, kArenaSize);
+                                              g_arena, kArenaSize,
+                                              &g_error_reporter);
   g_interpreter = &interpreter;
   if (g_interpreter->AllocateTensors() != kTfLiteOk) {
     Serial.println("FATAL: AllocateTensors failed -- raise kArenaSize");

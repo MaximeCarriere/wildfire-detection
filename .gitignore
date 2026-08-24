@@ -50,3 +50,4 @@ fire-venv/
 experiments/xp15_esp32_gate/board_data/
 experiments/xp15_esp32_gate/firmware/model_data.h
 experiments/xp15_esp32_gate/firmware/frames_data.h
+experiments/xp15_esp32_gate/firmware/.pio/
