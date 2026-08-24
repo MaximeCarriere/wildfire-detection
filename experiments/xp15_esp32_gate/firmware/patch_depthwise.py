@@ -117,6 +117,16 @@ def main():
 
     text = src.read_text()
     if MARKER in text:
+        # Already patched -- but possibly by an older version of this file. The
+        # first one allocated the scratch buffer with heap_caps_malloc, which is
+        # only 8-byte aligned and corrupts the heap under the S3 kernels. A stale
+        # patch is invisible to the marker check and survives a rebuild, so it is
+        # named here rather than left to be rediscovered on the board.
+        if "heap_caps_malloc(needed" in text:
+            print("[patch_depthwise] WARNING: depthwise_conv.cpp carries an older "
+                  "patch with an unaligned scratch buffer. Run "
+                  "`rm -rf .pio/libdeps` and rebuild, or patch_scratch_align.py "
+                  "will fix the allocation in place.")
         return
 
     if "namespace tflite {" not in text or "case kTfLiteInt8: {" not in text:
