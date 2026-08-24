@@ -86,7 +86,10 @@ FAST_PATH = '''    case kTfLiteInt8: {
             &in_dims, &fl_dims, &out_dims, &dw_params);
         if (needed > dw_scratch_size) {
           if (dw_scratch) heap_caps_free(dw_scratch);
-          dw_scratch = (int8_t*)heap_caps_malloc(needed, MALLOC_CAP_8BIT);
+          // 16-byte aligned: the S3 kernels load 128 bits at a time and round a
+          // misaligned base down, which lands on the allocator's block header.
+          dw_scratch = (int8_t*)heap_caps_aligned_alloc(
+              16, (needed + 15) & ~15, MALLOC_CAP_8BIT);
           dw_scratch_size = dw_scratch ? needed : 0;
         }
         esp_nn_set_depthwise_conv_scratch_buf(dw_scratch);
