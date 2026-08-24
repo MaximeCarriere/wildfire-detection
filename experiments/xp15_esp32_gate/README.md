@@ -136,9 +136,42 @@ python experiments/xp15_esp32_gate/to_tflite.py
 # 3. emit the C headers                               (anywhere)
 python experiments/xp15_esp32_gate/make_headers.py --per-class 10
 
-# 4. flash firmware/xp15_gate_bench.ino, save the serial output, then
+# 4. flash firmware/xp15_gate_bench/, save the serial output, then
 python experiments/xp15_esp32_gate/check_board.py board_log.txt
 ```
+
+### Flashing it, first time
+
+Start small. Generate **8 frames**, not 200 — `make_headers.py --per-class 2`. The header is
+0.4 MB instead of 11 and the Arduino IDE compiles it in a reasonable time; the point of the first
+flash is to find out whether the graph lowers and the arena fits, and eight frames answers that
+as well as two hundred. Scale up once it runs.
+
+1. Plug the XIAO in over USB-C. If the port does not appear, hold **BOOT**, tap **RESET**,
+   release BOOT — that forces the bootloader.
+2. Arduino IDE → Boards Manager → **esp32** by Espressif. Select **XIAO_ESP32S3**.
+3. Library Manager → **TensorFlowLite_ESP32**.
+4. Tools → **PSRAM: OPI PSRAM**. Non-negotiable: the arena is half a megabyte and this chip has
+   512 KB of internal SRAM in total, so without PSRAM the sketch stops at a `FATAL` line saying
+   exactly this.
+5. Tools → **Partition Scheme: Huge APP**.
+6. Open `firmware/xp15_gate_bench/xp15_gate_bench.ino`, upload, then Serial Monitor at **115200**.
+
+Copy the serial output to a file and run step 4 on it.
+
+### Reading what comes back
+
+The sketch prints a CSV row per frame, then a summary. The lines that matter:
+
+- `arena used N of 512000` — the real memory figure. Trim `kArenaSize` toward it and reflash.
+- `mean X ms/frame` — latency. With the Arduino library these are reference kernels, so treat it
+  as an upper bound.
+- `PORT OK` / `PORT MISMATCH` — whether the board reproduced the off-device scores.
+
+**If it fails, the three likely causes in order:** `FATAL: no PSRAM` means step 4 above was
+missed; a failure at `AllocateTensors` naming an op means the model gained a layer this sketch's
+resolver does not list; `AllocateTensors` failing without an op name means `kArenaSize` is too
+small — raise it.
 
 ### What step 2 already found
 

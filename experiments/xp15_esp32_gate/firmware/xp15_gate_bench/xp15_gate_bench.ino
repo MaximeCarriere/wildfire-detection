@@ -41,11 +41,17 @@
 
 namespace {
 
+// The arena is allocated from PSRAM at runtime, not declared as a static array.
+// This chip has 512 KB of internal SRAM in total and the first layer's activations
+// alone are 96*96*32 bytes, so a static arena large enough to hold them would
+// either fail to link or leave nothing for the stack. The 8 MB of PSRAM is exactly
+// what this board has that a plain ESP32 does not, and it is why the model fits.
+//
 // Sized by trial: start high, read the "arena used" line this sketch prints, then
-// trim. Too small fails loudly at AllocateTensors; too large only wastes PSRAM,
-// so erring high on the first flash is the cheaper mistake.
-constexpr int kArenaSize = 400 * 1024;
-alignas(16) uint8_t g_arena[kArenaSize];
+// trim. Too small fails loudly at AllocateTensors; too large only wastes PSRAM, so
+// erring high on the first flash is the cheaper mistake.
+constexpr size_t kArenaSize = 500 * 1024;
+uint8_t* g_arena = nullptr;
 
 const tflite::Model* g_tflite_model = nullptr;
 tflite::MicroInterpreter* g_interpreter = nullptr;
@@ -63,6 +69,14 @@ void setup() {
   Serial.println("XP15 gate benchmark");
   Serial.printf("frames %d at %dx%d, model %u bytes\n",
                 N_FRAMES, FRAME_RES, FRAME_RES, g_model_len);
+
+  g_arena = (uint8_t*)heap_caps_aligned_alloc(16, kArenaSize, MALLOC_CAP_SPIRAM);
+  if (g_arena == nullptr) {
+    Serial.println("FATAL: no PSRAM for the arena.");
+    Serial.println("  Tools -> PSRAM must be set to \"OPI PSRAM\" for this board.");
+    return;
+  }
+  Serial.printf("arena %u KB from PSRAM\n", (unsigned)(kArenaSize / 1024));
 
   g_tflite_model = tflite::GetModel(g_model);
   if (g_tflite_model->version() != TFLITE_SCHEMA_VERSION) {

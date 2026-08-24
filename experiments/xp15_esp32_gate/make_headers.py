@@ -31,7 +31,9 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 WEIGHTS = REPO / "weights"
 DATA = HERE / "board_data"
-FW = HERE / "firmware"
+# The Arduino IDE requires a sketch to sit in a folder of the same name, so the
+# generated headers go beside the .ino rather than in a plain firmware/ directory.
+FW = HERE / "firmware" / "xp15_gate_bench"
 TAG = "xp15hdr"
 
 CATEGORIES = ("none", "smoke", "fire", "both")
@@ -58,7 +60,7 @@ def main() -> None:
 
     import numpy as np
 
-    FW.mkdir(exist_ok=True)
+    FW.mkdir(parents=True, exist_ok=True)
     tag = f"gate_{args.res}px_w{args.width}"
 
     # ---- the model -------------------------------------------------------
