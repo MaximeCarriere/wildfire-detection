@@ -1,6 +1,7 @@
 # XP15 — The 5-euro sensor: can the gate leave the Jetson entirely?
 
-> **Status:** stage A done — the gate **passes** the port rule. Nothing has run on the ESP32 yet.
+> **Status:** stages A and B done. The gate passes the port rule, and the model runs on the
+> XIAO ESP32-S3 at **340 ms per frame**, reproducing the off-device scores exactly.
 > The question, method and decision rule below were written *before* the run, which is the
 > convention XP5 set and the reason XP6's early numbers had to be withdrawn twice.
 
@@ -210,6 +211,58 @@ sweep in stage A can do — it was picked purely on the float model.
 
 Model size: **523 KB float32 → 180 KB int8.** With 40 embedded frames the firmware needs 540 KB
 of flash, against 8 MB available.
+
+### Stage B results — it runs, and it agrees
+
+```
+warm-up inference done (discarded)
+arena used 322068 of 512000 bytes
+frame,label,ref,board,abs_diff,us
+0,none,0.00002,0.00004,0.00002,340328
+...
+mean 340.33 ms/frame over 8 frames
+worst |board - reference| 0.00354, 0 frames over 0.01
+PORT OK
+```
+
+| | measured on the board |
+|---|---|
+| latency | **340.3 ms/frame**, spread under 0.1 ms |
+| agreement with off-device int8 | mean 0.00066, worst 0.00354 |
+| decisions changed at threshold 0.99 | **0 of 8** |
+| arena | 322 KB, in PSRAM |
+| flash | 606 KB of 8 MB · RAM 18.9 KB of 320 KB internal |
+
+At one frame every 5 s that is a **6.8% duty cycle**, which is what makes the architecture
+arguable: the Orin sleeps and a €27 part watches.
+
+**Getting there cost four bugs, and three of them only appear on hardware.**
+
+1. **The stock TFLite library never touches the vector unit.** Reference C kernels ran the model
+   at **20.5 s/frame**. A community fork dispatches int8 conv to ESP-NN.
+2. **`CONFIG_NN_OPTIMIZED` is the switch that matters.** `esp_nn.h` gates its whole dispatch
+   block on it; without it every call maps to the ANSI fallback whatever else is set. The build
+   succeeds, the answers are right, and it runs at reference speed. **20.5 s → 3.5 s → 341 ms**
+   came from finding this, and it was found with `nm` on the object file, not from timings —
+   both configurations build and give correct answers, and only the symbol table distinguishes
+   them.
+3. **The first inference is not like the others.** ESP-NN's scratch buffer is allocated lazily
+   and grown per layer *while the first inference runs*, and frame 0 came back **0.9997 for an
+   empty scene**. A discarded warm-up at boot fixes it. In the field this would have been exactly
+   one inexplicable alarm per power cycle.
+4. **The S3 kernels need a 16-byte aligned scratch buffer.** `heap_caps_malloc` gives 8. The
+   kernel rounded the base down onto the allocator's block header and corrupted the heap — but
+   only once the *real* kernels started running, because the ANSI ones ignore alignment. A large
+   speed-up is a reason to re-check correctness, not a result on its own.
+
+**And a recovery lesson.** The crash loop left the board unflashable over serial: a parked or
+crashing app keeps the USB peripheral enumerated, so the ROM bootloader never runs and
+`esptool` has nothing to sync with. The S3 exposes **JTAG on the same connector**, and OpenOCD
+halts the core regardless of what the app is doing:
+
+```bash
+pio run -e recover -t upload     # goes in over JTAG, no BOOT button needed
+```
 
 ### What to measure, in this order
 
