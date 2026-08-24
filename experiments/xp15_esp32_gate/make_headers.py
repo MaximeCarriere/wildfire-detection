@@ -56,12 +56,22 @@ def main() -> None:
     ap.add_argument("--res", type=int, default=96)
     ap.add_argument("--width", type=float, default=1.0)
     ap.add_argument("--per-class", type=int, default=10)
+    ap.add_argument("--boundary", type=int, default=0, metavar="N",
+                    help="instead of a stratified sample, embed the N frames whose "
+                         "score sits closest to the threshold. Board and workstation "
+                         "run the same int8 model through different kernels -- ESP-NN "
+                         "assembly against TFLite's reference implementation -- so they "
+                         "agree to about 0.004 rather than exactly. Only frames within "
+                         "that distance of the threshold can decide differently, and a "
+                         "random sample almost never contains one.")
+    ap.add_argument("--threshold", type=float, default=0.97)
     args = ap.parse_args()
 
     import numpy as np
 
     FW.mkdir(parents=True, exist_ok=True)
     tag = f"gate_{args.res}px_w{args.width}"
+    REPO = HERE.parents[1]
 
     # ---- the model -------------------------------------------------------
     blob = (WEIGHTS / f"{tag}_int8.tflite").read_bytes()
@@ -80,12 +90,33 @@ def main() -> None:
     q = np.load(DATA / "int8_scores.npz")
     content, frames, ref = t["content"], t["frames"], q["score"]
 
-    keep = []
-    for c in CATEGORIES:
-        idx = np.where(content == c)[0][:args.per_class]
-        keep += list(idx)
-    keep = sorted(keep)
-    log(f"  {len(keep)} frames, {args.per_class} per category")
+    if args.boundary:
+        # Selected from the whole 4,306-frame split, not the 200-frame board
+        # subset: the frames that sit closest to the threshold are what this mode
+        # exists to find, and a 200-frame sample contains almost none of them.
+        import json
+        full = np.load(DATA / "frames_all_test.npz", allow_pickle=True)
+        rec = json.loads((REPO / "results" / "raw" /
+                          f"xp15_{tag}_int8_full.json").read_text())
+        sc = np.array(rec["per_frame"]["score"])
+        frames, content = full["frames"], full["content"]
+        ref = sc
+        keep = sorted(int(i) for i in
+                      np.argsort(np.abs(sc - args.threshold))[:args.boundary])
+        d = np.abs(sc[keep] - args.threshold)
+        # frames_all_test.npz carries no stems, so identify these by their index
+        # in the full split -- which is what check_board.py needs to trace one back.
+        stems = np.array([f"test{i:04d}" for i in range(len(sc))])
+        log(f"  {len(keep)} boundary frames from the full split, "
+            f"|score - {args.threshold}| from {d.min():.5f} to {d.max():.5f}")
+    else:
+        keep = []
+        for c in CATEGORIES:
+            idx = np.where(content == c)[0][:args.per_class]
+            keep += list(idx)
+        keep = sorted(keep)
+        stems = t["stems"]
+        log(f"  {len(keep)} frames, {args.per_class} per category")
 
     flat = frames[keep].astype("uint8").tobytes()
     lines = [
@@ -109,7 +140,7 @@ def main() -> None:
     # the original test-set position by re-deriving the selection, and any drift
     # between the two derivations shows up as a spurious mismatch.
     np.savez_compressed(DATA / "board_subset.npz", ref_score=ref[keep],
-                        content=content[keep], stems=t["stems"][keep],
+                        content=content[keep], stems=stems[keep],
                         test_index=np.array(keep))
     log(f"  frames_data.h {len(flat)/1024:.0f} KB raw "
         f"({(FW / 'frames_data.h').stat().st_size/1024/1024:.1f} MB as source)")
