@@ -51,7 +51,10 @@ namespace {
 // Sized by trial: start high, read the "arena used" line this sketch prints, then
 // trim. Too small fails loudly at AllocateTensors; too large only wastes PSRAM, so
 // erring high on the first flash is the cheaper mistake.
-constexpr size_t kArenaSize = 500 * 1024;
+#ifndef ARENA_KB
+#define ARENA_KB 500
+#endif
+constexpr size_t kArenaSize = ARENA_KB * 1024;
 uint8_t* g_arena = nullptr;
 
 // Required by this vintage of TFLite Micro. Upstream later gave the interpreter a
@@ -77,13 +80,25 @@ void setup() {
   Serial.printf("frames %d at %dx%d, model %u bytes\n",
                 N_FRAMES, FRAME_RES, FRAME_RES, g_model_len);
 
-  g_arena = (uint8_t*)heap_caps_aligned_alloc(16, kArenaSize, MALLOC_CAP_SPIRAM);
+  // Internal SRAM first, PSRAM only as a fallback. Every activation the kernels
+  // touch lives in the arena, and PSRAM is reached over octal SPI at a fraction of
+  // internal bandwidth -- for a workload that is mostly moving activations, which
+  // memory the arena sits in can matter as much as which kernels run. The board
+  // has ~320 KB of internal SRAM, so this succeeds only for a small enough arena;
+  // set ARENA_KB from platformio.ini once the "arena used" line below says how
+  // little is actually needed.
+  const char* where = "internal SRAM";
+  g_arena = (uint8_t*)heap_caps_aligned_alloc(16, kArenaSize, MALLOC_CAP_INTERNAL);
   if (g_arena == nullptr) {
-    Serial.println("FATAL: no PSRAM for the arena.");
-    Serial.println("  Tools -> PSRAM must be set to \"OPI PSRAM\" for this board.");
+    where = "PSRAM";
+    g_arena = (uint8_t*)heap_caps_aligned_alloc(16, kArenaSize, MALLOC_CAP_SPIRAM);
+  }
+  if (g_arena == nullptr) {
+    Serial.println("FATAL: could not allocate the arena in either memory.");
+    Serial.println("  PSRAM must be enabled: board_build.arduino.memory_type = qio_opi");
     return;
   }
-  Serial.printf("arena %u KB from PSRAM\n", (unsigned)(kArenaSize / 1024));
+  Serial.printf("arena %u KB from %s\n", (unsigned)(kArenaSize / 1024), where);
 
   g_tflite_model = tflite::GetModel(g_model);
   if (g_tflite_model->version() != TFLITE_SCHEMA_VERSION) {
