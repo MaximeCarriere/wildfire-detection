@@ -48,6 +48,7 @@ MANIFEST = {
         ],
         "flags": [
             "-DCONFIG_IDF_TARGET_ESP32S3",
+            "-DCONFIG_NN_OPTIMIZED",
             "-I$PROJECT_LIBDEPS_DIR/$PIOENV/esp-nn/include",
             "-I$PROJECT_LIBDEPS_DIR/$PIOENV/esp-nn/src/common",
             "-I$PROJECT_LIBDEPS_DIR/$PIOENV/esp-nn/src/softmax",
