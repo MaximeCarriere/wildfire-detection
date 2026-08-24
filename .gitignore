@@ -10,6 +10,9 @@ data/calib/
 # relative-path splits they are derived from.
 data/splits/yolo/
 *.pt
+# Same rule for the exported forms: an .onnx or .tflite is a weight file that
+# happens to be portable, and both are regenerated from the checkpoint.
+*.tflite
 *.onnx
 *.engine
 *.engine.calib
@@ -40,3 +43,10 @@ __pycache__/
 .venv/
 fire-venv/
 .DS_Store
+
+# XP15: generated board artifacts. The npz frame sets and the multi-megabyte C
+# headers are reproducible from export_frames.py and make_headers.py, and the
+# headers in particular are 2 MB of hex that would bloat every clone.
+experiments/xp15_esp32_gate/board_data/
+experiments/xp15_esp32_gate/firmware/model_data.h
+experiments/xp15_esp32_gate/firmware/frames_data.h

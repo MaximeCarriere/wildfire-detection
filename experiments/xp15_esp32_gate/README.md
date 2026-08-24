@@ -112,32 +112,75 @@ tiny-only subset and has not been run.
 
 ## Stage B — put it on the device
 
-Only if stage A passes. Two viable toolchains, and the choice is not obvious:
+**The camera stays unplugged.** A lens pointed out of a window sees no fire, so it
+can only measure false alarms, and it tangles "can this chip run the model" together with "does
+the field look like the training set". Those are different questions and the compute one comes
+first. The board is fed D-Fire test frames from flash instead, so every answer it gives can be
+checked against one already known.
 
-| | **ESP-DL** (Espressif) | **TFLite Micro + ESP-NN** |
-|---|---|---|
-| input | ONNX, which this repo already exports everywhere | needs ONNX → TF → TFLite conversion |
-| quantization | its own int8 post-training flow | mature, well documented |
-| S3 SIMD | native, it is Espressif's own | via the ESP-NN kernels |
-| risk | thinner documentation | the conversion hop is the fragile part |
+**Toolchain: TFLite Micro, not ESP-DL** — a reversal from what this page first planned. ESP-DL
+takes ONNX directly and avoids a framework hop, which is tidier, but nothing about it can be
+verified before flashing. The TFLite path lets the quantized model be run and compared against
+the original on a laptop, so a port that has gone wrong is caught there rather than through a
+serial cable.
 
-**Start with ESP-DL**, because `train_gate.py` already emits ONNX and the extra framework hop is
-where this kind of port usually dies. Fall back to TFLite Micro if an op fails to lower.
+### The four steps
 
-Every operation in the model — 3×3 conv, depthwise conv, 1×1 conv, batch norm, ReLU, global
-average pool, one linear — was chosen because it has an int8 kernel in **both**. An elegant
-architecture that lowers to an unsupported op is worth nothing on this target.
+```bash
+# 1. cut the frames and score them off-device        (on the Jetson: needs the dataset)
+python experiments/xp15_esp32_gate/export_frames.py --per-class 50
 
-**What to measure on the board**, in this order:
+# 2. port to int8 TFLite and prove it still works     (anywhere with tensorflow)
+python experiments/xp15_esp32_gate/to_tflite.py
 
-1. **It runs at all**, and the int8 model agrees with the float model on the test set. Quantization
-   drift is measured, never assumed — this repo has withdrawn numbers over exactly that.
-2. **Inference latency and peak RAM.** A few hundred ms is fine; a fire watch can sample every
-   few seconds. RAM is the harder constraint despite the 8 MB PSRAM, since PSRAM bandwidth is far
-   below internal SRAM and a layer that spills is much slower than its op count suggests.
-3. **Average power over a duty cycle** — the number that decides whether the architecture is
-   worth anything, against an always-on Orin at ~12 W. Reviews of this board note it runs hot
-   under sustained load, so thermals are a real variable and not a footnote.
+# 3. emit the C headers                               (anywhere)
+python experiments/xp15_esp32_gate/make_headers.py --per-class 10
+
+# 4. flash firmware/xp15_gate_bench.ino, save the serial output, then
+python experiments/xp15_esp32_gate/check_board.py board_log.txt
+```
+
+### What step 2 already found
+
+The weights port cleanly and the quantization is mild, but the operating point is fragile:
+
+| check | result |
+|---|---|
+| Keras float against torch float | max diff **1.1e-05** — the weight copy is correct |
+| TFLite int8 against torch float | mean **0.018**, worst 0.247 |
+| **decisions changed at threshold 0.99** | **6 of 200 frames (3.0%)** |
+
+That last row is why the check exists. A mean error of 0.018 sounds harmless, but at a threshold
+of 0.99 the scores are bunched against the boundary, so small drift moves frames across it.
+**The shipping threshold should probably be chosen with quantization margin in mind**, which the
+sweep in stage A can do — it was picked purely on the float model.
+
+Model size: **523 KB float32 → 180 KB int8.** With 40 embedded frames the firmware needs 540 KB
+of flash, against 8 MB available.
+
+### What to measure, in this order
+
+1. **Does it agree?** The sketch prints `PORT OK` or `PORT MISMATCH` per run, and `check_board.py`
+   reports the drift and, separately, whether any decision changed. Drift is diagnostic; changed
+   decisions are the result.
+2. **Latency and peak RAM.** The sketch prints `arena used`, free heap and free PSRAM. RAM is the
+   real risk despite 8 MB of PSRAM, since PSRAM bandwidth is well below internal SRAM and a layer
+   that spills runs much slower than its op count suggests.
+3. **Average power over a duty cycle.** A USB power meter inline is enough for a first number.
+   This is what the whole architecture rests on — and reviews of this board note it runs hot under
+   sustained load, so log temperature beside it.
+
+### Two things that will bite
+
+- **Which TFLite library you build against changes the timings by a large factor.** The Arduino
+  `TensorFlowLite_ESP32` library ships generic reference kernels; Espressif's `esp-tflite-micro`
+  under ESP-IDF carries the ESP-NN kernels that use the S3's vector instructions. Quote which one
+  produced the number, and treat an Arduino-library timing as an upper bound.
+- **Stale headers.** Reflashing without rerunning `make_headers.py` compares the board against
+  frames it is not running. `check_board.py` checks the log's reference column against the
+  compiled subset and warns when they disagree.
+
+## What would count as a result
 
 ## What would count as a result
 
