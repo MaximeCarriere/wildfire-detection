@@ -1865,8 +1865,8 @@ def fig_xp06e4b(records) -> Path | None:
     var = [r for r in var if r and usable(r)]
 
     from matplotlib.patches import Rectangle, FancyArrowPatch
-    fig = plt.figure(figsize=(15.8, 4.3))
-    gs = fig.add_gridspec(1, 3, width_ratios=[0.62, 1.55, 1.0], wspace=0.30)
+    fig = plt.figure(figsize=(16.4, 4.3))
+    gs = fig.add_gridspec(1, 3, width_ratios=[0.80, 1.55, 1.0], wspace=0.32)
     sch = fig.add_subplot(gs[0, 0])
     axes = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
     fig.suptitle("The one pattern the hardware understands, measured on the hardware", y=1.11)
@@ -1886,18 +1886,21 @@ def fig_xp06e4b(records) -> Path | None:
                                 linewidth=1.8, zorder=3))
         sch.text(x + w / 2, y + h - 0.35, title, ha="center", va="top", fontsize=8,
                  color=colour, fontweight="bold")
-        sch.text(x + w / 2, y + 0.55, sub, ha="center", va="center", fontsize=6.8,
+        sch.text(x + w / 2, y + 0.48, sub, ha="center", va="center", fontsize=6.8,
                  color=style.INK_2)
 
-    kbox(0.6, 4.6, 4.0, 2.2, style.ORANGE, "sparse kernel", "skips the 2 zeros,\nup to 2x")
-    kbox(5.4, 4.6, 4.0, 2.2, style.INK_2, "dense kernel", "multiplies all four,\nzeros included")
-    sch.text(5, 4.15, "TensorRT times both per layer, keeps the faster",
+    # Stacked, not side by side: this column is the narrowest on the page, and two
+    # boxes abreast leave each one too thin to hold its own label without spilling
+    # over the neighbouring panel's tick labels.
+    kbox(0.6, 6.05, 8.8, 1.65, style.ORANGE, "sparse kernel", "skips the 2 zeros, up to 2x")
+    kbox(0.6, 4.05, 8.8, 1.65, style.INK_2, "dense kernel", "multiplies all four, zeros included")
+    sch.text(5, 3.65, "TensorRT times both per layer,\nkeeps the faster",
              ha="center", va="top", fontsize=7.6, color=style.INK, style="italic")
-    sch.add_patch(FancyArrowPatch((5, 3.5), (5, 2.7), arrowstyle="-|>", mutation_scale=13,
+    sch.add_patch(FancyArrowPatch((5, 2.75), (5, 1.95), arrowstyle="-|>", mutation_scale=13,
                                   color=style.INK_2, linewidth=1.4))
-    sch.add_patch(Rectangle((1.4, 0.6), 7.2, 1.7, facecolor=style.INK_2, alpha=0.10,
+    sch.add_patch(Rectangle((0.6, 0.25), 8.8, 1.55, facecolor=style.INK_2, alpha=0.10,
                             edgecolor=style.INK_2, linewidth=1.3, zorder=2))
-    sch.text(5, 1.45, "it kept DENSE every time\n0 of 39 used the sparse kernel",
+    sch.text(5, 1.02, "it kept DENSE every time\n0 of 39 used the sparse kernel",
              ha="center", va="center", fontsize=8.2, color=style.INK, fontweight="bold")
     style.subtitle(fig, "Same network, same shape, same arithmetic in all four: only which "
                         "weights are zero, and whether the compiler was allowed to exploit "
