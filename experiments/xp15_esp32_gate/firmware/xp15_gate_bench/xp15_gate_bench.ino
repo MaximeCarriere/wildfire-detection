@@ -138,6 +138,24 @@ void setup() {
 
   g_input = g_interpreter->input(0);
   g_output = g_interpreter->output(0);
+
+  // One discarded inference before anything is measured or believed.
+  //
+  // ESP-NN's kernels take a scratch buffer that the TFLite glue allocates lazily:
+  // a static pointer starting at null, grown per layer as bigger ones are reached.
+  // That sizing happens *while the first inference is running*, so the first frame
+  // through a freshly booted interpreter is computed under different conditions
+  // from every frame after it -- and on this board it came back 0.9997 for an
+  // empty scene that scores 0.00002, a false alarm at full confidence.
+  //
+  // Any real deployment warms up once at boot and never sees this. The benchmark
+  // has to do the same or it measures the warm-up rather than the model.
+  memset(g_input->data.int8, g_input->params.zero_point, FRAME_BYTES);
+  if (g_interpreter->Invoke() != kTfLiteOk) {
+    Serial.println("FATAL: warm-up inference failed");
+    return;
+  }
+  Serial.println("warm-up inference done (discarded)");
   Serial.printf("arena used %u of %d bytes\n",
                 (unsigned)g_interpreter->arena_used_bytes(), kArenaSize);
   Serial.printf("input %dx%dx%d type %d, scale %.6f zero %d\n",

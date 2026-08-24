@@ -2,12 +2,14 @@
 --- Available filters and text transformations: debug, default, direct, esp32_exception_decoder, hexlify, log2file, nocontrol, printable, send_on_enter, time
 --- More details at https://bit.ly/pio-monitor-filters
 --- Quit: Ctrl+C | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
-6,both,1.00000,1.00000,0.00000,341238
-7,both,1.00000,1.00000,0.00000,341188
+6,both,1.00000,1.00000,0.00000,340605
+7,both,1.00000,1.00000,0.00000,340534
 
-mean 341.30 ms/frame over 8 frames
+mean 340.63 ms/frame over 8 frames
 worst |board - reference| 0.99968, 1 frames over 0.01
 PORT MISMATCH -- investigate
-free heap 286952, free PSRAM 7874279
+  MISMATCH frame 0 (none): reference 0.00002, board 0.99970
+free heap 286936, free PSRAM 7874279
+arena 500 KB requested, 322068 bytes used, in PSRAM
 
 holding; reset to run again
