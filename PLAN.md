@@ -266,6 +266,26 @@ the fancy stack beats the dumb knobs. Live demo: camera feed on the Jetson,
 WiFi off, fire/smoke boxes on screen — `demos/` gets a 20-second capture.
 Blog post 3 + finale ship after this.
 
+**XP15 — The 5-euro sensor: can the gate leave the Jetson entirely?**
+XP14 puts a cheap gate and the full detector on the *same* board. This asks
+whether the gate belongs on separate silicon: a XIAO ESP32-S3 Sense (240 MHz
+Xtensa LX7 with SIMD, 8 MB PSRAM, OV2640) running a tiny binary "anything there?"
+classifier, waking an Orin only on suspicion.
+
+**Classification, not detection, and the reason is already measured.** XP2's
+resolution sweep shows a *full* YOLOv5s scoring 0.0000 on tiny plumes at 160 px
+while still reaching 0.458 mAP50 overall. An ESP32 runs at ~96 px with a model
+orders of magnitude smaller, so boxes are hopeless and distant plumes are gone
+before the microcontroller is even involved. What may survive is "there is obvious
+fire or smoke in view", which is all a wake-up gate needs.
+
+*Two stages, and the first can kill the second:* train the classifier on a
+workstation and measure recall stratified by plume size; only if it clears the bar
+does the port happen. Then deploy, and measure what actually matters for a device
+that watches nothing 99.9% of the time — **average power, not FPS**.
+*Deliverable:* the recall-vs-plume-size table, and an average-watts comparison
+against an always-on Orin. A negative result is publishable and cheap.
+
 **XP14 — Cascade gate: the idle-sky experiment**
 A fire watch stares at nothing 99.9% of the time — per-frame FPS is the wrong
 metric; average watts is the right one. Build a two-stage cascade: a cheap gate
