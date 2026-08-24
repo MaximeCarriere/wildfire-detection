@@ -2,18 +2,18 @@
 --- Available filters and text transformations: debug, default, direct, esp32_exception_decoder, hexlify, log2file, nocontrol, printable, send_on_enter, time
 --- More details at https://bit.ly/pio-monitor-filters
 --- Quit: Ctrl+C | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
-0,none,0.00002,0.00004,0.00002,4504586
-1,none,0.00019,0.00026,0.00007,4504093
-2,smoke,0.98998,0.98644,0.00354,4504065
-3,smoke,0.99782,0.99881,0.00099,4503998
-4,fire,1.00000,1.00000,0.00000,4504032
-5,fire,0.99531,0.99598,0.00067,4504114
-6,both,1.00000,1.00000,0.00000,4504071
-7,both,1.00000,1.00000,0.00000,4504053
+0,none,0.00002,0.00004,0.00002,3487237
+1,none,0.00019,0.00026,0.00007,3486724
+2,smoke,0.98998,0.98644,0.00354,3486719
+3,smoke,0.99782,0.99881,0.00099,3486624
+4,fire,1.00000,1.00000,0.00000,3486664
+5,fire,0.99531,0.99598,0.00067,3486748
+6,both,1.00000,1.00000,0.00000,3486685
+7,both,1.00000,1.00000,0.00000,3486724
 
-mean 4504.13 ms/frame over 8 frames
+mean 3486.77 ms/frame over 8 frames
 worst |board - reference| 0.00354, 0 frames over 0.01
 PORT OK
-free heap 369832, free PSRAM 7874279
+free heap 369824, free PSRAM 7874279
 
 holding; reset to run again
