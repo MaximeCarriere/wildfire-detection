@@ -56,6 +56,7 @@ namespace {
 #endif
 constexpr size_t kArenaSize = ARENA_KB * 1024;
 uint8_t* g_arena = nullptr;
+const char* g_arena_where = "unallocated";
 
 // Required by this vintage of TFLite Micro. Upstream later gave the interpreter a
 // default error reporter and then removed the parameter, so a newer TFLM will
@@ -88,9 +89,11 @@ void setup() {
   // set ARENA_KB from platformio.ini once the "arena used" line below says how
   // little is actually needed.
   const char* where = "internal SRAM";
+  g_arena_where = where;
   g_arena = (uint8_t*)heap_caps_aligned_alloc(16, kArenaSize, MALLOC_CAP_INTERNAL);
   if (g_arena == nullptr) {
     where = "PSRAM";
+    g_arena_where = where;
     g_arena = (uint8_t*)heap_caps_aligned_alloc(16, kArenaSize, MALLOC_CAP_SPIRAM);
   }
   if (g_arena == nullptr) {
@@ -150,6 +153,11 @@ void loop() {
   uint32_t total_us = 0;
   float worst = 0.0f;
   int mismatches = 0;
+  // Kept so the summary can name the offenders. The per-frame rows scroll off the
+  // top of a serial monitor that attaches after the board has already reset, and a
+  // mismatch nobody can see the frame number of is not much of a diagnostic.
+  int bad_idx[N_FRAMES];
+  float bad_ref[N_FRAMES], bad_got[N_FRAMES];
 
   for (int i = 0; i < N_FRAMES; i++) {
     const unsigned char* frame = g_frames + (size_t)i * FRAME_BYTES;
@@ -176,7 +184,12 @@ void loop() {
     if (diff > worst) worst = diff;
     // 1e-2 is loose on purpose: it catches a broken port, which misses by tenths,
     // without tripping on the last bit of a fixed-point rounding difference.
-    if (diff > 0.01f) mismatches++;
+    if (diff > 0.01f) {
+      bad_idx[mismatches] = i;
+      bad_ref[mismatches] = g_ref_score[i];
+      bad_got[mismatches] = score;
+      mismatches++;
+    }
 
     Serial.printf("%d,%s,%.5f,%.5f,%.5f,%lu\n", i, g_label[i], g_ref_score[i],
                   score, diff, (unsigned long)dt);
@@ -187,8 +200,15 @@ void loop() {
   Serial.printf("worst |board - reference| %.5f, %d frames over 0.01\n",
                 worst, mismatches);
   Serial.println(mismatches == 0 ? "PORT OK" : "PORT MISMATCH -- investigate");
+  for (int k = 0; k < mismatches; k++) {
+    Serial.printf("  MISMATCH frame %d (%s): reference %.5f, board %.5f\n",
+                  bad_idx[k], g_label[bad_idx[k]], bad_ref[k], bad_got[k]);
+  }
   Serial.printf("free heap %u, free PSRAM %u\n",
                 (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getFreePsram());
+  Serial.printf("arena %u KB requested, %u bytes used, in %s\n",
+                (unsigned)(kArenaSize / 1024),
+                (unsigned)g_interpreter->arena_used_bytes(), g_arena_where);
 
   Serial.println("\nholding; reset to run again");
   while (true) { delay(10000); }
