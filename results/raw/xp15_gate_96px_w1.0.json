@@ -1,0 +1,540 @@
+{
+  "experiment": "xp15_gate_training",
+  "input_res": 96,
+  "width_mult": 1.0,
+  "epochs": 0,
+  "params": 133889,
+  "train_minutes": 0.8,
+  "device": "cuda",
+  "metrics": {
+    "threshold": 0.3,
+    "confusion_pct": {
+      "none": {
+        "n": 2005,
+        "woke_pct": 13.92,
+        "asleep_pct": 86.08,
+        "mean_score": 0.1242
+      },
+      "smoke": {
+        "n": 1186,
+        "woke_pct": 93.68,
+        "asleep_pct": 6.32,
+        "mean_score": 0.9065
+      },
+      "fire": {
+        "n": 220,
+        "woke_pct": 94.09,
+        "asleep_pct": 5.91,
+        "mean_score": 0.911
+      },
+      "both": {
+        "n": 895,
+        "woke_pct": 95.87,
+        "asleep_pct": 4.13,
+        "mean_score": 0.9341
+      }
+    },
+    "false_wake_rate": 0.1392,
+    "recall_all_positive": 0.9457,
+    "recall_obvious": 0.9263,
+    "recall_small_plume": 0.9626,
+    "recall_tiny_plume": 0.9597,
+    "n": {
+      "positive": 2301,
+      "background": 2005,
+      "small_plume": 1229,
+      "tiny_plume": 298
+    }
+  },
+  "decision_rule_passed": true,
+  "threshold_sweep": [
+    {
+      "threshold": 0.01,
+      "false_wake_rate": 0.3052,
+      "recall_all": 0.9878,
+      "recall_small": 0.9886,
+      "recall_tiny": 0.9799
+    },
+    {
+      "threshold": 0.03,
+      "false_wake_rate": 0.2539,
+      "recall_all": 0.9804,
+      "recall_small": 0.9829,
+      "recall_tiny": 0.9732
+    },
+    {
+      "threshold": 0.05,
+      "false_wake_rate": 0.2269,
+      "recall_all": 0.9774,
+      "recall_small": 0.9821,
+      "recall_tiny": 0.9732
+    },
+    {
+      "threshold": 0.07,
+      "false_wake_rate": 0.21,
+      "recall_all": 0.9761,
+      "recall_small": 0.9821,
+      "recall_tiny": 0.9732
+    },
+    {
+      "threshold": 0.09,
+      "false_wake_rate": 0.199,
+      "recall_all": 0.9696,
+      "recall_small": 0.9756,
+      "recall_tiny": 0.9698
+    },
+    {
+      "threshold": 0.11,
+      "false_wake_rate": 0.188,
+      "recall_all": 0.9648,
+      "recall_small": 0.9723,
+      "recall_tiny": 0.9698
+    },
+    {
+      "threshold": 0.13,
+      "false_wake_rate": 0.181,
+      "recall_all": 0.9626,
+      "recall_small": 0.9715,
+      "recall_tiny": 0.9698
+    },
+    {
+      "threshold": 0.15,
+      "false_wake_rate": 0.1741,
+      "recall_all": 0.9618,
+      "recall_small": 0.9707,
+      "recall_tiny": 0.9698
+    },
+    {
+      "threshold": 0.17,
+      "false_wake_rate": 0.1661,
+      "recall_all": 0.9587,
+      "recall_small": 0.9683,
+      "recall_tiny": 0.9664
+    },
+    {
+      "threshold": 0.19,
+      "false_wake_rate": 0.1606,
+      "recall_all": 0.9552,
+      "recall_small": 0.9666,
+      "recall_tiny": 0.9631
+    },
+    {
+      "threshold": 0.21,
+      "false_wake_rate": 0.1566,
+      "recall_all": 0.9522,
+      "recall_small": 0.9642,
+      "recall_tiny": 0.9631
+    },
+    {
+      "threshold": 0.23,
+      "false_wake_rate": 0.1516,
+      "recall_all": 0.9505,
+      "recall_small": 0.9642,
+      "recall_tiny": 0.9631
+    },
+    {
+      "threshold": 0.25,
+      "false_wake_rate": 0.1486,
+      "recall_all": 0.9487,
+      "recall_small": 0.9634,
+      "recall_tiny": 0.9631
+    },
+    {
+      "threshold": 0.27,
+      "false_wake_rate": 0.1451,
+      "recall_all": 0.9474,
+      "recall_small": 0.9634,
+      "recall_tiny": 0.9631
+    },
+    {
+      "threshold": 0.29,
+      "false_wake_rate": 0.1401,
+      "recall_all": 0.9465,
+      "recall_small": 0.9626,
+      "recall_tiny": 0.9597
+    },
+    {
+      "threshold": 0.31,
+      "false_wake_rate": 0.1382,
+      "recall_all": 0.9444,
+      "recall_small": 0.9626,
+      "recall_tiny": 0.9597
+    },
+    {
+      "threshold": 0.33,
+      "false_wake_rate": 0.1352,
+      "recall_all": 0.9422,
+      "recall_small": 0.9609,
+      "recall_tiny": 0.9597
+    },
+    {
+      "threshold": 0.35,
+      "false_wake_rate": 0.1342,
+      "recall_all": 0.9405,
+      "recall_small": 0.9585,
+      "recall_tiny": 0.9564
+    },
+    {
+      "threshold": 0.37,
+      "false_wake_rate": 0.1297,
+      "recall_all": 0.9392,
+      "recall_small": 0.9569,
+      "recall_tiny": 0.953
+    },
+    {
+      "threshold": 0.39,
+      "false_wake_rate": 0.1272,
+      "recall_all": 0.9379,
+      "recall_small": 0.9552,
+      "recall_tiny": 0.9497
+    },
+    {
+      "threshold": 0.41,
+      "false_wake_rate": 0.1242,
+      "recall_all": 0.9361,
+      "recall_small": 0.9536,
+      "recall_tiny": 0.943
+    },
+    {
+      "threshold": 0.43,
+      "false_wake_rate": 0.1222,
+      "recall_all": 0.9348,
+      "recall_small": 0.9528,
+      "recall_tiny": 0.943
+    },
+    {
+      "threshold": 0.45,
+      "false_wake_rate": 0.1197,
+      "recall_all": 0.9335,
+      "recall_small": 0.952,
+      "recall_tiny": 0.943
+    },
+    {
+      "threshold": 0.47,
+      "false_wake_rate": 0.1177,
+      "recall_all": 0.9313,
+      "recall_small": 0.9496,
+      "recall_tiny": 0.9396
+    },
+    {
+      "threshold": 0.49,
+      "false_wake_rate": 0.1157,
+      "recall_all": 0.93,
+      "recall_small": 0.9479,
+      "recall_tiny": 0.9362
+    },
+    {
+      "threshold": 0.51,
+      "false_wake_rate": 0.1147,
+      "recall_all": 0.9274,
+      "recall_small": 0.9447,
+      "recall_tiny": 0.9329
+    },
+    {
+      "threshold": 0.53,
+      "false_wake_rate": 0.1137,
+      "recall_all": 0.9261,
+      "recall_small": 0.943,
+      "recall_tiny": 0.9262
+    },
+    {
+      "threshold": 0.55,
+      "false_wake_rate": 0.1122,
+      "recall_all": 0.9252,
+      "recall_small": 0.9422,
+      "recall_tiny": 0.9262
+    },
+    {
+      "threshold": 0.57,
+      "false_wake_rate": 0.1107,
+      "recall_all": 0.9218,
+      "recall_small": 0.9398,
+      "recall_tiny": 0.9195
+    },
+    {
+      "threshold": 0.59,
+      "false_wake_rate": 0.1072,
+      "recall_all": 0.9196,
+      "recall_small": 0.9382,
+      "recall_tiny": 0.9161
+    },
+    {
+      "threshold": 0.61,
+      "false_wake_rate": 0.1062,
+      "recall_all": 0.9174,
+      "recall_small": 0.9357,
+      "recall_tiny": 0.9128
+    },
+    {
+      "threshold": 0.63,
+      "false_wake_rate": 0.1037,
+      "recall_all": 0.9157,
+      "recall_small": 0.9341,
+      "recall_tiny": 0.9128
+    },
+    {
+      "threshold": 0.65,
+      "false_wake_rate": 0.1017,
+      "recall_all": 0.9118,
+      "recall_small": 0.9317,
+      "recall_tiny": 0.906
+    },
+    {
+      "threshold": 0.67,
+      "false_wake_rate": 0.0958,
+      "recall_all": 0.9105,
+      "recall_small": 0.9308,
+      "recall_tiny": 0.906
+    },
+    {
+      "threshold": 0.69,
+      "false_wake_rate": 0.0923,
+      "recall_all": 0.9066,
+      "recall_small": 0.9251,
+      "recall_tiny": 0.8926
+    },
+    {
+      "threshold": 0.71,
+      "false_wake_rate": 0.0898,
+      "recall_all": 0.9057,
+      "recall_small": 0.9251,
+      "recall_tiny": 0.8926
+    },
+    {
+      "threshold": 0.73,
+      "false_wake_rate": 0.0888,
+      "recall_all": 0.9035,
+      "recall_small": 0.9251,
+      "recall_tiny": 0.8926
+    },
+    {
+      "threshold": 0.75,
+      "false_wake_rate": 0.0873,
+      "recall_all": 0.9,
+      "recall_small": 0.9203,
+      "recall_tiny": 0.8859
+    },
+    {
+      "threshold": 0.77,
+      "false_wake_rate": 0.0843,
+      "recall_all": 0.8992,
+      "recall_small": 0.9203,
+      "recall_tiny": 0.8859
+    },
+    {
+      "threshold": 0.79,
+      "false_wake_rate": 0.0823,
+      "recall_all": 0.8957,
+      "recall_small": 0.9178,
+      "recall_tiny": 0.8792
+    },
+    {
+      "threshold": 0.81,
+      "false_wake_rate": 0.0798,
+      "recall_all": 0.8909,
+      "recall_small": 0.9154,
+      "recall_tiny": 0.8725
+    },
+    {
+      "threshold": 0.83,
+      "false_wake_rate": 0.0763,
+      "recall_all": 0.8866,
+      "recall_small": 0.9121,
+      "recall_tiny": 0.8691
+    },
+    {
+      "threshold": 0.85,
+      "false_wake_rate": 0.0723,
+      "recall_all": 0.8783,
+      "recall_small": 0.9056,
+      "recall_tiny": 0.8591
+    },
+    {
+      "threshold": 0.87,
+      "false_wake_rate": 0.0668,
+      "recall_all": 0.8722,
+      "recall_small": 0.8999,
+      "recall_tiny": 0.8523
+    },
+    {
+      "threshold": 0.89,
+      "false_wake_rate": 0.0633,
+      "recall_all": 0.8657,
+      "recall_small": 0.895,
+      "recall_tiny": 0.8523
+    },
+    {
+      "threshold": 0.91,
+      "false_wake_rate": 0.0608,
+      "recall_all": 0.8553,
+      "recall_small": 0.8885,
+      "recall_tiny": 0.8456
+    },
+    {
+      "threshold": 0.93,
+      "false_wake_rate": 0.0584,
+      "recall_all": 0.8396,
+      "recall_small": 0.8714,
+      "recall_tiny": 0.8356
+    },
+    {
+      "threshold": 0.95,
+      "false_wake_rate": 0.0549,
+      "recall_all": 0.8183,
+      "recall_small": 0.8552,
+      "recall_tiny": 0.8087
+    },
+    {
+      "threshold": 0.97,
+      "false_wake_rate": 0.0509,
+      "recall_all": 0.7888,
+      "recall_small": 0.8291,
+      "recall_tiny": 0.7718
+    },
+    {
+      "threshold": 0.99,
+      "false_wake_rate": 0.0344,
+      "recall_all": 0.7232,
+      "recall_small": 0.7738,
+      "recall_tiny": 0.6946
+    }
+  ],
+  "operating_point": {
+    "threshold": 0.99,
+    "false_wake_rate": 0.0344,
+    "recall_all": 0.7232,
+    "recall_small": 0.7738,
+    "recall_tiny": 0.6946
+  },
+  "metrics_at_operating_point": {
+    "threshold": 0.99,
+    "confusion_pct": {
+      "none": {
+        "n": 2005,
+        "woke_pct": 3.44,
+        "asleep_pct": 96.56,
+        "mean_score": 0.1242
+      },
+      "smoke": {
+        "n": 1186,
+        "woke_pct": 68.89,
+        "asleep_pct": 31.11,
+        "mean_score": 0.9065
+      },
+      "fire": {
+        "n": 220,
+        "woke_pct": 75.45,
+        "asleep_pct": 24.55,
+        "mean_score": 0.911
+      },
+      "both": {
+        "n": 895,
+        "woke_pct": 76.09,
+        "asleep_pct": 23.91,
+        "mean_score": 0.9341
+      }
+    },
+    "false_wake_rate": 0.0344,
+    "recall_all_positive": 0.7232,
+    "recall_obvious": 0.6651,
+    "recall_small_plume": 0.7738,
+    "recall_tiny_plume": 0.6946,
+    "n": {
+      "positive": 2301,
+      "background": 2005,
+      "small_plume": 1229,
+      "tiny_plume": 298
+    }
+  },
+  "score_histogram": {
+    "none": [
+      1550,
+      68,
+      38,
+      29,
+      22,
+      19,
+      10,
+      16,
+      13,
+      9,
+      6,
+      10,
+      11,
+      21,
+      8,
+      12,
+      18,
+      20,
+      15,
+      110
+    ],
+    "smoke": [
+      26,
+      15,
+      8,
+      16,
+      7,
+      3,
+      8,
+      5,
+      6,
+      4,
+      6,
+      10,
+      6,
+      4,
+      8,
+      13,
+      17,
+      28,
+      51,
+      945
+    ],
+    "fire": [
+      8,
+      0,
+      2,
+      1,
+      0,
+      2,
+      1,
+      2,
+      0,
+      1,
+      1,
+      1,
+      3,
+      2,
+      1,
+      1,
+      3,
+      4,
+      7,
+      180
+    ],
+    "both": [
+      18,
+      8,
+      3,
+      3,
+      3,
+      2,
+      3,
+      2,
+      1,
+      6,
+      1,
+      5,
+      6,
+      6,
+      6,
+      1,
+      15,
+      15,
+      33,
+      758
+    ]
+  },
+  "notes": "XP15 stage A: a binary fire/smoke gate for the XIAO ESP32-S3, trained off-device. Recall is stratified by plume size and never pooled, because a gate that only sees obvious flame fires when the fire is already obvious. The decision rule was fixed before the run: port only at <=5% false wakes with >=0.70 recall on small plumes. Tiny plumes are measured but excluded from the rule, since 96 px almost certainly cannot reach them and a bar nobody can clear proves nothing. No model_id: this is not a detector and does not belong in the detector tables."
+}

@@ -1634,6 +1634,140 @@ def fig_xp06e9(records) -> Path | None:
     fig.tight_layout()
     return save(fig, "xp06e9_netadapt.png")
 
+def fig_xp15(records) -> Path | None:
+    """The ESP32 gate: what it wakes for, what it sleeps through, and at what cost.
+
+    Four panels answering the only question that decides whether the port happens.
+
+    The confusion panel is one row per ground-truth category rather than a square
+    matrix, because the gate is binary: it has four kinds of input and two possible
+    responses. Read the 'nothing' row as the false alarm rate and every other row
+    as recall for that category.
+
+    Recall is never pooled. On this split most positives are large, so a pooled
+    number is dominated by frames where the fire is already obvious -- which is
+    precisely the failure mode a wake-up gate has to be checked for, since a gate
+    that only fires on obvious fire fires too late to be worth having.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    src = sorted(RAW.glob("xp15_gate_*.json"))
+    if not src:
+        return None
+    d = json.loads(max(src, key=lambda f: f.stat().st_mtime).read_text())
+    m = d["metrics"]
+    conf, sw = m.get("confusion_pct"), d.get("threshold_sweep")
+    if not conf:
+        return None
+
+    fig, axes = plt.subplots(1, 4, figsize=(19.5, 4.4),
+                             gridspec_kw={"width_ratios": [1.15, 1.0, 1.1, 1.0]})
+    fig.suptitle("A 131 KB gate on a EUR 27 board: what would it wake the detector for?",
+                 y=1.10)
+    verdict = (f"PASSES the port rule at threshold {d['operating_point']['threshold']}"
+               if d.get("operating_point") else
+               "does not meet the port rule at any threshold")
+    style.subtitle(fig, f"{d['input_res']}px grayscale, {d['params']/1000:.0f}k parameters. "
+                        f"{verdict}. Trained off-device; nothing has run on the ESP32 yet.",
+                   y=1.02)
+
+    # --- 1. the confusion rows, at both operating points ---------------------
+    # Two thresholds are drawn together because they are two different products,
+    # not a tuning detail: one wakes on nearly every fire and cries wolf on one
+    # empty frame in seven, the other is quiet enough to deploy and sleeps through
+    # a quarter of real fires. Showing only one hides the choice being made.
+    ax = axes[0]
+    op = d.get("metrics_at_operating_point")
+    rows = [c for c in ("none", "smoke", "fire", "both") if c in conf]
+    ys = np.arange(len(rows))[::-1]
+    h = 0.34 if op else 0.6
+    series = [(conf, m["threshold"], None)]
+    if op:
+        series.append((op["confusion_pct"], op["threshold"], "///"))
+    for k, (cm, thr, hatch) in enumerate(series):
+        off = (0.5 - k) * h if len(series) > 1 else 0
+        woke = [cm[c]["woke_pct"] for c in rows]
+        cols = [style.RED if c == "none" else style.AQUA for c in rows]
+        ax.barh(ys + off, woke, height=h * 0.92, color=cols, hatch=hatch,
+                edgecolor="white", linewidth=0.6, zorder=3, label=f"threshold {thr}")
+        for y, w in zip(ys, woke):
+            ax.text(min(w + 1.5, 86), y + off, f"{w:.0f}%", va="center",
+                    fontsize=8.5, color=style.INK_2)
+    ax.set_yticks(ys)
+    ax.set_yticklabels([f"{c}\n(n={conf[c]['n']})" for c in rows], fontsize=9)
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("% of frames the gate woke on")
+    ax.set_title("1. What it wakes for\nred row = false alarms", fontsize=10.5, pad=8)
+    # Upper right: the 'none' row is the short one, so that corner is free.
+    ax.legend(fontsize=8, frameon=False, loc="upper right")
+    style.tidy(ax); ax.grid(axis="y", visible=False)
+
+    # --- 2. recall by how big the plume is ----------------------------------
+    ax = axes[1]
+    keys = [("recall_obvious", "obvious"), ("recall_small_plume", "small"),
+            ("recall_tiny_plume", "tiny")]
+    src = op or m          # the threshold the gate would actually ship with
+    vals = [(lab, src[k]) for k, lab in keys if src.get(k) is not None]
+    xs = np.arange(len(vals))
+    ax.bar(xs, [v * 100 for _, v in vals], width=0.6, color=style.BLUE, zorder=3)
+    for x, (_, v) in zip(xs, vals):
+        ax.text(x, v * 100 + 2, f"{v*100:.0f}%", ha="center", fontsize=9.5)
+    ax.axhline(70, color=style.RED, linestyle="--", linewidth=1.3, zorder=2)
+    ax.text(-0.45, 73, "the bar: 70% on small", ha="left", fontsize=8,
+            color=style.RED)
+    ax.set_xticks(xs); ax.set_xticklabels([lab for lab, _ in vals], fontsize=9.5)
+    ax.set_ylim(0, 108); ax.set_ylabel("recall (%)")
+    ax.set_title(f"2. Recall at threshold {src['threshold']}\n"
+                 f"the number that decides the port", fontsize=10.5, pad=8)
+    style.tidy(ax); ax.grid(axis="x", visible=False)
+
+    # --- 3. the operating curve --------------------------------------------
+    ax = axes[2]
+    if sw:
+        fw = [r["false_wake_rate"] * 100 for r in sw]
+        for key, lab, col in (("recall_all", "any fire/smoke", style.BLUE),
+                              ("recall_small", "small plume", style.AQUA),
+                              ("recall_tiny", "tiny plume", style.ORANGE)):
+            v = [r[key] for r in sw]
+            if all(x is not None for x in v):
+                ax.plot(fw, [x * 100 for x in v], "-", color=col, linewidth=2,
+                        label=lab, zorder=3)
+        ax.axvline(5, color=style.RED, linestyle="--", linewidth=1.3, zorder=2)
+        ax.text(5.6, 4, "5% false-wake budget", fontsize=8, color=style.RED, rotation=90)
+        ax.set_xlabel("false wakes on empty frames (%)")
+        ax.set_ylabel("recall (%)")
+        ax.set_xlim(0, 60); ax.set_ylim(0, 104)
+        ax.set_title("3. The trade-off you get to pick\nthreshold sweep",
+                     fontsize=10.5, pad=8)
+        ax.legend(fontsize=8.5, frameon=False, loc="lower right")
+        style.tidy(ax)
+
+    # --- 4. where the scores actually sit -----------------------------------
+    ax = axes[3]
+    hist = d.get("score_histogram") or {}
+    edges = np.linspace(0, 1, 21)
+    centres = (edges[:-1] + edges[1:]) / 2
+    for c, col in (("none", style.RED), ("smoke", style.AQUA),
+                   ("fire", style.ORANGE), ("both", style.BLUE)):
+        if c in hist:
+            h = np.array(hist[c], float)
+            # Normalised per category: 'none' has 2005 frames and 'fire' 220, so
+            # raw counts would show only the class balance.
+            ax.plot(centres, h / max(h.sum(), 1) * 100, "-", color=col,
+                    linewidth=1.8, label=c, zorder=3)
+    ax.axvline(m["threshold"], color=style.INK, linestyle=":", linewidth=1.4, zorder=2)
+    ax.text(m["threshold"] + 0.02, ax.get_ylim()[1] * 0.92,
+            f"threshold {m['threshold']}", fontsize=8, color=style.INK_2)
+    ax.set_xlabel("gate score")
+    ax.set_ylabel("% of that category's frames")
+    ax.set_title("4. Are the classes separated?\nscore distribution", fontsize=10.5, pad=8)
+    ax.legend(fontsize=8.5, frameon=False)
+    style.tidy(ax)
+
+    fig.tight_layout()
+    return save(fig, "xp15_gate.png")
+
 def fig_xp06e3(records) -> Path | None:
     """Rounding barely touches accuracy and nearly doubles throughput on the board."""
     import matplotlib.pyplot as plt
@@ -1987,7 +2121,7 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
-            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9,
+            fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9, fig_xp15,
             fig_xp06e6,
             fig_xp06e7]
 

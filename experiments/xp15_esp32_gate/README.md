@@ -1,8 +1,8 @@
 # XP15 — The 5-euro sensor: can the gate leave the Jetson entirely?
 
-> **Status:** planned, nothing measured yet. This page states the question, the method and the
-> decision rule *before* the run, which is the convention XP5 set and the reason XP6's early
-> numbers had to be withdrawn twice.
+> **Status:** stage A done — the gate **passes** the port rule. Nothing has run on the ESP32 yet.
+> The question, method and decision rule below were written *before* the run, which is the
+> convention XP5 set and the reason XP6's early numbers had to be withdrawn twice.
 
 ## Why
 
@@ -47,8 +47,11 @@ At 160 px a model orders of magnitude larger than anything that fits here alread
 
 ## Stage A — train it, on a workstation
 
-`train_gate.py`. A ~200 KB depthwise-separable CNN at 96×96 grayscale, binary label derived from
-D-Fire (any box → positive, background → negative).
+`train_gate.py`. A depthwise-separable CNN at 96×96 grayscale, binary label derived from D-Fire
+(any box → positive, background → negative). `--width` sets the channel multiplier: 0.25 gives
+10k parameters (~10 KB int8), 1.0 gives roughly 160k (~160 KB), and the board's 8 MB of PSRAM
+means size is not the binding constraint — recall is. Start wide and shrink only if the device
+complains.
 
 **Recall is reported stratified by plume size and never pooled.** A gate scoring 90% overall by
 catching every wall of flame and no distant smoke is worse than useless: it fires when the fire
@@ -69,10 +72,43 @@ python experiments/xp15_esp32_gate/train_gate.py --epochs 30
 python experiments/xp15_esp32_gate/train_gate.py --epochs 30 --res 128   # if 96 misses
 ```
 
-**Where to run it.** Not on this Mac as it stands: neither torch nor the D-Fire images are
-present here (only `data/splits/`). Either pull the dataset locally and `pip install torch`, or
-run it on the 3090. The model is small enough that Apple MPS would be perfectly adequate — the
-blocker is the data, not the compute.
+**Where to run it.** On the Jetson, which is the only machine here holding the D-Fire images —
+`data/` is gitignored, and this repo's Mac checkout carries `data/splits/` alone. The script picks
+its device automatically (`cuda` → `mps` → `cpu`), so it also runs on an Apple laptop once the
+3 GB dataset is unpacked locally; the model is far too small for compute to be the constraint.
+Training the whole thing on the board is fine here precisely *because* the model is tiny — unlike
+[XP7b](../xp06_pruning/HANDOFF_TO_RTX3090.md), where detector training on the Orin was ten times
+slower than the 3090 and not batch-comparable.
+
+## Stage A results
+
+![What the gate wakes for](../../results/figures/xp15_gate.png)
+
+**It passes, and the premise this page was built on was wrong.** I predicted distant smoke would
+be unreachable, because XP2 showed a full YOLOv5s scoring 0.0000 mAP50 on tiny plumes at 160 px.
+The gate reaches **96% recall on tiny-plume frames** at a loose threshold. The reason is that
+classification is a far easier task than detection: mAP demands the box be localised, while the
+gate only has to notice that something in the frame is smoky.
+
+| | threshold 0.30 | **threshold 0.99** |
+|---|---:|---:|
+| false wakes on empty frames | 13.9% | **3.4%** |
+| smoke | 93.7% | 68.9% |
+| fire | 94.1% | 75.5% |
+| both | 95.9% | 76.1% |
+| recall, small plumes | 96.3% | **77.4%** |
+| recall, tiny plumes | 96.0% | 69.5% |
+
+**Threshold 0.99 is the shipping configuration** and clears the rule: ≤5% false wakes with ≥70%
+recall on small plumes. Those are two different products and the figure shows both — one wakes on
+nearly every fire and cries wolf on one empty frame in seven, the other is quiet enough to deploy
+and sleeps through a quarter of real fires.
+
+**One caveat that bounds the tiny-plume number.** `has_tiny_plume` means the frame contains at
+least one box under the size threshold — it does not mean that is the *only* thing in frame. Many
+of those frames also carry larger smoke, so 96% is recall on *frames containing* a tiny plume,
+not on frames where a tiny plume is all there is. The honest version of that measurement needs a
+tiny-only subset and has not been run.
 
 ## Stage B — put it on the device
 
