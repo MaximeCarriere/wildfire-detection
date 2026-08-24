@@ -1651,6 +1651,7 @@ def fig_xp15(records) -> Path | None:
     """
     import matplotlib.pyplot as plt
     import numpy as np
+    from matplotlib.patches import Rectangle
 
     src = sorted(RAW.glob("xp15_gate_*.json"))
     if not src:
@@ -1672,36 +1673,52 @@ def fig_xp15(records) -> Path | None:
                         f"{verdict}. Trained off-device; nothing has run on the ESP32 yet.",
                    y=1.02)
 
-    # --- 1. the confusion rows, at both operating points ---------------------
-    # Two thresholds are drawn together because they are two different products,
-    # not a tuning detail: one wakes on nearly every fire and cries wolf on one
-    # empty frame in seven, the other is quiet enough to deploy and sleeps through
-    # a quarter of real fires. Showing only one hides the choice being made.
+    # --- 1. the confusion matrix, at both operating points -------------------
+    # Row-normalised: each row is one ground-truth category and sums to 100%, so a
+    # cell reads "of the frames that were really this, the gate did that". Raw
+    # counts would say almost nothing here, since 'none' has 2005 frames and 'fire'
+    # 220 and the class balance would dominate every colour.
+    #
+    # Both thresholds are drawn because they are two different products rather than
+    # a tuning detail: one wakes on nearly every fire and cries wolf on one empty
+    # frame in seven, the other is quiet enough to deploy and sleeps through a
+    # quarter of real fires.
     ax = axes[0]
     op = d.get("metrics_at_operating_point")
     rows = [c for c in ("none", "smoke", "fire", "both") if c in conf]
-    ys = np.arange(len(rows))[::-1]
-    h = 0.34 if op else 0.6
-    series = [(conf, m["threshold"], None)]
-    if op:
-        series.append((op["confusion_pct"], op["threshold"], "///"))
-    for k, (cm, thr, hatch) in enumerate(series):
-        off = (0.5 - k) * h if len(series) > 1 else 0
-        woke = [cm[c]["woke_pct"] for c in rows]
-        cols = [style.RED if c == "none" else style.AQUA for c in rows]
-        ax.barh(ys + off, woke, height=h * 0.92, color=cols, hatch=hatch,
-                edgecolor="white", linewidth=0.6, zorder=3, label=f"threshold {thr}")
-        for y, w in zip(ys, woke):
-            ax.text(min(w + 1.5, 86), y + off, f"{w:.0f}%", va="center",
+    mats = [(conf, m["threshold"])] + ([(op["confusion_pct"], op["threshold"])] if op else [])
+
+    nr = len(rows)
+    ax.set_xlim(0, 2); ax.set_ylim(0, len(mats) * (nr + 1.15))
+    ax.axis("off")
+
+    for k, (cm, thr) in enumerate(mats):
+        y0 = (len(mats) - 1 - k) * (nr + 1.15)
+        ax.text(1, y0 + nr + 0.62, f"threshold {thr}", ha="center", va="center",
+                fontsize=9.5, fontweight="bold", color=style.INK)
+        for col, key, lab in ((0, "asleep_pct", "stayed asleep"), (1, "woke_pct", "woke")):
+            ax.text(col + 0.5, y0 + nr + 0.12, lab, ha="center", va="center",
                     fontsize=8.5, color=style.INK_2)
-    ax.set_yticks(ys)
-    ax.set_yticklabels([f"{c}\n(n={conf[c]['n']})" for c in rows], fontsize=9)
-    ax.set_xlim(0, 100)
-    ax.set_xlabel("% of frames the gate woke on")
-    ax.set_title("1. What it wakes for\nred row = false alarms", fontsize=10.5, pad=8)
-    # Upper right: the 'none' row is the short one, so that corner is free.
-    ax.legend(fontsize=8, frameon=False, loc="upper right")
-    style.tidy(ax); ax.grid(axis="y", visible=False)
+        for r, c in enumerate(rows):
+            y = y0 + nr - 1 - r
+            for col, key in ((0, "asleep_pct"), (1, "woke_pct")):
+                v = cm[c][key]
+                # Green where the gate did the right thing, red where it did not:
+                # for 'none' the correct answer is to stay asleep, for every other
+                # row it is to wake.
+                good = (key == "asleep_pct") if c == "none" else (key == "woke_pct")
+                base = style.AQUA if good else style.RED
+                ax.add_patch(Rectangle((col, y), 1, 1, facecolor=base,
+                                       alpha=0.15 + 0.75 * v / 100,
+                                       edgecolor="white", linewidth=1.5, zorder=3))
+                ax.text(col + 0.5, y + 0.5, f"{v:.0f}%", ha="center", va="center",
+                        fontsize=10, fontweight="bold",
+                        color="white" if v > 55 else style.INK, zorder=4)
+            ax.text(-0.06, y + 0.5, f"{c}\n(n={cm[c]['n']})", ha="right", va="center",
+                    fontsize=8.5, color=style.INK)
+
+    ax.set_title("1. Confusion on the test set (%)\neach row sums to 100",
+                 fontsize=10.5, pad=8)
 
     # --- 2. recall by how big the plume is ----------------------------------
     ax = axes[1]
@@ -1712,7 +1729,8 @@ def fig_xp15(records) -> Path | None:
     xs = np.arange(len(vals))
     ax.bar(xs, [v * 100 for _, v in vals], width=0.6, color=style.BLUE, zorder=3)
     for x, (_, v) in zip(xs, vals):
-        ax.text(x, v * 100 + 2, f"{v*100:.0f}%", ha="center", fontsize=9.5)
+        ax.text(x, v * 100 - 4, f"{v*100:.0f}%", ha="center", va="top", fontsize=10,
+                color="white", fontweight="bold", zorder=4)
     ax.axhline(70, color=style.RED, linestyle="--", linewidth=1.3, zorder=2)
     ax.text(-0.45, 73, "the bar: 70% on small", ha="left", fontsize=8,
             color=style.RED)
@@ -1756,9 +1774,11 @@ def fig_xp15(records) -> Path | None:
             # raw counts would show only the class balance.
             ax.plot(centres, h / max(h.sum(), 1) * 100, "-", color=col,
                     linewidth=1.8, label=c, zorder=3)
-    ax.axvline(m["threshold"], color=style.INK, linestyle=":", linewidth=1.4, zorder=2)
-    ax.text(m["threshold"] + 0.02, ax.get_ylim()[1] * 0.92,
-            f"threshold {m['threshold']}", fontsize=8, color=style.INK_2)
+    for thr, lab, col in ((m["threshold"], "default", style.MUTED),
+                          ((op or m)["threshold"], "shipping", style.INK)):
+        ax.axvline(thr, color=col, linestyle=":", linewidth=1.4, zorder=2)
+        ax.text(thr - 0.02, ax.get_ylim()[1] * 0.55, f"{lab} {thr}", fontsize=8,
+                color=col, rotation=90, ha="right", va="center")
     ax.set_xlabel("gate score")
     ax.set_ylabel("% of that category's frames")
     ax.set_title("4. Are the classes separated?\nscore distribution", fontsize=10.5, pad=8)
