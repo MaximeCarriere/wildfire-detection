@@ -58,6 +58,10 @@ def main() -> None:
                     help="test frames per content category")
     ap.add_argument("--calib", type=int, default=200,
                     help="training frames for the int8 quantizer")
+    ap.add_argument("--all-test", action="store_true",
+                    help="also dump the whole test split, so the int8 model can be "
+                         "scored on all 4,306 frames on a machine with TensorFlow "
+                         "but no dataset")
     args = ap.parse_args()
 
     import cv2
@@ -110,6 +114,24 @@ def main() -> None:
         calib.append(cv2.resize(im, (args.res, args.res), interpolation=cv2.INTER_AREA))
     np.savez_compressed(OUT / "frames_calib.npz",
                         frames=np.stack(calib).astype("uint8"))
+
+    if args.all_test:
+        frames_all, y_all, tiny_all, small_all, content_all = [], [], [], [], []
+        for smp in samples:
+            im = cv2.imread(str(smp.image), cv2.IMREAD_GRAYSCALE)
+            if im is None:
+                continue
+            frames_all.append(cv2.resize(im, (args.res, args.res),
+                                         interpolation=cv2.INTER_AREA))
+            y_all.append(0.0 if smp.is_background else 1.0)
+            tiny_all.append(bool(smp.has_tiny_plume))
+            small_all.append(bool(smp.has_small_plume))
+            content_all.append(smp.content)
+        np.savez_compressed(
+            OUT / "frames_all_test.npz", frames=np.stack(frames_all).astype("uint8"),
+            labels=np.array(y_all, "float32"), tiny=np.array(tiny_all),
+            small=np.array(small_all), content=np.array(content_all))
+        log(f"  full test split: {len(frames_all)} frames")
 
     kb = sum(f.stat().st_size for f in OUT.glob("*.npz")) / 1024
     log(f"wrote {OUT.name}/frames_test.npz and frames_calib.npz ({kb:.0f} KB total)")

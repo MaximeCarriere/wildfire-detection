@@ -51,6 +51,12 @@ namespace {
 // Sized by trial: start high, read the "arena used" line this sketch prints, then
 // trim. Too small fails loudly at AllocateTensors; too large only wastes PSRAM, so
 // erring high on the first flash is the cheaper mistake.
+// How long the sustained phase runs, in milliseconds. Long enough for the die to
+// reach a steady temperature; override from platformio.ini for a longer soak.
+#ifndef SUSTAIN_MS
+#define SUSTAIN_MS (5 * 60 * 1000UL)
+#endif
+
 #ifndef ARENA_KB
 #define ARENA_KB 500
 #endif
@@ -227,6 +233,37 @@ void loop() {
   Serial.printf("arena %u KB requested, %u bytes used, in %s\n",
                 (unsigned)(kArenaSize / 1024),
                 (unsigned)g_interpreter->arena_used_bytes(), g_arena_where);
+
+  // --- sustained run -------------------------------------------------------
+  // Every latency figure above comes from eight inferences in three seconds. A
+  // gate runs for weeks, and this board is widely reported to run hot, so the
+  // question is whether 340 ms is what it does or only what it does cold.
+  // Reports die temperature alongside latency; if the part throttles, the two
+  // move together and the effect is visible rather than inferred.
+  Serial.println("\nsustained run: latency and die temperature over time");
+  Serial.println("elapsed_s,mean_ms,temp_c");
+  const uint32_t t_start = millis();
+  uint32_t block_us = 0;
+  int block_n = 0;
+  while (millis() - t_start < SUSTAIN_MS) {
+    const unsigned char* frame = g_frames + (size_t)(block_n % N_FRAMES) * FRAME_BYTES;
+    for (int p = 0; p < FRAME_BYTES; p++) {
+      float v = frame[p] / 255.0f;
+      int32_t q = lrintf(v / g_input->params.scale) + g_input->params.zero_point;
+      g_input->data.int8[p] = (int8_t)(q < -128 ? -128 : (q > 127 ? 127 : q));
+    }
+    uint32_t t0 = micros();
+    if (g_interpreter->Invoke() != kTfLiteOk) break;
+    block_us += micros() - t0;
+    block_n++;
+    if (block_n % 20 == 0) {
+      Serial.printf("%lu,%.1f,%.1f\n", (unsigned long)((millis() - t_start) / 1000),
+                    block_us / 1000.0f / 20, temperatureRead());
+      block_us = 0;
+    }
+  }
+  Serial.printf("sustained: %d inferences over %lu s\n", block_n,
+                (unsigned long)((millis() - t_start) / 1000));
 
   Serial.println("\nholding; reset to run again");
   while (true) { delay(10000); }

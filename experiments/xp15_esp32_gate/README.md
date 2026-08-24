@@ -264,6 +264,24 @@ halts the core regardless of what the app is doing:
 pio run -e recover -t upload     # goes in over JTAG, no BOOT button needed
 ```
 
+### The model that ships, scored on all 4,306 frames
+
+Every accuracy number above the board section comes from the float32 checkpoint. The board runs
+the int8 model, and quantization moves scores by a mean of 0.018 — enough to change which
+threshold satisfies the deployment rule. So the int8 model was scored on the full split too:
+
+| | float32 | **int8, as deployed** |
+|---|---:|---:|
+| operating threshold | 0.99 | **0.97** |
+| false wakes on empty frames | 3.4% | **5.0%** |
+| recall, small plumes | 77.4% | **82.8%** |
+| smoke / fire / both | 69 / 76 / 76% | **76 / 80 / 82%** |
+
+**Quantization costs nothing here.** The two models land in the same place; int8 simply reaches
+it at a slightly lower threshold, because the drift moves the whole score distribution rather
+than scrambling it. The figures on this page are built from the int8 record for that reason —
+a chart captioned "the gate" should show the one that runs.
+
 ### What to measure, in this order
 
 1. **Does it agree?** The sketch prints `PORT OK` or `PORT MISMATCH` per run, and `check_board.py`

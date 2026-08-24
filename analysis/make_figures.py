@@ -1634,6 +1634,21 @@ def fig_xp06e9(records) -> Path | None:
     fig.tight_layout()
     return save(fig, "xp06e9_netadapt.png")
 
+def _xp15_record():
+    """XP15's results, preferring the quantized model over its float ancestor.
+
+    Both are the same 4,306 frames and the same network; one is what was trained
+    and the other is what runs on the board. Quantization moves scores enough to
+    change which threshold satisfies the deployment rule, so a figure captioned
+    "the gate" should show the one that ships.
+    """
+    for name in ("xp15_gate_96px_w1.0_int8_full.json", "xp15_gate_96px_w1.0.json"):
+        p = RAW / name
+        if p.exists():
+            return json.loads(p.read_text())
+    hits = sorted(RAW.glob("xp15_gate_*.json"))
+    return json.loads(hits[0].read_text()) if hits else None
+
 def fig_xp15(records) -> Path | None:
     """The ESP32 gate: what it wakes for, what it sleeps through, and at what cost.
 
@@ -1653,10 +1668,12 @@ def fig_xp15(records) -> Path | None:
     import numpy as np
     from matplotlib.patches import Rectangle
 
-    src = sorted(RAW.glob("xp15_gate_*.json"))
-    if not src:
+    # The int8 record when it exists, because that is the model the board runs;
+    # the float one otherwise. Chosen by name rather than by modification time,
+    # which would swap the figure's subject whenever a file was touched.
+    d = _xp15_record()
+    if d is None:
         return None
-    d = json.loads(max(src, key=lambda f: f.stat().st_mtime).read_text())
     m = d["metrics"]
     conf, sw = m.get("confusion_pct"), d.get("threshold_sweep")
     if not conf:
@@ -1664,13 +1681,16 @@ def fig_xp15(records) -> Path | None:
 
     fig, axes = plt.subplots(1, 4, figsize=(19.5, 4.4),
                              gridspec_kw={"width_ratios": [1.15, 1.0, 1.1, 1.0]})
-    fig.suptitle("A 131 KB gate on a EUR 27 board: what would it wake the detector for?",
+    which = "int8, as it runs on the board" if d.get("quantization") else "float32"
+    fig.suptitle(f"A 180 KB int8 gate on a EUR 27 board: what does it wake the detector for?"
+                 if d.get("quantization") else
+                 "A 131 KB gate on a EUR 27 board: what would it wake the detector for?",
                  y=1.10)
     verdict = (f"PASSES the port rule at threshold {d['operating_point']['threshold']}"
                if d.get("operating_point") else
                "does not meet the port rule at any threshold")
     style.subtitle(fig, f"{d['input_res']}px grayscale, {d['params']/1000:.0f}k parameters. "
-                        f"{verdict}. Trained off-device; nothing has run on the ESP32 yet.",
+                        f"{verdict}. Model: {which}.",
                    y=1.02)
 
     # --- 1. the confusion matrix, at both operating points -------------------
@@ -1806,10 +1826,9 @@ def fig_xp15_confusion(records) -> Path | None:
     import numpy as np
     from matplotlib.patches import Rectangle
 
-    src = sorted(RAW.glob("xp15_gate_*.json"))
-    if not src:
+    d = _xp15_record()
+    if d is None:
         return None
-    d = json.loads(max(src, key=lambda f: f.stat().st_mtime).read_text())
     pf = d.get("per_frame")
     if not pf:
         return None
