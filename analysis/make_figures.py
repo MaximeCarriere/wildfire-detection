@@ -1862,8 +1862,12 @@ def fig_xp15_confusion(records) -> Path | None:
                              gridspec_kw={"width_ratios": [1] * len(thrs) + [1.25]})
     fig.suptitle("The ESP32 gate on the D-Fire test set: 4,306 frames, one binary decision",
                  y=1.06)
-    style.subtitle(fig, f"{d['input_res']}px grayscale, {d['params']/1000:.0f}k parameters. "
-                        f"Cells show count and row percentage; each row sums to 100%.", y=0.98)
+    # Says where these were computed, because "the ESP32 gate" reads as if the chip
+    # produced them. It produced 8 of them, to within 0.004 and with no decision
+    # changed; the rest would take 25 minutes on the board to reconfirm.
+    style.subtitle(fig, f"{d['input_res']}px grayscale, {d['params']/1000:.0f}k parameters, "
+                        f"int8 \u2014 the model the board runs, scored off-device. Cells show "
+                        f"count and row percentage; each row sums to 100%.", y=0.98)
 
     labels = ["no fire/smoke", "fire or smoke"]
     for ax, t in zip(axes, thrs):
