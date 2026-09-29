@@ -3308,12 +3308,163 @@ def fig_xp07e6(records) -> Path | None:
     return save(fig, "xp07e6_mixed.png")
 
 
+
+
+def fig_xp07e9b(records) -> Path | None:
+    """Within quantization: which decision matters, and what does each one cost?"""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e9b_quant.json")
+    if not d:
+        return None
+    sim = d["simulated"]["rows"]
+    eng = d["engines"]["rows"]
+    ranking = d["axis_ranking"]
+    if not sim or not ranking:
+        return None
+
+    axis_colour = {"range": style.RED, "target": "#8e44ad",
+                   "bit-width": style.ORANGE, "granularity": style.MUTED,
+                   "composition": style.BLUE, "engine": style.AQUA, "—": style.INK}
+    nice = {"range": "range\n(calibration)", "target": "target\n(what is quantized)",
+            "bit-width": "bit-width", "granularity": "granularity\n(scale count)"}
+
+    fig = plt.figure(figsize=(17.0, 6.2))
+    gs = fig.add_gridspec(1, 3, width_ratios=[0.95, 1.5, 1.15], wspace=0.34)
+    fig.suptitle("Within quantization, the decisions are not equal — and the one that "
+                 "costs nothing matters most", y=1.04, fontsize=14.5)
+    style.subtitle(fig, "Left and middle: fake-quant on the 1,721-image validation split. "
+                        "Right: TensorRT engines on the 4,306-image test split. Each block "
+                        "is normalised to its own unquantized baseline, because the two "
+                        "splits are 17 points apart.", y=0.975)
+
+    # ---- panel 1: how much each axis is worth ---------------------------
+    ax = fig.add_subplot(gs[0, 0])
+    order = list(reversed(ranking))
+    names = [nice.get(r["axis"], r["axis"]) for r in order]
+    vals = [r["map50_spread_pct"] for r in order]
+    tiny = [r["tiny_spread_pct"] for r in order]
+    y = np.arange(len(order))
+    ax.barh(y - 0.19, vals, height=0.36, color=style.BLUE, zorder=3, label="aggregate mAP50")
+    ax.barh(y + 0.19, tiny, height=0.36, color=style.ORANGE, zorder=3, label="tiny plumes")
+    for i, (v, t) in enumerate(zip(vals, tiny)):
+        ax.text(v + 3, i - 0.19, f"{v:.0f}", va="center", fontsize=9.5,
+                color=style.BLUE, fontweight="bold")
+        ax.text(t + 3, i + 0.19, f"{t:.0f}", va="center", fontsize=9.5,
+                color=style.ORANGE, fontweight="bold")
+    ax.set_yticks(y); ax.set_yticklabels(names, fontsize=9.5)
+    ax.set_xlim(0, max(max(vals), max(tiny)) * 1.28)
+    ax.set_xlabel("spread across that axis's arms,\n% of the unquantized model")
+    ax.set_title("1. What each decision is worth", fontsize=12, loc="left")
+    ax.legend(loc="lower right", fontsize=9)
+    style.tidy(ax, ygrid=False)
+
+    # ---- panel 2: every simulated arm, accuracy vs distant smoke --------
+    ax = fig.add_subplot(gs[0, 1])
+    for r in sim:
+        if r["kept_pct"] is None or r["tiny_kept_pct"] is None:
+            continue
+        c = axis_colour.get(r["axis"], style.MUTED)
+        ax.scatter([r["kept_pct"]], [r["tiny_kept_pct"]], s=95, color=c, alpha=0.85,
+                   zorder=4, edgecolor="white", linewidth=1.1)
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.0, zorder=2)
+    ax.axvline(100, color=style.INK_2, ls="--", lw=1.0, zorder=2)
+    ax.plot([0, 135], [0, 135], color=style.MUTED, ls=":", lw=1.0, zorder=1)
+    ax.text(52, 44, "below this line, distant smoke\nsuffers more than the headline",
+            fontsize=8.6, color=style.MUTED, rotation=34, ha="center")
+    for r in sim:
+        lab = None
+        if r["label"].startswith("calibration: minmax"):
+            lab = "min-max\n(what we shipped)"
+        elif r["label"].startswith("calibration: percentile_99.99"):
+            lab = "percentile 99.99"
+        elif "head_out_decode_out" in r["label"] and "tiny" in r["label"]:
+            lab = "3 convs in FP16"
+        elif r["label"].startswith("target: w8_only"):
+            lab = "weights only"
+        if lab and r["kept_pct"] is not None:
+            # "weights only" and "percentile 99.99" both sit at (~100, ~97), so
+            # they are pushed to opposite sides rather than stacked.
+            off = (-9, 16) if lab.startswith("weights") else (-9, -18)
+            if lab.startswith("3 convs"):
+                off = (-9, 8)
+            elif lab.startswith("min-max"):
+                off = (-10, 4)
+            ax.annotate(lab, (r["kept_pct"], r["tiny_kept_pct"]),
+                        textcoords="offset points", xytext=off, ha="right",
+                        fontsize=8.8, fontweight="bold",
+                        color=axis_colour.get(r["axis"], style.INK))
+    ax.set_xlim(25, 108); ax.set_ylim(-5, 140)
+    ax.set_xlabel("aggregate mAP50 kept, %")
+    ax.set_ylabel("tiny-plume mAP50 kept, %")
+    ax.set_title("2. Every quantization arm measured\n"
+                 "(the arms at 0 quantize the box-decode output)", fontsize=12, loc="left")
+    handles = [plt.Line2D([], [], marker="o", ls="", color=axis_colour[a], markersize=8,
+                          label=nice.get(a, a).replace("\n", " "))
+               for a in ("range", "target", "granularity", "bit-width", "composition")
+               if any(r["axis"] == a for r in sim)]
+    ax.legend(handles=handles, loc="lower left", fontsize=8.6)
+    style.tidy(ax)
+
+    # ---- panel 3: what survived into an engine --------------------------
+    ax = fig.add_subplot(gs[0, 2])
+    eng = [r for r in eng if r.get("fps_batched")]
+    short = {"engine: fp16": "FP16 (the line)", "engine: int8": "INT8",
+             "engine: int8_fp16": "INT8 + FP16", "engine: int8_head_fp16": "INT8, head pinned",
+             "engine: qdq_percentile9999_pc": "path A: percentile, 8 imgs",
+             "engine: XP10 INT8 min-max": "XP10 INT8 min-max",
+             "engine: XP10 INT8 entropy": "XP10 INT8 entropy"}
+    # The three path-B INT8 arms land on the same point to within a pixel
+    # (712-720 img/s, 30.6-30.7% tiny), so they are drawn once and labelled as a
+    # group. Printing three labels there just overprints them.
+    groups, used = [], set()
+    for i, r in enumerate(eng):
+        if i in used:
+            continue
+        near = [j for j in range(i, len(eng))
+                if j not in used
+                and abs(eng[j]["fps_batched"] - r["fps_batched"]) < 12
+                and abs((eng[j]["tiny_kept_pct"] or 0) - (r["tiny_kept_pct"] or 0)) < 1.5]
+        used.update(near)
+        groups.append([eng[j] for j in near])
+
+    for g in groups:
+        r = g[0]
+        lab = r["label"]
+        if len(g) > 1:
+            lab = f"{len(g)} path-B INT8 arms\n(identical to 0.1%)"
+            c = style.AQUA
+        else:
+            lab = short.get(lab, lab)
+            c = (style.INK if lab.startswith("FP16") else
+                 style.RED if "entropy" in lab else
+                 "#8e44ad" if "path A" in lab else style.AQUA)
+        ax.scatter([r["fps_batched"]], [r["tiny_kept_pct"]], s=110, color=c,
+                   alpha=0.85, zorder=4, edgecolor="white", linewidth=1.1)
+        dy = 13 if r["tiny_kept_pct"] < 60 else -22
+        ax.annotate(lab, (r["fps_batched"], r["tiny_kept_pct"]),
+                    textcoords="offset points", xytext=(0, dy), ha="center",
+                    fontsize=8.6, color=style.INK, fontweight="bold")
+
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.0, zorder=2)
+    ax.set_ylim(-8, 125)
+    ax.set_xlabel("throughput, images/s at batch 16")
+    ax.set_ylabel("tiny-plume mAP50 kept, %")
+    ax.set_title("3. What reached an engine\n"
+                 "(no engine keeps more than 46% of distant smoke)",
+                 fontsize=12, loc="left")
+    style.tidy(ax)
+
+    return save(fig, "xp07e9b_quant.png")
+
+
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
             fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9, fig_xp15, fig_xp15_confusion,
             fig_xp06e6,
             fig_xp06e7,
             fig_xp07_concepts, fig_xp07_head, fig_xp07e9,
-            fig_xp07e9_fire, fig_xp07e9_tiny, fig_xp07e1, fig_xp07e2, fig_xp07e4, fig_xp07e5, fig_xp07e3, fig_xp07e6]
+            fig_xp07e9_fire, fig_xp07e9_tiny, fig_xp07e1, fig_xp07e2, fig_xp07e4, fig_xp07e5, fig_xp07e3, fig_xp07e6, fig_xp07e9b]
 
 
 # --------------------------------------------------------------------------

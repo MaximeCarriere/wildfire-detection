@@ -138,7 +138,7 @@ Two more terms this page uses constantly, defined here rather than at each use:
 | [E6](#e6-mixed-precision-act-on-e1s-map) | target | mixed precision: E1's map applied — keep the head in FP16 | ✅ **3 of 60 convs in FP16 takes distant smoke from 38% to 84–129%, for 29 KB** |
 | [E7](#e7-ptq-vs-qat-fairly) | effort | QAT vs the best PTQ arm, matched budget | ⏸ not run — but **costed at 9.0 h**, an overnight run on this board ([handoff](HANDOFF_TO_GPU.md)) |
 | [E8](#e8-below-8-bits-and-storage-only-compression) | bit-width | INT4 / codebook / storage-only compression | ✅ **INT4 costs 10%; the Deep Compression codebook is dominated by plain 4-bit rounding** |
-| [E9](#e9-the-frontier--every-technique-against-every-other) | — | **every technique in the series against every other** | ✅ no outright winner — and **[flame](#e9a-flame-on-its-own) and [distant smoke](#e9b-distant-smoke-on-its-own) rank them oppositely** |
+| [E9](#e9-the-frontier-quantization-first-then-everything-else) | — | which quantization decision matters, then every technique in the series against every other | ✅ **[calibration and what-you-quantize decide it](#e9a-quantization-on-its-own--which-decision-actually-matters); granularity is worth 4.5%.** Across families no outright winner — and [flame](#e9c-flame-on-its-own) and [distant smoke](#e9d-distant-smoke-on-its-own) rank them oppositely |
 | [E10](#e10-composition-prune-then-quantize) | composition | do the two XPs stack? XP6's best pruned model, quantized | ✅ **yes on aggregate, badly on distant smoke — 19.5% of it survives both** |
 
 Each section below is one experiment. **The unquantized FP16 model is the top row of every
@@ -1045,7 +1045,7 @@ cost. `--skip-gptq` is what produced the table above.
 
 ---
 
-## E9. The frontier — every technique against every other
+## E9. The frontier: quantization first, then everything else
 
 > **Axis:** none — the summary of the whole compression arc &nbsp;·&nbsp; **Asks:** which technique
 > actually buys the most? &nbsp;·&nbsp; **Answer:** ✅ **none of them, outright.** The winner changes
@@ -1053,7 +1053,11 @@ cost. `--skip-gptq` is what produced the table above.
 > distant smoke.
 
 **This is the last experiment of the series and the only one whose subject is the other
-experiments.** Four families of *compression* have now been measured on this board — feed the
+experiments.** It is in two halves. **[E9a](#e9a-quantization-on-its-own--which-decision-actually-matters)
+ranks the decisions inside quantization** — the question this XP is actually about. **E9b widens it
+to the whole compression arc**, which is a different question and is kept separate for that reason.
+
+Four families of *compression* have now been measured on this board — feed the
 network a smaller image (XP2), delete channels (XP6), zero weights in the pattern the hardware
 understands (XP6-E4), and compute in fewer bits (XP7/XP10). Each was judged inside its own study,
 against the same line. None of them had ever been put on one chart.
@@ -1068,6 +1072,49 @@ would hide that: **accuracy** (mAP50 on the frozen test set), **throughput** (im
 **latency** (batch-1 ms — a different question on a launch-bound board), and **size** (the engine
 on disk, which on an 8 GB shared-memory box is a constraint and not bookkeeping). Energy rides
 along as the marker area.
+
+### E9a. Quantization on its own — which decision actually matters
+
+Before widening the comparison, the narrower question: **of the choices XP7 moved, which ones are
+worth anything?** Every arm in this study is collected here and tagged with the axis it moves, so
+the result reads as a ranking of *decisions* rather than a list of runs.
+
+![Within quantization, the decisions are not equal](../../results/figures/xp07e9b_quant.png)
+
+| axis | what it changes | spread, aggregate mAP50 | spread, distant smoke |
+|---|---|---:|---:|
+| **target** | what gets quantized — weights, activations, which layers | **100.0%** | **129.4%** |
+| **range** | how the clipping range is chosen (calibration) | **65.4%** | **94.6%** |
+| bit-width | 8 / 4 bits, codebook | 28.8% | 61.5% |
+| granularity | one scale per tensor, channel or group | **4.5%** | **5.4%** |
+
+*Spread = the gap between that axis's best and worst arm, as a share of the unquantized model.*
+
+**The ranking is close to the inverse of the attention these decisions usually get.** Granularity —
+per-tensor versus per-channel, the knob every quantization tutorial opens with — is worth **4.5%**
+here, and most of that is the asymmetric zero point rather than the scale count (E3). Calibration,
+which most toolchains do not even surface as a choice, is worth **65%**. And *what* you quantize is
+worth everything: the same network, at the same bit-width, with the same calibration, scores
+anywhere from **0.0000 to 0.9333** depending only on which tensors are left alone.
+
+**The two decisions that dominate both cost nothing.** Picking percentile 99.99 over min-max is a
+config string and produces a byte-identical 7.08 MB model. Leaving three of sixty convolutions in
+FP16 costs **29 KB**. Neither buys its accuracy with size, speed, or training time — which is the
+single most useful sentence on this page for anyone deploying INT8.
+
+**Below the diagonal in panel 2 is where distant smoke suffers more than the headline**, and almost
+every arm sits there. That is the shape of the whole study: aggregate mAP50 is a poor proxy for the
+capability this detector exists to provide, and the arms that look cheapest on it are often the
+most expensive on the slice that matters.
+
+**And almost none of it reached an engine.** Panel 3 is the sobering half: **no engine built in
+XP7 keeps more than 46% of the line's distant-smoke accuracy.** The simulated arms that do —
+percentile calibration at 95%, the three-layer split at 84–129% — are blocked by the toolchain,
+not by the hardware. TensorRT's own calibrator offers only entropy and min-max, and the layer
+split has to travel through a QDQ graph that took four fixes to build at all. **The gap between
+what this detector can tolerate and what the tooling will express is the real finding of E9a.**
+
+### E9b. Every technique in the series, against every other
 
 ![Every technique in the series, on four axes](../../results/figures/xp07e9_frontier.png)
 
@@ -1129,7 +1176,7 @@ that is the difference between a thermal budget that holds and one that does not
 not a tiebreak — but nothing here forces a choice between energy and accuracy that the accuracy
 axis had not already forced.
 
-### E9a. Flame, on its own
+### E9c. Flame, on its own
 
 ![Flame: every technique costs more here than the headline number admits](../../results/figures/xp07e9_fire.png)
 
@@ -1158,7 +1205,7 @@ the page: it gives up four points of retention to 2:4 sparsity and buys 47% more
 not have written from aggregate mAP50, and it is the opposite of the sentence the next section
 produces.
 
-### E9b. Distant smoke, on its own
+### E9d. Distant smoke, on its own
 
 ![Distant smoke: the ranking that aggregate mAP50 hides](../../results/figures/xp07e9_tiny.png)
 
@@ -1388,6 +1435,7 @@ python experiments/xp07_quant/e6_mixed.py --from-e1        # uniform / head-out 
 python experiments/xp07_quant/e7_cost.py                   # what 12 epochs costs, measured
 python experiments/xp07_quant/e7_qat.py --prove-loop --post-epochs 12
 python experiments/xp07_quant/e8_lowbit.py                 # INT4 / codebook / Huffman, sizes
+python experiments/xp07_quant/e9b_quant.py --print-table   # quantization, decision by decision
 python experiments/xp07_quant/e9_frontier.py --print-table # every technique vs every other
 python experiments/xp07_quant/test_quant.py                # CPU self-checks, seconds
 python analysis/make_figures.py                            # redraws every figure on this page
