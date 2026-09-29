@@ -145,11 +145,29 @@ def run_calibration(model, quantizer, n_images: int, *, res: int = RES,
 
 
 def score(model, samples, tag: str, *, res: int = RES, half: bool = True) -> dict:
-    """Accuracy for a live model, through the frozen evaluation harness."""
+    """Accuracy for a live model, through the frozen evaluation harness.
+
+    **Scoring must not change the model it scores.** ``Yolov5Detector.from_model``
+    casts to half *in place* when ``half=True``, which is harmless for the sweeps
+    that score a variant and discard it — and fatal for anything that trains
+    afterwards, because ``GradScaler`` refuses FP16 gradients:
+
+        ValueError: Attempting to unscale FP16 gradients.
+
+    That is every recovery arm in XP7 (E3, E5, E6, E7 and E10's second arm): they
+    score the damage, then fine-tune the same object. The dtype is captured here
+    and restored, so the harness in ``lib/`` keeps the behaviour XP6 depends on
+    and callers get a function that leaves its argument alone.
+    """
+    import torch
     from lib.detectors import Yolov5Detector
+
+    was_half = next(model.parameters()).dtype == torch.float16
     det = Yolov5Detector.from_model(model, input_res=res, half=half, name=tag)
     acc = evaluate(det, samples)
     del det
+    if half and not was_half:
+        model.float()
     return acc
 
 

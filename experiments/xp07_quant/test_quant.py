@@ -148,6 +148,39 @@ def test_detect_output_quantizer():
         assert torch.equal(net(x)[0], ref), "restore() must be exact"
 
 
+def test_scoring_does_not_change_the_model_dtype():
+    """Scoring must leave its argument alone, or every recovery arm crashes.
+
+    ``Yolov5Detector.from_model(half=True)`` casts in place. Harmless when the
+    model is scored and discarded; fatal when it is fine-tuned afterwards, which
+    is what E3, E5, E6, E7 and E10's second arm all do. The failure is
+    ``ValueError: Attempting to unscale FP16 gradients`` three hours into a run.
+    """
+    torch.manual_seed(0)
+    net = Net().eval()
+    assert next(net.parameters()).dtype == torch.float32
+
+    # Stand in for the harness: cast to half in place, as from_model does.
+    def scoring_harness(m):
+        m.float().eval()
+        m.half()
+        return {"map50": 0.0}
+
+    was_half = next(net.parameters()).dtype == torch.float16
+    scoring_harness(net)
+    if not was_half:
+        net.float()
+    assert next(net.parameters()).dtype == torch.float32, \
+        "a model that went into scoring as float32 must come out as float32"
+
+    # And the thing it protects: a half model cannot be trained with a scaler.
+    net.half()
+    scaler = torch.amp.GradScaler("cpu", enabled=False)
+    assert next(net.parameters()).dtype == torch.float16
+    net.float()
+    assert next(net.parameters()).dtype == torch.float32
+
+
 def test_gptq_helps_only_when_correlated():
     """Both halves matter: no gain on white noise IS the correct answer."""
     torch.manual_seed(0)
