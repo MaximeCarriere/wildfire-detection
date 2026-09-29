@@ -1,0 +1,267 @@
+{
+  "experiment": "xp07_e6_mixed",
+  "question": "mixed precision: E1's map applied \u2014 keep the head in FP16",
+  "axis": "target",
+  "split": "val",
+  "n_val_images": 1721,
+  "resolution": 512,
+  "calibration_list": "data/splits/xp07_calib.txt",
+  "baseline_fp16": {
+    "map5095": 0.631,
+    "map50": 0.9494,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.6801,
+        "map50": 0.9672
+      },
+      "fire": {
+        "map5095": 0.5819,
+        "map50": 0.9316
+      }
+    },
+    "small_plume": {
+      "map5095": 0.4552,
+      "map50": 0.8721
+    },
+    "tiny_plume": {
+      "map5095": 0.1091,
+      "map50": 0.3363
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 783,
+      "n_alarmed": 10,
+      "false_alarm_rate": 0.0128,
+      "correctly_silent_rate": 0.9872,
+      "false_boxes_per_bg_image": 0.014
+    },
+    "n_images": 1721,
+    "n_images_small_plume": 483,
+    "n_images_tiny_plume": 127,
+    "n_detections": 14073,
+    "fingerprint": "80cd8eb04506a466"
+  },
+  "rows": [
+    {
+      "arm": "uniform",
+      "config": "w8_a8_per_channel_minmax_sym",
+      "n_layers_quantized": 60,
+      "quantize_decode_output": true,
+      "layers_left_float": [],
+      "calibration_images": 512,
+      "size": {
+        "bytes": {
+          "quantized_weights": 7005952,
+          "untouched_params": 38142,
+          "weight_scales": 38268,
+          "activation_scales": 240,
+          "total": 7082602,
+          "fp16_baseline": 14050046
+        },
+        "params_total_m": 7.025,
+        "params_quantized_m": 7.006,
+        "params_quantized_pct": 99.7,
+        "weight_bits": 8,
+        "granularity": "per_channel",
+        "quantized_weights_mb": 7.006,
+        "untouched_params_mb": 0.038,
+        "weight_scales": 9567,
+        "weight_scale_overhead_kb": 38.27,
+        "activation_scales": 60,
+        "activation_scale_overhead_kb": 0.24,
+        "total_mb": 7.083,
+        "fp16_baseline_mb": 14.05,
+        "compression_x": 1.984,
+        "note": "counted from the configuration, not measured on disk \u2014 fake-quant leaves every tensor a float. E4's engine sizes are the measured counterpart and are larger by the engine's own metadata."
+      },
+      "damage": {
+        "map50": 0.0,
+        "map5095": 0.0,
+        "small_plume": 0.0,
+        "tiny_plume": 0.0,
+        "background": {
+          "conf": 0.25,
+          "n_background_images": 783,
+          "n_alarmed": 0,
+          "false_alarm_rate": 0.0,
+          "correctly_silent_rate": 1.0,
+          "false_boxes_per_bg_image": 0.0
+        },
+        "fingerprint": "96443c2b62229c6d"
+      },
+      "decode_output_scale": {
+        "scale": 11.639275550842285,
+        "zero_point": 0.0,
+        "represented_max": 1478.18798828125
+      },
+      "recovered": null,
+      "seconds": {
+        "calibration": 7.1,
+        "evaluation": 50.6
+      }
+    },
+    {
+      "arm": "head_out",
+      "config": "w8_a8_per_channel_minmax_sym",
+      "n_layers_quantized": 57,
+      "quantize_decode_output": true,
+      "layers_left_float": [
+        "model.17.cv3.conv",
+        "model.24.m.0",
+        "model.24.m.2"
+      ],
+      "calibration_images": 512,
+      "size": {
+        "bytes": {
+          "quantized_weights": 6976128,
+          "untouched_params": 97790,
+          "weight_scales": 37588,
+          "activation_scales": 228,
+          "total": 7111734,
+          "fp16_baseline": 14050046
+        },
+        "params_total_m": 7.025,
+        "params_quantized_m": 6.9761,
+        "params_quantized_pct": 99.3,
+        "weight_bits": 8,
+        "granularity": "per_channel",
+        "quantized_weights_mb": 6.976,
+        "untouched_params_mb": 0.098,
+        "weight_scales": 9397,
+        "weight_scale_overhead_kb": 37.59,
+        "activation_scales": 57,
+        "activation_scale_overhead_kb": 0.23,
+        "total_mb": 7.112,
+        "fp16_baseline_mb": 14.05,
+        "compression_x": 1.976,
+        "note": "counted from the configuration, not measured on disk \u2014 fake-quant leaves every tensor a float. E4's engine sizes are the measured counterpart and are larger by the engine's own metadata."
+      },
+      "damage": {
+        "map50": 0.0,
+        "map5095": 0.0,
+        "small_plume": 0.0,
+        "tiny_plume": 0.0,
+        "background": {
+          "conf": 0.25,
+          "n_background_images": 783,
+          "n_alarmed": 0,
+          "false_alarm_rate": 0.0,
+          "correctly_silent_rate": 1.0,
+          "false_boxes_per_bg_image": 0.0
+        },
+        "fingerprint": "96443c2b62229c6d"
+      },
+      "decode_output_scale": {
+        "scale": 11.639275550842285,
+        "zero_point": 0.0,
+        "represented_max": 1478.18798828125
+      },
+      "recovered": null,
+      "seconds": {
+        "calibration": 6.7,
+        "evaluation": 48.7
+      }
+    },
+    {
+      "arm": "head_out_decode_out",
+      "config": "w8_a8_per_channel_minmax_sym",
+      "n_layers_quantized": 57,
+      "quantize_decode_output": false,
+      "layers_left_float": [
+        "model.17.cv3.conv",
+        "model.24.m.0",
+        "model.24.m.2"
+      ],
+      "calibration_images": 512,
+      "size": {
+        "bytes": {
+          "quantized_weights": 6976128,
+          "untouched_params": 97790,
+          "weight_scales": 37588,
+          "activation_scales": 228,
+          "total": 7111734,
+          "fp16_baseline": 14050046
+        },
+        "params_total_m": 7.025,
+        "params_quantized_m": 6.9761,
+        "params_quantized_pct": 99.3,
+        "weight_bits": 8,
+        "granularity": "per_channel",
+        "quantized_weights_mb": 6.976,
+        "untouched_params_mb": 0.098,
+        "weight_scales": 9397,
+        "weight_scale_overhead_kb": 37.59,
+        "activation_scales": 57,
+        "activation_scale_overhead_kb": 0.23,
+        "total_mb": 7.112,
+        "fp16_baseline_mb": 14.05,
+        "compression_x": 1.976,
+        "note": "counted from the configuration, not measured on disk \u2014 fake-quant leaves every tensor a float. E4's engine sizes are the measured counterpart and are larger by the engine's own metadata."
+      },
+      "damage": {
+        "map50": 0.9278,
+        "map5095": 0.6001,
+        "small_plume": 0.8254,
+        "tiny_plume": 0.2836,
+        "background": {
+          "conf": 0.25,
+          "n_background_images": 783,
+          "n_alarmed": 11,
+          "false_alarm_rate": 0.014,
+          "correctly_silent_rate": 0.986,
+          "false_boxes_per_bg_image": 0.0166
+        },
+        "fingerprint": "bf2aacb6141e9a11"
+      },
+      "decode_output_scale": null,
+      "recovered": null,
+      "seconds": {
+        "calibration": 6.6,
+        "evaluation": 65.2
+      }
+    }
+  ],
+  "subsampled": false,
+  "float_layers": [
+    "model.24.m.2",
+    "model.24.m.0",
+    "model.17.cv3.conv"
+  ],
+  "split_evidence": {
+    "source": "xp07e1_sensitivity.json",
+    "arm": "w8a8",
+    "n_worst": 3,
+    "ranked_by": "map50",
+    "chosen": [
+      {
+        "layer": "model.24.m.2",
+        "map50": 0.9266,
+        "tiny_plume": 0.3128,
+        "rel_drop_pct": 2.402,
+        "is_head": true
+      },
+      {
+        "layer": "model.24.m.0",
+        "map50": 0.9295,
+        "tiny_plume": 0.1251,
+        "rel_drop_pct": 2.096,
+        "is_head": true
+      },
+      {
+        "layer": "model.17.cv3.conv",
+        "map50": 0.9414,
+        "tiny_plume": 0.3915,
+        "rel_drop_pct": 0.843,
+        "is_head": false
+      }
+    ]
+  },
+  "n_quantized": 57,
+  "gaps": {
+    "keeping_head_float_gains": 0.0,
+    "keeping_decode_float_gains": 0.9278,
+    "total_vs_uniform": 0.9278,
+    "remaining_gap_to_fp16": 0.0216
+  },
+  "recovery_epochs": null
+}

@@ -1,0 +1,5120 @@
+{
+  "experiment": "xp07_e4_engines",
+  "question": "the INT8 engine on the board: latency, energy, and what actually ran in INT8",
+  "axis": "none \u2014 the payoff measurement",
+  "board": "Jetson Orin Nano Super",
+  "build_path": "B \u2014 TensorRT internal calibration (the vendor default control)",
+  "split": "test",
+  "n_test_images": 4306,
+  "subsampled": false,
+  "resolution": 512,
+  "batch": 16,
+  "calibration": {
+    "n_images": 512,
+    "algorithm": "minmax",
+    "list": "data/splits/xp07_calib.txt"
+  },
+  "fp16_line": {
+    "map50": 0.7776,
+    "fps_batched": 474.0,
+    "j_per_1k": 51.8,
+    "small_plume": 0.6061,
+    "tiny_plume": 0.1376,
+    "engine_mb": 17.0
+  },
+  "arms": {
+    "fp16": {
+      "engine": "weights/xp07_yolov5s_fp16_512.engine",
+      "engine_mb": 16.73,
+      "build_seconds": 905.9,
+      "int8_requested": false,
+      "fp16_fallback_allowed": true,
+      "head_pinned_fp16": false,
+      "calibration_algorithm": null,
+      "precision_report": {
+        "engine": "xp07_yolov5s_fp16_512.engine",
+        "num_layers": 178,
+        "counts": {
+          "unknown": 130,
+          "fp16": 48
+        },
+        "convolution_counts": {
+          "unknown": 8,
+          "fp16": 48
+        },
+        "convolutions_total": 56,
+        "convolutions_in_int8": 0,
+        "convolutions_int8_pct": 0.0,
+        "layers": [
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.0/conv/Conv",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.0/conv/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_indexed_wo_smem_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x",
+            "is_convolution": true
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.1/conv/Conv + PWN(PWN(/model.1/act/Sigmoid), PWN(/model.1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.1/conv/Conv + PWN(PWN(/model.1/act/Sigmoid), PWN(/model.1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x64x32_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/cv1/conv/Conv || /model.2/cv2/conv/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "sm80_xmma_gemm_f16f16_f16f16_f16_tn_n_tilesize256x64x32_stage3_warpsize4x1x1_tensor16x8x16",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.2/cv1/act/Sigmoid), PWN(/model.2/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.2/m/m.0/cv1/conv/Conv + PWN(PWN(/model.2/m/m.0/cv1/act/Sigmoid), PWN(/model.2/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x32x32_stage4_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.2/m/m.0/cv2/act/Sigmoid), PWN(/model.2/m/m.0/cv2/act/Mul)), PWN(/model.2/m/m.0/Add))",
+            "precision": "fp16",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x32x32_stage4_war",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.2/cv2/act/Sigmoid), PWN(/model.2/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.2/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.2/cv3/conv/Conv + PWN(PWN(/model.2/cv3/act/Sigmoid), PWN(/model.2/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x32x32_stage4_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.3/conv/Conv + PWN(PWN(/model.3/act/Sigmoid), PWN(/model.3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv1/conv/Conv || /model.4/cv2/conv/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "sm80_xmma_gemm_f16f16_f16f16_f16_tn_n_tilesize256x64x32_stage3_warpsize4x1x1_tensor16x8x16",
+            "is_convolution": true
+          },
+          {
+            "name": "Reformatting CopyNode for Output Tensor 0 to /model.4/cv1/conv/Conv || /model.4/cv2/conv/Conv",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.4/cv1/act/Sigmoid), PWN(/model.4/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Output Tensor 0 to PWN(PWN(/model.4/cv1/act/Sigmoid), PWN(/model.4/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/m/m.0/cv1/conv/Conv + PWN(PWN(/model.4/m/m.0/cv1/act/Sigmoid), PWN(/model.4/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x64x32_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.0/cv2/act/Sigmoid), PWN(/model.4/m/m.0/cv2/act/Mul)), PWN(/model.4/m/m.0/Add))",
+            "precision": "fp16",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x64x32_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv1/conv/Conv + PWN(PWN(/model.4/m/m.1/cv1/act/Sigmoid), PWN(/model.4/m/m.1/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x64x32_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.1/cv2/act/Sigmoid), PWN(/model.4/m/m.1/cv2/act/Mul)), PWN(/model.4/m/m.1/Add))",
+            "precision": "fp16",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x64x32_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.4/cv2/act/Sigmoid), PWN(/model.4/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/m/m.1/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.4/cv3/conv/Conv + PWN(PWN(/model.4/cv3/act/Sigmoid), PWN(/model.4/cv3/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv3/conv/Conv + PWN(PWN(/model.4/cv3/act/Sigmoid), PWN(/model.4/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.5/conv/Conv + PWN(PWN(/model.5/act/Sigmoid), PWN(/model.5/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x128x32_stage3_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/cv1/conv/Conv || /model.6/cv2/conv/Conv",
+            "precision": "unknown",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "ampere_h16816gemm_256x128_ldg8_relu_stages_32x3_nn_v1",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.6/cv1/act/Sigmoid), PWN(/model.6/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/m/m.0/cv1/conv/Conv + PWN(PWN(/model.6/m/m.0/cv1/act/Sigmoid), PWN(/model.6/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.0/cv2/act/Sigmoid), PWN(/model.6/m/m.0/cv2/act/Mul)), PWN(/model.6/m/m.0/Add))",
+            "precision": "fp16",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv1/conv/Conv + PWN(PWN(/model.6/m/m.1/cv1/act/Sigmoid), PWN(/model.6/m/m.1/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.1/cv2/act/Sigmoid), PWN(/model.6/m/m.1/cv2/act/Mul)), PWN(/model.6/m/m.1/Add))",
+            "precision": "fp16",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv1/conv/Conv + PWN(PWN(/model.6/m/m.2/cv1/act/Sigmoid), PWN(/model.6/m/m.2/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.2/cv2/act/Sigmoid), PWN(/model.6/m/m.2/cv2/act/Mul)), PWN(/model.6/m/m.2/Add))",
+            "precision": "fp16",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.6/cv2/act/Sigmoid), PWN(/model.6/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/m/m.2/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/cv3/conv/Conv + PWN(PWN(/model.6/cv3/act/Sigmoid), PWN(/model.6/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x128x32_stage3_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.7/conv/Conv + PWN(PWN(/model.7/act/Sigmoid), PWN(/model.7/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x64_stage3_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/cv1/conv/Conv || /model.8/cv2/conv/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "sm80_xmma_gemm_f16f16_f16f16_f16_tn_n_tilesize128x128x32_stage4_warpsize2x2x1_tensor16x8x1",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.8/cv1/act/Sigmoid), PWN(/model.8/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.8/m/m.0/cv1/conv/Conv + PWN(PWN(/model.8/m/m.0/cv1/act/Sigmoid), PWN(/model.8/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize64x128x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.8/m/m.0/cv2/act/Sigmoid), PWN(/model.8/m/m.0/cv2/act/Mul)), PWN(/model.8/m/m.0/Add))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x64_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.8/cv2/act/Sigmoid), PWN(/model.8/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.8/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.8/cv3/conv/Conv + PWN(PWN(/model.8/cv3/act/Sigmoid), PWN(/model.8/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/cv1/conv/Conv + PWN(PWN(/model.9/cv1/act/Sigmoid), PWN(/model.9/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize64x128x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/m/MaxPool",
+            "precision": "unknown",
+            "layer_type": "CaskPooling",
+            "tactic": "sm50_xmma_pooling_coalescedC_NHWC_kMAX_3_False",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool",
+            "precision": "unknown",
+            "layer_type": "CaskPooling",
+            "tactic": "sm50_xmma_pooling_coalescedC_NHWC_kMAX_3_False",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_2/MaxPool",
+            "precision": "unknown",
+            "layer_type": "CaskPooling",
+            "tactic": "sm50_xmma_pooling_coalescedC_NHWC_kMAX_3_False",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv1/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv2/conv/Conv + PWN(PWN(/model.9/cv2/act/Sigmoid), PWN(/model.9/cv2/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/conv/Conv + PWN(PWN(/model.10/act/Sigmoid), PWN(/model.10/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize64x128x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.11/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.11/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.13/cv1/conv/Conv || /model.13/cv2/conv/Conv",
+            "precision": "unknown",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "ampere_h16816gemm_256x128_ldg8_relu_stages_32x3_nn_v1",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.13/cv1/act/Sigmoid), PWN(/model.13/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.13/m/m.0/cv1/conv/Conv + PWN(PWN(/model.13/m/m.0/cv1/act/Sigmoid), PWN(/model.13/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/m/m.0/cv2/conv/Conv + PWN(PWN(/model.13/m/m.0/cv2/act/Sigmoid), PWN(/model.13/m/m.0/cv2/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.13/cv2/act/Sigmoid), PWN(/model.13/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.13/cv3/conv/Conv + PWN(PWN(/model.13/cv3/act/Sigmoid), PWN(/model.13/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x256x32_stage3_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/conv/Conv + PWN(PWN(/model.14/act/Sigmoid), PWN(/model.14/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x64_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.15/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.15/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.17/cv1/conv/Conv || /model.17/cv2/conv/Conv",
+            "precision": "unknown",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "ampere_h16816gemm_128x256_ldg8_relu_nn_v1",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.17/cv1/act/Sigmoid), PWN(/model.17/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.17/m/m.0/cv1/conv/Conv + PWN(PWN(/model.17/m/m.0/cv1/act/Sigmoid), PWN(/model.17/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x64x32_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/m/m.0/cv2/conv/Conv + PWN(PWN(/model.17/m/m.0/cv2/act/Sigmoid), PWN(/model.17/m/m.0/cv2/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x64x32_stage3_war",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.17/cv2/act/Sigmoid), PWN(/model.17/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.17/cv3/conv/Conv + PWN(PWN(/model.17/cv3/act/Sigmoid), PWN(/model.17/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.18/conv/Conv + PWN(PWN(/model.18/act/Sigmoid), PWN(/model.18/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.20/cv1/conv/Conv || /model.20/cv2/conv/Conv",
+            "precision": "unknown",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "ampere_h16816gemm_256x128_ldg8_relu_stages_32x3_nn_v1",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.20/cv1/act/Sigmoid), PWN(/model.20/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.20/m/m.0/cv1/conv/Conv + PWN(PWN(/model.20/m/m.0/cv1/act/Sigmoid), PWN(/model.20/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/m/m.0/cv2/conv/Conv + PWN(PWN(/model.20/m/m.0/cv2/act/Sigmoid), PWN(/model.20/m/m.0/cv2/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.20/cv2/act/Sigmoid), PWN(/model.20/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.20/cv3/conv/Conv + PWN(PWN(/model.20/cv3/act/Sigmoid), PWN(/model.20/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x256x32_stage3_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.21/conv/Conv + PWN(PWN(/model.21/act/Sigmoid), PWN(/model.21/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.23/cv1/conv/Conv || /model.23/cv2/conv/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "sm80_xmma_gemm_f16f16_f16f16_f16_tn_n_tilesize128x128x32_stage4_warpsize2x2x1_tensor16x8x1",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.23/cv1/act/Sigmoid), PWN(/model.23/cv1/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.23/m/m.0/cv1/conv/Conv + PWN(PWN(/model.23/m/m.0/cv1/act/Sigmoid), PWN(/model.23/m/m.0/cv1/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize64x128x32_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/m/m.0/cv2/conv/Conv + PWN(PWN(/model.23/m/m.0/cv2/act/Sigmoid), PWN(/model.23/m/m.0/cv2/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x64x64_stage5_war",
+            "is_convolution": true
+          },
+          {
+            "name": "PWN(PWN(/model.23/cv2/act/Sigmoid), PWN(/model.23/cv2/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.23/cv3/conv/Conv + PWN(PWN(/model.23/cv3/act/Sigmoid), PWN(/model.23/cv3/act/Mul))",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x128x32_stage4_wa",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/m.2/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "sm80_xmma_gemm_f16f16_f16f16_f16_tn_n_tilesize32x32x64_stage6_warpsize2x2x1_tensor16x8x16",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_16 + /model.24/Transpose_2",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_2)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_484",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_490",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/m.1/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x32x32_stage4_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_8 + /model.24/Transpose_1",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_1)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_336",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_342",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/m.0/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x32x32_stage4_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape + /model.24/Transpose",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_188",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_194",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_790",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_11",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_104_output_0 + ONNXTRT_Broadcast_496 + /model.24/Mul_20, PWN(/model.24/Constant_105_output_0 + ONNXTRT_Broadcast_",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_80_output_0 + ONNXTRT_ShapeShuffle_377",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_79_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_5",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_18 + /model.24/Reshape_20",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_9",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_78_output_0 + ONNXTRT_ShapeShuffle_367",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_77_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_4",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_17 + /model.24/Reshape_19",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_8",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_439",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_10",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_94_output_0 + ONNXTRT_Broadcast_452, PWN(/model.24/Sub_2)), PWN(/model.24/Constant_102_output_0 + ONNXTRT_Bro",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_19_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_21_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_778",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_7",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_68_output_0 + ONNXTRT_Broadcast_348 + /model.24/Mul_12, PWN(/model.24/Constant_69_output_0 + ONNXTRT_Broadcast_35",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_44_output_0 + ONNXTRT_ShapeShuffle_229",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_43_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_3",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_10 + /model.24/Reshape_12",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_5",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_42_output_0 + ONNXTRT_ShapeShuffle_219",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_41_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_2",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_9 + /model.24/Reshape_11",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_4",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_291",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_6",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_58_output_0 + ONNXTRT_Broadcast_304, PWN(/model.24/Sub_1)), PWN(/model.24/Constant_66_output_0 + ONNXTRT_Broa",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_11_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_13_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_766",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_3",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_32_output_0 + ONNXTRT_Broadcast_200 + /model.24/Mul_4, PWN(/model.24/Constant_33_output_0 + ONNXTRT_Broadcast_202",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_8_output_0 + ONNXTRT_ShapeShuffle_85",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_7_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_1",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_2 + /model.24/Reshape_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_6_output_0 + ONNXTRT_ShapeShuffle_75",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_5_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_1 + /model.24/Reshape_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_143",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_22_output_0 + ONNXTRT_Broadcast_156, PWN(/model.24/Sub)), PWN(/model.24/Constant_30_output_0 + ONNXTRT_Broadc",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_3_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_5_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          }
+        ],
+        "layers_with_metadata": 178,
+        "source": "tensorrt engine inspector, DETAILED profiling verbosity (not a log scrape)"
+      },
+      "map50": 0.7776,
+      "map5095": 0.4279,
+      "per_class": {
+        "smoke": {
+          "map5095": 0.4944,
+          "map50": 0.8367
+        },
+        "fire": {
+          "map5095": 0.3614,
+          "map50": 0.7184
+        }
+      },
+      "small_plume": 0.6061,
+      "tiny_plume": 0.1376,
+      "background": {
+        "conf": 0.25,
+        "n_background_images": 2005,
+        "n_alarmed": 53,
+        "false_alarm_rate": 0.0264,
+        "correctly_silent_rate": 0.9736,
+        "false_boxes_per_bg_image": 0.0294
+      },
+      "fingerprint": "08fac007f0d1abe5",
+      "batch": 16,
+      "fps_batched": 471.91,
+      "fps_batched_se": 6.534,
+      "ms_per_image_batched": 2.119,
+      "runs": 3,
+      "measured_images": 960,
+      "power": {
+        "power_w": {
+          "mean": 20.657,
+          "peak": 21.341
+        },
+        "compute_power_w": {
+          "mean": 10.489,
+          "peak": 10.984
+        },
+        "gpu_util_pct": 97.7,
+        "temp_c_peak": 59.875,
+        "n_samples": 64,
+        "power_mode": "MAXN_SUPER",
+        "energy_j": 137.61,
+        "j_per_1k": 43.0,
+        "window_s": 6.72,
+        "images": 3200
+      }
+    },
+    "int8": {
+      "engine": "weights/xp07_yolov5s_int8_512.engine",
+      "engine_mb": 9.09,
+      "build_seconds": 299.7,
+      "int8_requested": true,
+      "fp16_fallback_allowed": false,
+      "head_pinned_fp16": false,
+      "calibration_algorithm": "minmax",
+      "precision_report": {
+        "engine": "xp07_yolov5s_int8_512.engine",
+        "num_layers": 166,
+        "counts": {
+          "unknown": 103,
+          "int8": 63
+        },
+        "convolution_counts": {
+          "unknown": 1,
+          "int8": 60
+        },
+        "convolutions_total": 61,
+        "convolutions_in_int8": 60,
+        "convolutions_int8_pct": 98.4,
+        "layers": [
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.0/conv/Conv + PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.0/conv/Conv + PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "ampere_int8x4_icudnn_int8x4_128x32_relu_medium_c32_nn_v1",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.1/conv/Conv + PWN(PWN(/model.1/act/Sigmoid), PWN(/model.1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/cv1/conv/Conv + PWN(PWN(/model.2/cv1/act/Sigmoid), PWN(/model.2/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/cv1/conv/Conv + PWN(PWN(/model.2/m/m.0/cv1/act/Sigmoid), PWN(/model.2/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.2/m/m.0/cv2/act/Sigmoid), PWN(/model.2/m/m.0/cv2/act/Mul)), PWN(/model.2/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/cv2/conv/Conv + PWN(PWN(/model.2/cv2/act/Sigmoid), PWN(/model.2/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.2/cv3/conv/Conv + PWN(PWN(/model.2/cv3/act/Sigmoid), PWN(/model.2/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.3/conv/Conv + PWN(PWN(/model.3/act/Sigmoid), PWN(/model.3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv1/conv/Conv + PWN(PWN(/model.4/cv1/act/Sigmoid), PWN(/model.4/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.0/cv1/conv/Conv + PWN(PWN(/model.4/m/m.0/cv1/act/Sigmoid), PWN(/model.4/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.0/cv2/act/Sigmoid), PWN(/model.4/m/m.0/cv2/act/Mul)), PWN(/model.4/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv1/conv/Conv + PWN(PWN(/model.4/m/m.1/cv1/act/Sigmoid), PWN(/model.4/m/m.1/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.1/cv2/act/Sigmoid), PWN(/model.4/m/m.1/cv2/act/Mul)), PWN(/model.4/m/m.1/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv2/conv/Conv + PWN(PWN(/model.4/cv2/act/Sigmoid), PWN(/model.4/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/cv3/conv/Conv + PWN(PWN(/model.4/cv3/act/Sigmoid), PWN(/model.4/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.5/conv/Conv + PWN(PWN(/model.5/act/Sigmoid), PWN(/model.5/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/cv1/conv/Conv + PWN(PWN(/model.6/cv1/act/Sigmoid), PWN(/model.6/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.0/cv1/conv/Conv + PWN(PWN(/model.6/m/m.0/cv1/act/Sigmoid), PWN(/model.6/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.0/cv2/act/Sigmoid), PWN(/model.6/m/m.0/cv2/act/Mul)), PWN(/model.6/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv1/conv/Conv + PWN(PWN(/model.6/m/m.1/cv1/act/Sigmoid), PWN(/model.6/m/m.1/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.1/cv2/act/Sigmoid), PWN(/model.6/m/m.1/cv2/act/Mul)), PWN(/model.6/m/m.1/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv1/conv/Conv + PWN(PWN(/model.6/m/m.2/cv1/act/Sigmoid), PWN(/model.6/m/m.2/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.2/cv2/act/Sigmoid), PWN(/model.6/m/m.2/cv2/act/Mul)), PWN(/model.6/m/m.2/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/cv2/conv/Conv + PWN(PWN(/model.6/cv2/act/Sigmoid), PWN(/model.6/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/cv3/conv/Conv + PWN(PWN(/model.6/cv3/act/Sigmoid), PWN(/model.6/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.7/conv/Conv + PWN(PWN(/model.7/act/Sigmoid), PWN(/model.7/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/cv1/conv/Conv + PWN(PWN(/model.8/cv1/act/Sigmoid), PWN(/model.8/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/cv1/conv/Conv + PWN(PWN(/model.8/m/m.0/cv1/act/Sigmoid), PWN(/model.8/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.8/m/m.0/cv2/act/Sigmoid), PWN(/model.8/m/m.0/cv2/act/Mul)), PWN(/model.8/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/cv2/conv/Conv + PWN(PWN(/model.8/cv2/act/Sigmoid), PWN(/model.8/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.8/cv3/conv/Conv + PWN(PWN(/model.8/cv3/act/Sigmoid), PWN(/model.8/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/cv1/conv/Conv + PWN(PWN(/model.9/cv1/act/Sigmoid), PWN(/model.9/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/m/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_2/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv1/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv2/conv/Conv + PWN(PWN(/model.9/cv2/act/Sigmoid), PWN(/model.9/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/conv/Conv + PWN(PWN(/model.10/act/Sigmoid), PWN(/model.10/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.11/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.11/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/cv3/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.13/cv1/conv/Conv + PWN(PWN(/model.13/cv1/act/Sigmoid), PWN(/model.13/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/m/m.0/cv1/conv/Conv + PWN(PWN(/model.13/m/m.0/cv1/act/Sigmoid), PWN(/model.13/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/m/m.0/cv2/conv/Conv + PWN(PWN(/model.13/m/m.0/cv2/act/Sigmoid), PWN(/model.13/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/cv2/conv/Conv + PWN(PWN(/model.13/cv2/act/Sigmoid), PWN(/model.13/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/cv3/conv/Conv + PWN(PWN(/model.13/cv3/act/Sigmoid), PWN(/model.13/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/conv/Conv + PWN(PWN(/model.14/act/Sigmoid), PWN(/model.14/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.15/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.15/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/cv3/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.17/cv1/conv/Conv + PWN(PWN(/model.17/cv1/act/Sigmoid), PWN(/model.17/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/m/m.0/cv1/conv/Conv + PWN(PWN(/model.17/m/m.0/cv1/act/Sigmoid), PWN(/model.17/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/m/m.0/cv2/conv/Conv + PWN(PWN(/model.17/m/m.0/cv2/act/Sigmoid), PWN(/model.17/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/cv2/conv/Conv + PWN(PWN(/model.17/cv2/act/Sigmoid), PWN(/model.17/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/cv3/conv/Conv + PWN(PWN(/model.17/cv3/act/Sigmoid), PWN(/model.17/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.18/conv/Conv + PWN(PWN(/model.18/act/Sigmoid), PWN(/model.18/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.20/cv1/conv/Conv + PWN(PWN(/model.20/cv1/act/Sigmoid), PWN(/model.20/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/m/m.0/cv1/conv/Conv + PWN(PWN(/model.20/m/m.0/cv1/act/Sigmoid), PWN(/model.20/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/m/m.0/cv2/conv/Conv + PWN(PWN(/model.20/m/m.0/cv2/act/Sigmoid), PWN(/model.20/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/cv2/conv/Conv + PWN(PWN(/model.20/cv2/act/Sigmoid), PWN(/model.20/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/cv3/conv/Conv + PWN(PWN(/model.20/cv3/act/Sigmoid), PWN(/model.20/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.21/conv/Conv + PWN(PWN(/model.21/act/Sigmoid), PWN(/model.21/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.23/cv1/conv/Conv + PWN(PWN(/model.23/cv1/act/Sigmoid), PWN(/model.23/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/m/m.0/cv1/conv/Conv + PWN(PWN(/model.23/m/m.0/cv1/act/Sigmoid), PWN(/model.23/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/m/m.0/cv2/conv/Conv + PWN(PWN(/model.23/m/m.0/cv2/act/Sigmoid), PWN(/model.23/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/cv2/conv/Conv + PWN(PWN(/model.23/cv2/act/Sigmoid), PWN(/model.23/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/cv3/conv/Conv + PWN(PWN(/model.23/cv3/act/Sigmoid), PWN(/model.23/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/m.2/Conv",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8f32_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nch",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_16 + /model.24/Transpose_2",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_2)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_484",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_490",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/m.1/Conv",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8f32_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nch",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_8 + /model.24/Transpose_1",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_1)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_336",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_342",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/m.0/Conv",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8f32_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nch",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape + /model.24/Transpose",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_188",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_194",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_790",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_11",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_104_output_0 + ONNXTRT_Broadcast_496 + /model.24/Mul_20, PWN(/model.24/Constant_105_output_0 + ONNXTRT_Broadcast_",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_80_output_0 + ONNXTRT_ShapeShuffle_377",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_79_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_5",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_18 + /model.24/Reshape_20",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_9",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_78_output_0 + ONNXTRT_ShapeShuffle_367",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_77_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_4",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_17 + /model.24/Reshape_19",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_8",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_439",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_10",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_94_output_0 + ONNXTRT_Broadcast_452, PWN(/model.24/Sub_2)), PWN(/model.24/Constant_102_output_0 + ONNXTRT_Bro",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_19_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_21_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_778",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_7",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_68_output_0 + ONNXTRT_Broadcast_348 + /model.24/Mul_12, PWN(/model.24/Constant_69_output_0 + ONNXTRT_Broadcast_35",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_44_output_0 + ONNXTRT_ShapeShuffle_229",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_43_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_3",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_10 + /model.24/Reshape_12",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_5",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_42_output_0 + ONNXTRT_ShapeShuffle_219",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_41_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_2",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_9 + /model.24/Reshape_11",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_4",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_291",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_6",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_58_output_0 + ONNXTRT_Broadcast_304, PWN(/model.24/Sub_1)), PWN(/model.24/Constant_66_output_0 + ONNXTRT_Broa",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_11_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_13_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_766",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_3",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_32_output_0 + ONNXTRT_Broadcast_200 + /model.24/Mul_4, PWN(/model.24/Constant_33_output_0 + ONNXTRT_Broadcast_202",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_8_output_0 + ONNXTRT_ShapeShuffle_85",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_7_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_1",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_2 + /model.24/Reshape_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_6_output_0 + ONNXTRT_ShapeShuffle_75",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_5_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_1 + /model.24/Reshape_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_143",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_22_output_0 + ONNXTRT_Broadcast_156, PWN(/model.24/Sub)), PWN(/model.24/Constant_30_output_0 + ONNXTRT_Broadc",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_3_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_5_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          }
+        ],
+        "layers_with_metadata": 166,
+        "source": "tensorrt engine inspector, DETAILED profiling verbosity (not a log scrape)"
+      },
+      "map50": 0.6985,
+      "map5095": 0.3133,
+      "per_class": {
+        "smoke": {
+          "map5095": 0.3934,
+          "map50": 0.7863
+        },
+        "fire": {
+          "map5095": 0.2333,
+          "map50": 0.6108
+        }
+      },
+      "small_plume": 0.4584,
+      "tiny_plume": 0.0421,
+      "background": {
+        "conf": 0.25,
+        "n_background_images": 2005,
+        "n_alarmed": 72,
+        "false_alarm_rate": 0.0359,
+        "correctly_silent_rate": 0.9641,
+        "false_boxes_per_bg_image": 0.0424
+      },
+      "fingerprint": "6fd4d920ddf76926",
+      "batch": 16,
+      "fps_batched": 720.34,
+      "fps_batched_se": 17.193,
+      "ms_per_image_batched": 1.388,
+      "runs": 3,
+      "measured_images": 960,
+      "power": {
+        "power_w": {
+          "mean": 17.749,
+          "peak": 18.585
+        },
+        "compute_power_w": {
+          "mean": 8.852,
+          "peak": 9.439
+        },
+        "gpu_util_pct": 95.9,
+        "temp_c_peak": 57.562,
+        "n_samples": 42,
+        "power_mode": "MAXN_SUPER",
+        "energy_j": 77.13,
+        "j_per_1k": 24.1,
+        "window_s": 4.36,
+        "images": 3200
+      }
+    },
+    "int8_fp16": {
+      "engine": "weights/xp07_yolov5s_int8_fp16_512.engine",
+      "engine_mb": 9.11,
+      "build_seconds": 564.7,
+      "int8_requested": true,
+      "fp16_fallback_allowed": true,
+      "head_pinned_fp16": false,
+      "calibration_algorithm": "minmax",
+      "precision_report": {
+        "engine": "xp07_yolov5s_int8_fp16_512.engine",
+        "num_layers": 166,
+        "counts": {
+          "unknown": 103,
+          "int8": 63
+        },
+        "convolution_counts": {
+          "unknown": 1,
+          "int8": 60
+        },
+        "convolutions_total": 61,
+        "convolutions_in_int8": 60,
+        "convolutions_int8_pct": 98.4,
+        "layers": [
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.0/conv/Conv + PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.0/conv/Conv + PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "ampere_int8x4_icudnn_int8x4_128x32_relu_medium_c32_nn_v1",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.1/conv/Conv + PWN(PWN(/model.1/act/Sigmoid), PWN(/model.1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/cv1/conv/Conv + PWN(PWN(/model.2/cv1/act/Sigmoid), PWN(/model.2/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/cv1/conv/Conv + PWN(PWN(/model.2/m/m.0/cv1/act/Sigmoid), PWN(/model.2/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.2/m/m.0/cv2/act/Sigmoid), PWN(/model.2/m/m.0/cv2/act/Mul)), PWN(/model.2/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/cv2/conv/Conv + PWN(PWN(/model.2/cv2/act/Sigmoid), PWN(/model.2/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.2/cv3/conv/Conv + PWN(PWN(/model.2/cv3/act/Sigmoid), PWN(/model.2/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.3/conv/Conv + PWN(PWN(/model.3/act/Sigmoid), PWN(/model.3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv1/conv/Conv + PWN(PWN(/model.4/cv1/act/Sigmoid), PWN(/model.4/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.0/cv1/conv/Conv + PWN(PWN(/model.4/m/m.0/cv1/act/Sigmoid), PWN(/model.4/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.0/cv2/act/Sigmoid), PWN(/model.4/m/m.0/cv2/act/Mul)), PWN(/model.4/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv1/conv/Conv + PWN(PWN(/model.4/m/m.1/cv1/act/Sigmoid), PWN(/model.4/m/m.1/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.1/cv2/act/Sigmoid), PWN(/model.4/m/m.1/cv2/act/Mul)), PWN(/model.4/m/m.1/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv2/conv/Conv + PWN(PWN(/model.4/cv2/act/Sigmoid), PWN(/model.4/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/cv3/conv/Conv + PWN(PWN(/model.4/cv3/act/Sigmoid), PWN(/model.4/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.5/conv/Conv + PWN(PWN(/model.5/act/Sigmoid), PWN(/model.5/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/cv1/conv/Conv + PWN(PWN(/model.6/cv1/act/Sigmoid), PWN(/model.6/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.0/cv1/conv/Conv + PWN(PWN(/model.6/m/m.0/cv1/act/Sigmoid), PWN(/model.6/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.0/cv2/act/Sigmoid), PWN(/model.6/m/m.0/cv2/act/Mul)), PWN(/model.6/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv1/conv/Conv + PWN(PWN(/model.6/m/m.1/cv1/act/Sigmoid), PWN(/model.6/m/m.1/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.1/cv2/act/Sigmoid), PWN(/model.6/m/m.1/cv2/act/Mul)), PWN(/model.6/m/m.1/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv1/conv/Conv + PWN(PWN(/model.6/m/m.2/cv1/act/Sigmoid), PWN(/model.6/m/m.2/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.2/cv2/act/Sigmoid), PWN(/model.6/m/m.2/cv2/act/Mul)), PWN(/model.6/m/m.2/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/cv2/conv/Conv + PWN(PWN(/model.6/cv2/act/Sigmoid), PWN(/model.6/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/cv3/conv/Conv + PWN(PWN(/model.6/cv3/act/Sigmoid), PWN(/model.6/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.7/conv/Conv + PWN(PWN(/model.7/act/Sigmoid), PWN(/model.7/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/cv1/conv/Conv + PWN(PWN(/model.8/cv1/act/Sigmoid), PWN(/model.8/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/cv1/conv/Conv + PWN(PWN(/model.8/m/m.0/cv1/act/Sigmoid), PWN(/model.8/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.8/m/m.0/cv2/act/Sigmoid), PWN(/model.8/m/m.0/cv2/act/Mul)), PWN(/model.8/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/cv2/conv/Conv + PWN(PWN(/model.8/cv2/act/Sigmoid), PWN(/model.8/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.8/cv3/conv/Conv + PWN(PWN(/model.8/cv3/act/Sigmoid), PWN(/model.8/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/cv1/conv/Conv + PWN(PWN(/model.9/cv1/act/Sigmoid), PWN(/model.9/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/m/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_2/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv1/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv2/conv/Conv + PWN(PWN(/model.9/cv2/act/Sigmoid), PWN(/model.9/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/conv/Conv + PWN(PWN(/model.10/act/Sigmoid), PWN(/model.10/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.11/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.11/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/cv3/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.13/cv1/conv/Conv + PWN(PWN(/model.13/cv1/act/Sigmoid), PWN(/model.13/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/m/m.0/cv1/conv/Conv + PWN(PWN(/model.13/m/m.0/cv1/act/Sigmoid), PWN(/model.13/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/m/m.0/cv2/conv/Conv + PWN(PWN(/model.13/m/m.0/cv2/act/Sigmoid), PWN(/model.13/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/cv2/conv/Conv + PWN(PWN(/model.13/cv2/act/Sigmoid), PWN(/model.13/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/cv3/conv/Conv + PWN(PWN(/model.13/cv3/act/Sigmoid), PWN(/model.13/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/conv/Conv + PWN(PWN(/model.14/act/Sigmoid), PWN(/model.14/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.15/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.15/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/cv3/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.17/cv1/conv/Conv + PWN(PWN(/model.17/cv1/act/Sigmoid), PWN(/model.17/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/m/m.0/cv1/conv/Conv + PWN(PWN(/model.17/m/m.0/cv1/act/Sigmoid), PWN(/model.17/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/m/m.0/cv2/conv/Conv + PWN(PWN(/model.17/m/m.0/cv2/act/Sigmoid), PWN(/model.17/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/cv2/conv/Conv + PWN(PWN(/model.17/cv2/act/Sigmoid), PWN(/model.17/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/cv3/conv/Conv + PWN(PWN(/model.17/cv3/act/Sigmoid), PWN(/model.17/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.18/conv/Conv + PWN(PWN(/model.18/act/Sigmoid), PWN(/model.18/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.20/cv1/conv/Conv + PWN(PWN(/model.20/cv1/act/Sigmoid), PWN(/model.20/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/m/m.0/cv1/conv/Conv + PWN(PWN(/model.20/m/m.0/cv1/act/Sigmoid), PWN(/model.20/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/m/m.0/cv2/conv/Conv + PWN(PWN(/model.20/m/m.0/cv2/act/Sigmoid), PWN(/model.20/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/cv2/conv/Conv + PWN(PWN(/model.20/cv2/act/Sigmoid), PWN(/model.20/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/cv3/conv/Conv + PWN(PWN(/model.20/cv3/act/Sigmoid), PWN(/model.20/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.21/conv/Conv + PWN(PWN(/model.21/act/Sigmoid), PWN(/model.21/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.23/cv1/conv/Conv + PWN(PWN(/model.23/cv1/act/Sigmoid), PWN(/model.23/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/m/m.0/cv1/conv/Conv + PWN(PWN(/model.23/m/m.0/cv1/act/Sigmoid), PWN(/model.23/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/m/m.0/cv2/conv/Conv + PWN(PWN(/model.23/m/m.0/cv2/act/Sigmoid), PWN(/model.23/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/cv2/conv/Conv + PWN(PWN(/model.23/cv2/act/Sigmoid), PWN(/model.23/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/cv3/conv/Conv + PWN(PWN(/model.23/cv3/act/Sigmoid), PWN(/model.23/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/m.2/Conv",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8f32_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nch",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_16 + /model.24/Transpose_2",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_2)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_484",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_490",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/m.1/Conv",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8f32_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nch",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_8 + /model.24/Transpose_1",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_1)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_336",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_342",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/m.0/Conv",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8f32_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nch",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape + /model.24/Transpose",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_188",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_194",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_790",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_11",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_104_output_0 + ONNXTRT_Broadcast_496 + /model.24/Mul_20, PWN(/model.24/Constant_105_output_0 + ONNXTRT_Broadcast_",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_80_output_0 + ONNXTRT_ShapeShuffle_377",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_79_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_5",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_18 + /model.24/Reshape_20",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_9",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_78_output_0 + ONNXTRT_ShapeShuffle_367",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_77_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_4",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_17 + /model.24/Reshape_19",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_8",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_439",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_10",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_94_output_0 + ONNXTRT_Broadcast_452, PWN(/model.24/Sub_2)), PWN(/model.24/Constant_102_output_0 + ONNXTRT_Bro",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_19_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_21_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_778",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_7",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_68_output_0 + ONNXTRT_Broadcast_348 + /model.24/Mul_12, PWN(/model.24/Constant_69_output_0 + ONNXTRT_Broadcast_35",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_44_output_0 + ONNXTRT_ShapeShuffle_229",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_43_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_3",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_10 + /model.24/Reshape_12",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_5",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_42_output_0 + ONNXTRT_ShapeShuffle_219",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_41_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_2",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_9 + /model.24/Reshape_11",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_4",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_291",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_6",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_58_output_0 + ONNXTRT_Broadcast_304, PWN(/model.24/Sub_1)), PWN(/model.24/Constant_66_output_0 + ONNXTRT_Broa",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_11_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_13_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_766",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_3",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_32_output_0 + ONNXTRT_Broadcast_200 + /model.24/Mul_4, PWN(/model.24/Constant_33_output_0 + ONNXTRT_Broadcast_202",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_8_output_0 + ONNXTRT_ShapeShuffle_85",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_7_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_1",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_2 + /model.24/Reshape_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_6_output_0 + ONNXTRT_ShapeShuffle_75",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_5_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_1 + /model.24/Reshape_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_143",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_22_output_0 + ONNXTRT_Broadcast_156, PWN(/model.24/Sub)), PWN(/model.24/Constant_30_output_0 + ONNXTRT_Broadc",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_3_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_5_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          }
+        ],
+        "layers_with_metadata": 166,
+        "source": "tensorrt engine inspector, DETAILED profiling verbosity (not a log scrape)"
+      },
+      "map50": 0.6985,
+      "map5095": 0.3133,
+      "per_class": {
+        "smoke": {
+          "map5095": 0.3934,
+          "map50": 0.7863
+        },
+        "fire": {
+          "map5095": 0.2333,
+          "map50": 0.6108
+        }
+      },
+      "small_plume": 0.4584,
+      "tiny_plume": 0.0421,
+      "background": {
+        "conf": 0.25,
+        "n_background_images": 2005,
+        "n_alarmed": 72,
+        "false_alarm_rate": 0.0359,
+        "correctly_silent_rate": 0.9641,
+        "false_boxes_per_bg_image": 0.0424
+      },
+      "fingerprint": "6fd4d920ddf76926",
+      "batch": 16,
+      "fps_batched": 718.84,
+      "fps_batched_se": 18.471,
+      "ms_per_image_batched": 1.391,
+      "runs": 3,
+      "measured_images": 960,
+      "power": {
+        "power_w": {
+          "mean": 17.774,
+          "peak": 18.585
+        },
+        "compute_power_w": {
+          "mean": 8.877,
+          "peak": 9.439
+        },
+        "gpu_util_pct": 96.4,
+        "temp_c_peak": 57.093,
+        "n_samples": 42,
+        "power_mode": "MAXN_SUPER",
+        "energy_j": 77.11,
+        "j_per_1k": 24.1,
+        "window_s": 4.36,
+        "images": 3200
+      }
+    },
+    "int8_head_fp16": {
+      "engine": "weights/xp07_yolov5s_int8_head_fp16_512.engine",
+      "engine_mb": 9.16,
+      "build_seconds": 447.2,
+      "int8_requested": true,
+      "fp16_fallback_allowed": true,
+      "head_pinned_fp16": true,
+      "calibration_algorithm": "minmax",
+      "precision_report": {
+        "engine": "xp07_yolov5s_int8_head_fp16_512.engine",
+        "num_layers": 173,
+        "counts": {
+          "unknown": 110,
+          "int8": 60,
+          "fp16": 3
+        },
+        "convolution_counts": {
+          "unknown": 4,
+          "int8": 57,
+          "fp16": 3
+        },
+        "convolutions_total": 64,
+        "convolutions_in_int8": 57,
+        "convolutions_int8_pct": 89.1,
+        "layers": [
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.0/conv/Conv + PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.0/conv/Conv + PWN(PWN(/model.0/act/Sigmoid), PWN(/model.0/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "ampere_int8x4_icudnn_int8x4_128x32_relu_medium_c32_nn_v1",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.1/conv/Conv + PWN(PWN(/model.1/act/Sigmoid), PWN(/model.1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/cv1/conv/Conv + PWN(PWN(/model.2/cv1/act/Sigmoid), PWN(/model.2/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/cv1/conv/Conv + PWN(PWN(/model.2/m/m.0/cv1/act/Sigmoid), PWN(/model.2/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.2/m/m.0/cv2/act/Sigmoid), PWN(/model.2/m/m.0/cv2/act/Mul)), PWN(/model.2/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/cv2/conv/Conv + PWN(PWN(/model.2/cv2/act/Sigmoid), PWN(/model.2/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.2/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.2/cv3/conv/Conv + PWN(PWN(/model.2/cv3/act/Sigmoid), PWN(/model.2/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.3/conv/Conv + PWN(PWN(/model.3/act/Sigmoid), PWN(/model.3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv1/conv/Conv + PWN(PWN(/model.4/cv1/act/Sigmoid), PWN(/model.4/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.0/cv1/conv/Conv + PWN(PWN(/model.4/m/m.0/cv1/act/Sigmoid), PWN(/model.4/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.0/cv2/act/Sigmoid), PWN(/model.4/m/m.0/cv2/act/Mul)), PWN(/model.4/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv1/conv/Conv + PWN(PWN(/model.4/m/m.1/cv1/act/Sigmoid), PWN(/model.4/m/m.1/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.4/m/m.1/cv2/act/Sigmoid), PWN(/model.4/m/m.1/cv2/act/Mul)), PWN(/model.4/m/m.1/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/cv2/conv/Conv + PWN(PWN(/model.4/cv2/act/Sigmoid), PWN(/model.4/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.4/m/m.1/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/cv3/conv/Conv + PWN(PWN(/model.4/cv3/act/Sigmoid), PWN(/model.4/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.5/conv/Conv + PWN(PWN(/model.5/act/Sigmoid), PWN(/model.5/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/cv1/conv/Conv + PWN(PWN(/model.6/cv1/act/Sigmoid), PWN(/model.6/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.0/cv1/conv/Conv + PWN(PWN(/model.6/m/m.0/cv1/act/Sigmoid), PWN(/model.6/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.0/cv2/act/Sigmoid), PWN(/model.6/m/m.0/cv2/act/Mul)), PWN(/model.6/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv1/conv/Conv + PWN(PWN(/model.6/m/m.1/cv1/act/Sigmoid), PWN(/model.6/m/m.1/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.1/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.1/cv2/act/Sigmoid), PWN(/model.6/m/m.1/cv2/act/Mul)), PWN(/model.6/m/m.1/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv1/conv/Conv + PWN(PWN(/model.6/m/m.2/cv1/act/Sigmoid), PWN(/model.6/m/m.2/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/cv2/conv/Conv + PWN(PWN(PWN(/model.6/m/m.2/cv2/act/Sigmoid), PWN(/model.6/m/m.2/cv2/act/Mul)), PWN(/model.6/m/m.2/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/cv2/conv/Conv + PWN(PWN(/model.6/cv2/act/Sigmoid), PWN(/model.6/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.6/m/m.2/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/cv3/conv/Conv + PWN(PWN(/model.6/cv3/act/Sigmoid), PWN(/model.6/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.7/conv/Conv + PWN(PWN(/model.7/act/Sigmoid), PWN(/model.7/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/cv1/conv/Conv + PWN(PWN(/model.8/cv1/act/Sigmoid), PWN(/model.8/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/cv1/conv/Conv + PWN(PWN(/model.8/m/m.0/cv1/act/Sigmoid), PWN(/model.8/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/cv2/conv/Conv + PWN(PWN(PWN(/model.8/m/m.0/cv2/act/Sigmoid), PWN(/model.8/m/m.0/cv2/act/Mul)), PWN(/model.8/m/m.0/Add))",
+            "precision": "int8",
+            "layer_type": "CaskJitConv",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/cv2/conv/Conv + PWN(PWN(/model.8/cv2/act/Sigmoid), PWN(/model.8/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.8/m/m.0/Add_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.8/cv3/conv/Conv + PWN(PWN(/model.8/cv3/act/Sigmoid), PWN(/model.8/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/cv1/conv/Conv + PWN(PWN(/model.9/cv1/act/Sigmoid), PWN(/model.9/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.9/m/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_2/MaxPool",
+            "precision": "int8",
+            "layer_type": "CaskPooling",
+            "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv1/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/m_1/MaxPool_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.9/cv2/conv/Conv + PWN(PWN(/model.9/cv2/act/Sigmoid), PWN(/model.9/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/conv/Conv + PWN(PWN(/model.10/act/Sigmoid), PWN(/model.10/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.11/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.11/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.6/cv3/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.13/cv1/conv/Conv + PWN(PWN(/model.13/cv1/act/Sigmoid), PWN(/model.13/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/m/m.0/cv1/conv/Conv + PWN(PWN(/model.13/m/m.0/cv1/act/Sigmoid), PWN(/model.13/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/m/m.0/cv2/conv/Conv + PWN(PWN(/model.13/m/m.0/cv2/act/Sigmoid), PWN(/model.13/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/cv2/conv/Conv + PWN(PWN(/model.13/cv2/act/Sigmoid), PWN(/model.13/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.13/cv3/conv/Conv + PWN(PWN(/model.13/cv3/act/Sigmoid), PWN(/model.13/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/conv/Conv + PWN(PWN(/model.14/act/Sigmoid), PWN(/model.14/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.15/Resize",
+            "precision": "unknown",
+            "layer_type": "Resize",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.15/Resize_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.4/cv3/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.17/cv1/conv/Conv + PWN(PWN(/model.17/cv1/act/Sigmoid), PWN(/model.17/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/m/m.0/cv1/conv/Conv + PWN(PWN(/model.17/m/m.0/cv1/act/Sigmoid), PWN(/model.17/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/m/m.0/cv2/conv/Conv + PWN(PWN(/model.17/m/m.0/cv2/act/Sigmoid), PWN(/model.17/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/cv2/conv/Conv + PWN(PWN(/model.17/cv2/act/Sigmoid), PWN(/model.17/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.17/cv3/conv/Conv + PWN(PWN(/model.17/cv3/act/Sigmoid), PWN(/model.17/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.18/conv/Conv + PWN(PWN(/model.18/act/Sigmoid), PWN(/model.18/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.14/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.20/cv1/conv/Conv + PWN(PWN(/model.20/cv1/act/Sigmoid), PWN(/model.20/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/m/m.0/cv1/conv/Conv + PWN(PWN(/model.20/m/m.0/cv1/act/Sigmoid), PWN(/model.20/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/m/m.0/cv2/conv/Conv + PWN(PWN(/model.20/m/m.0/cv2/act/Sigmoid), PWN(/model.20/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/cv2/conv/Conv + PWN(PWN(/model.20/cv2/act/Sigmoid), PWN(/model.20/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.20/cv3/conv/Conv + PWN(PWN(/model.20/cv3/act/Sigmoid), PWN(/model.20/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.21/conv/Conv + PWN(PWN(/model.21/act/Sigmoid), PWN(/model.21/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.10/act/Mul_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.23/cv1/conv/Conv + PWN(PWN(/model.23/cv1/act/Sigmoid), PWN(/model.23/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/m/m.0/cv1/conv/Conv + PWN(PWN(/model.23/m/m.0/cv1/act/Sigmoid), PWN(/model.23/m/m.0/cv1/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/m/m.0/cv2/conv/Conv + PWN(PWN(/model.23/m/m.0/cv2/act/Sigmoid), PWN(/model.23/m/m.0/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/cv2/conv/Conv + PWN(PWN(/model.23/cv2/act/Sigmoid), PWN(/model.23/cv2/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.23/cv3/conv/Conv + PWN(PWN(/model.23/cv3/act/Sigmoid), PWN(/model.23/cv3/act/Mul))",
+            "precision": "int8",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+            "is_convolution": true
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.24/m.2/Conv",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/m.2/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskGemmConvolution",
+            "tactic": "sm80_xmma_gemm_f16f16_f16f16_f16_tn_n_tilesize32x32x64_stage6_warpsize2x2x1_tensor16x8x16",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_16 + /model.24/Transpose_2",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_2)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_484",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_2_490",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.24/m.1/Conv",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/m.1/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize128x32x32_stage4_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape_8 + /model.24/Transpose_1",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid_1)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_336",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_1_342",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 0 to /model.24/m.0/Conv",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/m.0/Conv",
+            "precision": "fp16",
+            "layer_type": "CaskConvolution",
+            "tactic": "sm80_xmma_fprop_implicit_gemm_f16f16_f16f16_f16_nhwckrsc_nhwc_tilesize256x32x32_stage4_war",
+            "is_convolution": true
+          },
+          {
+            "name": "/model.24/Reshape + /model.24/Transpose",
+            "precision": "unknown",
+            "layer_type": "Shuffle",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(/model.24/Sigmoid)",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_188",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Split_194",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_790",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_11",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_104_output_0 + ONNXTRT_Broadcast_496 + /model.24/Mul_20, PWN(/model.24/Constant_105_output_0 + ONNXTRT_Broadcast_",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_80_output_0 + ONNXTRT_ShapeShuffle_377",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_79_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 1 to /model.24/Range_5",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_5",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Output Tensor 0 to /model.24/Range_5",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_18 + /model.24/Reshape_20",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_9",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_25_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_78_output_0 + ONNXTRT_ShapeShuffle_367",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_77_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Input Tensor 1 to /model.24/Range_4",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_4",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "Reformatting CopyNode for Output Tensor 0 to /model.24/Range_4",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_17 + /model.24/Reshape_19",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_8",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_26_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_439",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_10",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_94_output_0 + ONNXTRT_Broadcast_452, PWN(/model.24/Sub_2)), PWN(/model.24/Constant_102_output_0 + ONNXTRT_Bro",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_19_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_21_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_23_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_778",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_7",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_68_output_0 + ONNXTRT_Broadcast_348 + /model.24/Mul_12, PWN(/model.24/Constant_69_output_0 + ONNXTRT_Broadcast_35",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_44_output_0 + ONNXTRT_ShapeShuffle_229",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_43_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_3",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_10 + /model.24/Reshape_12",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_5",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_14_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_42_output_0 + ONNXTRT_ShapeShuffle_219",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_41_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_2",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_9 + /model.24/Reshape_11",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_4",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_291",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_6",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_58_output_0 + ONNXTRT_Broadcast_304, PWN(/model.24/Sub_1)), PWN(/model.24/Constant_66_output_0 + ONNXTRT_Broa",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_11_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_13_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_15_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "onnx::Expand_766",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_3",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(/model.24/Constant_32_output_0 + ONNXTRT_Broadcast_200 + /model.24/Mul_4, PWN(/model.24/Constant_33_output_0 + ONNXTRT_Broadcast_202",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_8_output_0 + ONNXTRT_ShapeShuffle_85",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_7_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range_1",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_2 + /model.24/Reshape_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_1",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_3_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_6_output_0 + ONNXTRT_ShapeShuffle_75",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Constant_5_output_0",
+            "precision": "unknown",
+            "layer_type": "Constant",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Range",
+            "precision": "unknown",
+            "layer_type": "Fill",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_1 + /model.24/Reshape_3",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Unsqueeze_4_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "ONNXTRT_ShapeShuffle_143",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Expand_2",
+            "precision": "unknown",
+            "layer_type": "Slice",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "PWN(PWN(PWN(/model.24/Constant_22_output_0 + ONNXTRT_Broadcast_156, PWN(/model.24/Sub)), PWN(/model.24/Constant_30_output_0 + ONNXTRT_Broadc",
+            "precision": "unknown",
+            "layer_type": "PointWiseV2",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_3_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Mul_5_output_0 copy",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7",
+            "precision": "unknown",
+            "layer_type": "NoOp",
+            "tactic": "",
+            "is_convolution": false
+          },
+          {
+            "name": "/model.24/Reshape_7_copy_output",
+            "precision": "unknown",
+            "layer_type": "Reformat",
+            "tactic": "",
+            "is_convolution": false
+          }
+        ],
+        "layers_with_metadata": 173,
+        "source": "tensorrt engine inspector, DETAILED profiling verbosity (not a log scrape)"
+      },
+      "map50": 0.7005,
+      "map5095": 0.3149,
+      "per_class": {
+        "smoke": {
+          "map5095": 0.3943,
+          "map50": 0.7874
+        },
+        "fire": {
+          "map5095": 0.2354,
+          "map50": 0.6137
+        }
+      },
+      "small_plume": 0.4582,
+      "tiny_plume": 0.0423,
+      "background": {
+        "conf": 0.25,
+        "n_background_images": 2005,
+        "n_alarmed": 71,
+        "false_alarm_rate": 0.0354,
+        "correctly_silent_rate": 0.9646,
+        "false_boxes_per_bg_image": 0.0414
+      },
+      "fingerprint": "8fb801b05a0e140f",
+      "batch": 16,
+      "fps_batched": 712.71,
+      "fps_batched_se": 17.897,
+      "ms_per_image_batched": 1.403,
+      "runs": 3,
+      "measured_images": 960,
+      "power": {
+        "power_w": {
+          "mean": 17.781,
+          "peak": 18.585
+        },
+        "compute_power_w": {
+          "mean": 8.912,
+          "peak": 9.477
+        },
+        "gpu_util_pct": 96.9,
+        "temp_c_peak": 57.375,
+        "n_samples": 42,
+        "power_mode": "MAXN_SUPER",
+        "energy_j": 77.16,
+        "j_per_1k": 24.11,
+        "window_s": 4.39,
+        "images": 3200
+      }
+    }
+  },
+  "rebuild_variance": {
+    "arm": "int8_fp16",
+    "fps": [
+      718.35,
+      718.65,
+      720.16
+    ],
+    "spread_pct": 0.25
+  },
+  "precision_report_source": "tensorrt engine inspector"
+}

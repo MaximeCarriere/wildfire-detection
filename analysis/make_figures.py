@@ -2283,10 +2283,1037 @@ def fig_xp06e4b(records) -> Path | None:
 
 
 
+
+
+# --------------------------------------------------------------------------
+# XP7 — quantization. The explainer figures are drawn from xp07_concepts.json,
+# which is measured on this detector rather than sketched, so every teaching
+# picture on the page is a fact about YOLOv5s and not about a textbook tensor.
+# --------------------------------------------------------------------------
+
+def fig_xp07_concepts(records) -> Path | None:
+    """What a scale is, why granularity exists, and what calibration decides."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07_concepts.json")
+    if not d:
+        return None
+
+    w, a = d["weights"], d["activations"]
+    fig, axes = plt.subplots(1, 3, figsize=(17.4, 4.6),
+                             gridspec_kw={"width_ratios": [1, 1, 1.35]})
+    fig.suptitle("Quantization is one decision repeated: where do you put the grid?", y=1.06)
+    style.subtitle(fig, "All three panels are measured on this detector — YOLOv5s at 512 px — "
+                        "not drawn as a schematic.", y=1.005)
+
+    # --- panel 1: the grid ------------------------------------------------
+    ax = axes[0]
+    edges = np.linspace(w["hist_min"], w["hist_max"], len(w["hist_counts"]) + 1)
+    centres = (edges[:-1] + edges[1:]) / 2
+    ax.fill_between(centres, w["hist_counts"], color=style.BLUE, alpha=0.30, zorder=2)
+    ax.plot(centres, w["hist_counts"], color=style.BLUE, lw=1.4, zorder=3)
+
+    s = w["per_tensor_scale"]
+    top = max(w["hist_counts"])
+    for k in range(-8, 9):                      # a few grid lines, not all 255
+        ax.axvline(k * s, color=style.INK_2, lw=0.7, alpha=0.40, zorder=1)
+    # One step, shaded. At this zoom a band reads where a 1-step arrow collapses.
+    ax.axvspan(2 * s, 3 * s, color=style.ORANGE, alpha=0.35, zorder=2)
+    ax.annotate(f"one step\nS = {s:.5f}", xy=(2.5 * s, top * 0.40),
+                xytext=(5.6 * s, top * 0.80), ha="center", fontsize=9,
+                color=style.ORANGE, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=style.ORANGE, lw=1.4))
+    ax.set_xlim(-8.5 * s, 8.5 * s)
+    ax.set_title(f"1. INT8 keeps 255 values. The scale\nsays which ones. ({w['layer']})",
+                 fontsize=11, loc="left")
+    ax.set_xlabel("weight value, zoomed to ±8 steps")
+    ax.set_ylabel("number of weights")
+    ax.set_yticks([])
+    style.tidy(ax)
+
+    # --- panel 2: granularity --------------------------------------------
+    ax = axes[1]
+    amax = np.array(w["per_channel_absmax"])
+    order = np.argsort(-amax)
+    ax.bar(range(len(amax)), amax[order], width=1.0, color=style.AQUA,
+           alpha=0.85, zorder=3)
+    pt = float(np.max(amax))
+    ax.axhline(pt, color=style.RED, lw=1.6, zorder=4)
+    ax.text(len(amax) * 0.45, pt * 1.02,
+            f"per-tensor: every channel is given the widest channel's range ({pt:.2f})",
+            fontsize=8.6, color=style.RED, fontweight="bold", va="bottom")
+    ax.annotate(f"{w['widest_over_narrowest']:.1f}x spread\nwidest to narrowest",
+                xy=(len(amax) * 0.80, amax[order][int(len(amax) * 0.80)]),
+                xytext=(len(amax) * 0.52, pt * 0.45), fontsize=8.6,
+                color=style.INK_2,
+                arrowprops=dict(arrowstyle="->", color=style.INK_2, lw=1.1))
+    ax.set_title("2. Per-channel gives each filter its own step,\nand costs nothing to run.",
+                 fontsize=11, loc="left")
+    ax.set_xlabel(f"the {len(amax)} output filters of {w['layer']}, widest first")
+    ax.set_ylabel("largest weight magnitude")
+    style.tidy(ax)
+
+    # --- panel 3: calibration --------------------------------------------
+    ax = axes[2]
+    counts = np.array(a["hist_counts"], dtype=float)
+    bw = a["bin_width"]
+    x = (np.arange(len(counts)) + 0.5) * bw
+    ax.fill_between(x, counts, color=style.BLUE, alpha=0.28, zorder=2)
+    ax.plot(x, counts, color=style.BLUE, lw=1.2, zorder=3)
+    ax.set_yscale("log")
+
+    seen = {}
+    for name, v in a["clips"].items():
+        seen.setdefault(round(v["represented_max"], 3), []).append(name)
+    peak = counts[counts > 0].max()
+    for r, names in sorted(seen.items()):
+        clipper = "entropy" in names
+        col = style.RED if clipper else style.AQUA
+        ax.axvline(r, color=col, lw=2.2, zorder=5)
+        label = " / ".join(n.replace("percentile_", "pct ") for n in names)
+        # The clipper is labelled to the left of its line, the keepers above the
+        # axis on the right, so the two groups never share space.
+        if clipper:
+            ax.text(r - 0.03, peak * 0.6, f"{label}\nkeeps 0–{r:.4f}",
+                    ha="right", va="center", fontsize=9.2, color=col, fontweight="bold")
+        else:
+            ax.text(0.99, peak * 2.0, f"{label}\nall keep 0–{r:.4f}", ha="right",
+                    va="bottom", fontsize=9.2, color=col, fontweight="bold")
+    ax.axvspan(min(seen), 1.0, color=style.RED, alpha=0.08, zorder=1)
+    # Placed in the empty band between the histogram and the keeper labels, so
+    # the sentence never sits on the data it is describing.
+    ax.text(0.735, peak * 0.02,
+            "entropy flattens everything in here\nto one value — and bright sky is\nexactly where faint smoke has to\nbe seen against it",
+            ha="center", va="center", fontsize=8.4, color=style.RED)
+    ax.set_ylim(top=peak * 14)
+    ax.set_title("3. Calibration picks the clip point.\nOne method picks a different one.",
+                 fontsize=11, loc="left")
+    ax.set_xlabel("input image brightness, normalised to 0–1")
+    ax.set_ylabel("pixels, log scale")
+    ax.set_xlim(0, 1.02)
+    style.tidy(ax)
+
+    fig.tight_layout()
+    return save(fig, "xp07_concepts.png")
+
+
+def fig_xp07_head(records) -> Path | None:
+    """Why the detection head cannot take a per-tensor INT8 scale."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07_concepts.json")
+    if not d:
+        return None
+    det = d["detect_output"]
+
+    names = det["channel_names"]
+    amax = np.array(det["channel_absmax"])
+    step = det["per_tensor_step"]
+    is_box = np.array([n in ("x", "y", "w", "h") for n in names])
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.2, 4.6),
+                             gridspec_kw={"width_ratios": [1.25, 1]})
+    fig.suptitle("One tensor, two populations, and a single scale that cannot serve both",
+                 y=1.06)
+    style.subtitle(fig, "YOLOv5's Detect layer concatenates box coordinates in pixels with "
+                        "probabilities in [0,1]. INT8 carries one scale per tensor.", y=1.0)
+
+    # --- left: the two populations ---------------------------------------
+    ax = axes[0]
+    cols = [style.BLUE if b else style.ORANGE for b in is_box]
+    ax.bar(names, amax, color=cols, zorder=3, width=0.68)
+    ax.set_yscale("log")
+    ax.axhline(step, color=style.RED, lw=1.8, ls="--", zorder=4)
+    ax.text(len(names) - 0.4, step * 1.25,
+            f"one INT8 step = {step:.2f}", ha="right", fontsize=9.5,
+            color=style.RED, fontweight="bold")
+    for i, (n, v) in enumerate(zip(names, amax)):
+        ax.text(i, v * 1.3, f"{v:.2f}".rstrip("0").rstrip("."), ha="center",
+                fontsize=9, color=style.INK, fontweight="bold")
+    ax.text(1.5, amax.max() * 3.0, "box coordinates, in pixels", ha="center",
+            fontsize=9.5, color=style.BLUE, fontweight="bold")
+    ax.text(5.0, amax.max() * 3.0, "probabilities, in [0,1]", ha="center",
+            fontsize=9.5, color=style.ORANGE, fontweight="bold")
+    ax.set_ylim(top=amax.max() * 9)
+    ax.set_ylabel("largest value seen in this channel, log scale")
+    ax.set_xlabel("the 7 channels of the decoded Detect output")
+    ax.set_title("The scale is set by the widest channel", fontsize=11, loc="left")
+    style.tidy(ax)
+
+    # --- right: what each population gets --------------------------------
+    ax = axes[1]
+    levels_box = amax[is_box].max() / step
+    levels_prob = 1.0 / step
+    bars = ax.barh(["box coordinate\n(range 0–%.0f)" % amax[is_box].max(),
+                    "probability\n(range 0–1)"],
+                   [levels_box, levels_prob],
+                   color=[style.BLUE, style.ORANGE], zorder=3, height=0.34)
+    ax.set_xscale("log")
+    ax.set_xlim(0.02, 4000)
+    ax.axvline(1.0, color=style.RED, lw=1.6, zorder=4)
+    ax.text(1.0, 1.42, "one step", fontsize=9, color=style.RED,
+            fontweight="bold", ha="center")
+    ax.text(levels_box * 1.3, 0, f"{levels_box:.0f} levels", va="center",
+            fontsize=10.5, color=style.BLUE, fontweight="bold")
+    # Parked to the right of the "one step" line so the sentence crosses nothing.
+    ax.text(2.6, 1, f"{levels_prob:.3f} of one level\n→ every probability rounds to zero",
+            va="center", ha="left", fontsize=10.5, color=style.RED, fontweight="bold")
+    ax.set_ylim(-0.6, 1.7)
+    ax.set_xlabel("how many INT8 levels this quantity actually gets")
+    ax.set_title("Box regression survives. The classifier does not.",
+                 fontsize=11, loc="left")
+    style.tidy(ax, ygrid=False)
+
+    fig.tight_layout()
+    return save(fig, "xp07_head.png")
+
+
+
+
+def fig_xp07e9(records) -> Path | None:
+    """Every technique in the series on four axes. The ranking is not one ranking."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e9_frontier.json")
+    if not d:
+        return None
+    rows = [r for r in d["rows"] if r.get("map50") and r.get("fps_batched")]
+    if not rows:
+        return None
+    line = next((r for r in rows if r["family"] == "baseline"
+                 and r["input_res"] == 512), None)
+
+    fam_colour = {
+        "baseline": style.INK, "resolution": style.BLUE,
+        "pruning": style.ORANGE, "sparsity": style.AQUA,
+        "quantization": "#8e44ad", "composition": style.RED,
+    }
+
+    def area(j):
+        return 70 if not j else max(50, min(900, j * 4.2))
+
+    fig = plt.figure(figsize=(16.8, 9.4))
+    gs = fig.add_gridspec(2, 2, hspace=0.42, wspace=0.24)
+    fig.suptitle("No technique wins outright — the best one depends on the accuracy "
+                 "you are willing to give up", y=0.975, fontsize=15)
+    # Wrapped: an unbroken subtitle this long makes bbox_inches="tight" stretch
+    # the whole figure to fit it.
+    style.subtitle(fig, "Every point is one engine measured on the Jetson Orin Nano Super at "
+                        "512 px unless labelled otherwise.\nMarker area is energy per 1,000 "
+                        "frames (bigger dot, more joules) and is indicative only — XP7's engines "
+                        "were integrated over a\nflat-out batch-16 window, the older rows over a "
+                        "batch-1 one, and the same FP16 engine reads 43.3 vs 52.1 J/1k.",
+                   y=0.958)
+
+    def scatter(ax, xk, yk, xlabel, ylabel, title, logx=False, invert=False):
+        for r in rows:
+            c = fam_colour.get(r["family"], style.MUTED)
+            ax.scatter([r[xk]], [r[yk]], s=area(r["j_per_1k"]), color=c,
+                       alpha=0.80, zorder=4, edgecolor="white", linewidth=1.1)
+        if logx:
+            ax.set_xscale("log")
+        if invert:
+            ax.invert_xaxis()
+        ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
+        ax.set_title(title, fontsize=12, loc="left")
+        style.tidy(ax)
+
+    # ---- panel 1: accuracy vs throughput --------------------------------
+    ax = fig.add_subplot(gs[0, 0])
+    if line:
+        ax.axhline(line["map50"], color=style.INK_2, ls="--", lw=1.0, zorder=1)
+        ax.axvline(line["fps_batched"], color=style.INK_2, ls="--", lw=1.0, zorder=1)
+        xs = max(r["fps_batched"] for r in rows) * 1.10
+        ax.fill_betweenx([line["map50"], 0.83], line["fps_batched"], xs,
+                         color=style.AQUA, alpha=0.10, zorder=0)
+        ax.text(line["fps_batched"] * 1.03, 0.822, "better than the line\n(nothing is here)",
+                fontsize=9, color="#0d5f43", va="top", fontweight="bold")
+    scatter(ax, "fps_batched", "map50", "throughput, images/s at batch 16 (higher is better)",
+            "mAP50 on the 4,306-image test set", "1. Accuracy vs speed")
+    ax.set_ylim(0.20, 0.83)
+    for r in rows:
+        if r["map50"] < 0.60:                    # the broken arm, labelled in place
+            ax.annotate(r["label"], (r["fps_batched"], r["map50"]),
+                        textcoords="offset points", xytext=(-8, 10), ha="right",
+                        fontsize=8.2, color=style.RED, fontweight="bold")
+
+    # ---- panel 2: accuracy vs size --------------------------------------
+    ax = fig.add_subplot(gs[0, 1])
+    if line:
+        ax.axhline(line["map50"], color=style.INK_2, ls="--", lw=1.0, zorder=1)
+        ax.axvline(line["size_disk_mb"], color=style.INK_2, ls="--", lw=1.0, zorder=1)
+    scatter(ax, "size_disk_mb", "map50", "engine on disk, MB, log scale (smaller is better →)",
+            "mAP50 on the 4,306-image test set", "2. Accuracy vs size",
+            logx=True, invert=True)
+    ax.set_ylim(0.20, 0.83)
+    ax.set_xticks([10, 15, 20, 40, 60, 95])
+    ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+    if line:
+        ax.annotate("everything compressed lands in 9–17 MB,\nand none of it reaches the line",
+                    xy=(11.5, 0.745), xytext=(11.5, 0.46), ha="center", fontsize=9,
+                    color=style.INK_2,
+                    arrowprops=dict(arrowstyle="->", color=style.INK_2, lw=1.0))
+
+    # ---- panel 3: the slice that changes the ranking --------------------
+    ax = fig.add_subplot(gs[1, 0])
+    tiny = [r for r in rows if r.get("tiny_plume") is not None]
+    if line and line.get("tiny_plume"):
+        ax.axhline(line["tiny_plume"], color=style.INK_2, ls="--", lw=1.0, zorder=1)
+        ax.text(max(r["fps_batched"] for r in tiny) * 0.99, line["tiny_plume"] * 1.06,
+                f"the line: {line['tiny_plume']:.4f}", ha="right", fontsize=9,
+                color=style.INK_2)
+    placed = []
+    for r in sorted(tiny, key=lambda x: x["fps_batched"]):
+        c = fam_colour.get(r["family"], style.MUTED)
+        ax.scatter([r["fps_batched"]], [r["tiny_plume"]], s=area(r["j_per_1k"]),
+                   color=c, alpha=0.80, zorder=4, edgecolor="white", linewidth=1.1)
+        keep = r["tiny_plume"] / line["tiny_plume"] * 100 if line and line["tiny_plume"] else None
+        if keep is None or r is line:
+            continue
+        # Arms that land on top of each other get their labels pushed apart, so
+        # two coincident dots do not print two numbers in the same place.
+        crowded = any(abs(r["fps_batched"] - x) < 40 and abs(r["tiny_plume"] - y) < 0.02
+                      for x, y in placed)
+        ax.annotate(f"{keep:.0f}%", (r["fps_batched"], r["tiny_plume"]),
+                    textcoords="offset points",
+                    xytext=(26, -4) if crowded else (0, 12), ha="center",
+                    fontsize=8.4, color=c, fontweight="bold")
+        placed.append((r["fps_batched"], r["tiny_plume"]))
+    ax.set_xlabel("throughput, images/s at batch 16")
+    ax.set_ylabel("mAP50 on plumes under 0.1% of the frame")
+    ax.set_ylim(-0.014, max(r["tiny_plume"] for r in tiny) * 1.30)
+    ax.set_title("3. The same arms, scored on distant smoke only\n"
+                 "(% = share of the FP16 line's tiny-plume accuracy kept)",
+                 fontsize=12, loc="left")
+    style.tidy(ax)
+
+    # ---- panel 4: what to pick, per accuracy budget ---------------------
+    ax = fig.add_subplot(gs[1, 1])
+    budgets = d["verdict"]["fastest_at_each_accuracy_floor"]
+    keys = list(budgets)[::-1]
+    labels = [k.replace("map50>=", "keep mAP50 ≥ ") for k in keys]
+    fps = [budgets[k]["fps"] for k in keys]
+    cols = [fam_colour.get(budgets[k]["family"], style.MUTED) for k in keys]
+    bars = ax.barh(labels, fps, color=cols, zorder=3, height=0.55)
+    base = line["fps_batched"] if line else 0
+    ax.axvline(base, color=style.INK_2, ls="--", lw=1.2, zorder=4)
+    ax.text(base, -0.62, "the line\n474 img/s", fontsize=8.8, color=style.INK_2,
+            ha="center", va="top", fontweight="bold")
+    ax.set_ylim(-0.95, len(keys) - 0.35)
+    for i, k in enumerate(keys):
+        b = budgets[k]
+        ax.text(b["fps"] * 1.01, i,
+                f"  {b['fastest']}\n  {b['fps']:.0f} img/s · {b['size_mb']:.1f} MB"
+                + (f" · {b['j_per_1k']:.0f} J/1k" if b.get("j_per_1k") else ""),
+                va="center", fontsize=9, color=style.INK)
+    ax.set_xlim(0, max(fps) * 1.85)
+    ax.set_xlabel("throughput of the fastest arm that still clears the accuracy floor")
+    ax.set_title("4. The practical answer: pick your floor, read off the winner",
+                 fontsize=12, loc="left")
+    style.tidy(ax, ygrid=False)
+
+    handles = [plt.Line2D([], [], marker="o", ls="", color=c, markersize=9, label=f)
+               for f, c in fam_colour.items()
+               if any(r["family"] == f for r in rows)]
+    fig.legend(handles=handles, loc="lower center", ncol=len(handles),
+               bbox_to_anchor=(0.5, -0.01), frameon=False, fontsize=10.5)
+    return save(fig, "xp07e9_frontier.png")
+
+
+
+
+#: Family colours, shared by every XP7 frontier figure so a technique keeps its
+#: colour whichever metric is being ranked.
+XP07_FAMILY_COLOUR = {
+    "baseline": style.INK, "resolution": style.BLUE,
+    "pruning": style.ORANGE, "sparsity": style.AQUA,
+    "quantization": "#8e44ad", "composition": style.RED,
+}
+
+
+def _xp07_metric_figure(key: str, fname: str, headline: str, blurb: str,
+                        ylabel: str) -> Path | None:
+    """One metric, two panels: who keeps it, and what that costs in speed.
+
+    Aggregate mAP50 averages over two classes of very different difficulty and
+    over every plume size, so it can stay flat while the capability that matters
+    collapses. These per-metric figures are the check on that: same arms, same
+    axes, one measure at a time.
+    """
+    import matplotlib.pyplot as plt
+
+    d = _side("xp07e9_frontier.json")
+    if not d:
+        return None
+    blk = ((d.get("verdict") or {}).get("per_metric") or {}).get(key)
+    rows = [r for r in d["rows"] if r.get(key) is not None and r.get("fps_batched")]
+    if not blk or not rows:
+        return None
+    base = blk["line_value"]
+    line = next((r for r in rows if r["family"] == "baseline"
+                 and r["input_res"] == 512), None)
+
+    def area(j):
+        return 70 if not j else max(50, min(900, j * 4.2))
+
+    # The right panel's y labels are full technique names, so the gutter has to
+    # be wide enough for them or they run into the left panel's data.
+    fig = plt.figure(figsize=(17.6, 5.8))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1, 1.0], wspace=0.52)
+    fig.suptitle(headline, y=1.045, fontsize=14.5)
+    style.subtitle(fig, blurb, y=0.985)
+
+    # ---- panel 1: this metric vs throughput -----------------------------
+    ax = fig.add_subplot(gs[0, 0])
+    ax.axhline(base, color=style.INK_2, ls="--", lw=1.1, zorder=1)
+    xs = max(r["fps_batched"] for r in rows) * 1.12
+    ax.fill_betweenx([base, max(r[key] for r in rows) * 1.25],
+                     line["fps_batched"] if line else 0, xs,
+                     color=style.AQUA, alpha=0.10, zorder=0)
+    if line:
+        ax.axvline(line["fps_batched"], color=style.INK_2, ls="--", lw=1.1, zorder=1)
+    ax.text(xs * 0.99, base * 1.05, f"the line: {base:.4f}", ha="right", fontsize=9.5,
+            color=style.INK_2, fontweight="bold")
+    for r in rows:
+        c = XP07_FAMILY_COLOUR.get(r["family"], style.MUTED)
+        ax.scatter([r["fps_batched"]], [r[key]], s=area(r["j_per_1k"]), color=c,
+                   alpha=0.82, zorder=4, edgecolor="white", linewidth=1.1)
+    ax.set_xlim(0, xs)
+    ax.set_ylim(-0.02 * max(r[key] for r in rows), max(r[key] for r in rows) * 1.25)
+    ax.set_xlabel("throughput, images/s at batch 16 (higher is better)")
+    ax.set_ylabel(ylabel)
+    ax.set_title("Where each technique lands on this measure", fontsize=12, loc="left")
+    style.tidy(ax)
+
+    # ---- panel 2: how much of the line each one keeps -------------------
+    ax = fig.add_subplot(gs[0, 1])
+    ret = [r for r in blk["retention"]]
+    labels = [r["label"] for r in ret][::-1]
+    kept = [r["kept_pct"] for r in ret][::-1]
+    cols = [XP07_FAMILY_COLOUR.get(r["family"], style.MUTED) for r in ret][::-1]
+    ax.barh(labels, kept, color=cols, zorder=3, height=0.62)
+    ax.axvline(100, color=style.INK_2, ls="--", lw=1.2, zorder=4)
+    for i, r in enumerate(ret[::-1]):
+        ax.text(r["kept_pct"] + 2.5, i,
+                f"{r['kept_pct']:.0f}%   {r['fps']:.0f} img/s · {r['size_mb']:.1f} MB",
+                va="center", fontsize=9, color=style.INK)
+    ax.set_xlim(0, max(kept) * 1.62)
+    ax.set_xlabel(f"share of the FP16 line's {blk['title']} that survives (%)")
+    ax.set_title("How much of the line each technique keeps", fontsize=12, loc="left")
+    style.tidy(ax, ygrid=False)
+
+    handles = [plt.Line2D([], [], marker="o", ls="", color=c, markersize=9, label=f)
+               for f, c in XP07_FAMILY_COLOUR.items()
+               if any(r["family"] == f for r in rows)]
+    fig.legend(handles=handles, loc="lower center", ncol=len(handles),
+               bbox_to_anchor=(0.5, -0.09), frameon=False, fontsize=10.5)
+    return save(fig, fname)
+
+
+def fig_xp07e9_fire(records) -> Path | None:
+    """The flame class on its own — the harder of the two, and the one that burns."""
+    return _xp07_metric_figure(
+        "map50_fire", "xp07e9_fire.png",
+        "Flame: every technique costs more here than the headline number admits",
+        "Fire is the harder class (the line scores 0.7184 on it against 0.8367 on smoke), "
+        "so a technique's damage shows up on flame before it shows up on the average.",
+        "mAP50 on the fire class, 4,306-image test set")
+
+
+def fig_xp07e9_tiny(records) -> Path | None:
+    """Distant smoke — the capability early detection actually depends on."""
+    return _xp07_metric_figure(
+        "tiny_plume", "xp07e9_tiny.png",
+        "Distant smoke: the ranking that aggregate mAP50 hides",
+        "Plumes under 0.1% of the frame — roughly 20x20 px. This is what early "
+        "detection is, and it is where the cheapest-looking technique turns out to be "
+        "the most expensive.",
+        "mAP50 on plumes under 0.1% of the frame")
+
+
+
+
+def fig_xp07e1(records) -> Path | None:
+    """Where INT8 damage lives: not in the weights, and not spread out."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e1_sensitivity.json")
+    if not d:
+        return None
+    bl = d["baseline_fp16"]
+    base_map, base_tiny = bl["map50"], bl["tiny_plume"]["map50"]
+    head = set(d["head_convs"])
+
+    order = [r["layer"] for r in d["rows"] if r["arm"] == "w8"]
+    idx = {n: i for i, n in enumerate(order)}
+    by_arm = {a: {r["layer"]: r for r in d["rows"] if r["arm"] == a}
+              for a in ("w8", "w8a8")}
+
+    fig, axes = plt.subplots(1, 2, figsize=(17.0, 5.4))
+    fig.suptitle("INT8 damage is not in the weights, and it is not spread out — "
+                 "it is three layers of the detection head", y=1.05, fontsize=14.5)
+    style.subtitle(fig, "Each point quantizes ONE of the 60 convolutions and leaves the "
+                        "other 59 in FP16. Validation split, no retraining.", y=0.99)
+
+    # ---- panel 1: aggregate mAP50 ---------------------------------------
+    ax = axes[0]
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=2)
+    for arm, colour, label in (("w8", style.AQUA, "W8 — weights only"),
+                               ("w8a8", style.BLUE, "W8A8 — weights + input activation")):
+        xs = [idx[n] for n in order]
+        ys = [by_arm[arm][n]["map50"] / base_map * 100 for n in order]
+        ax.plot(xs, ys, color=colour, lw=1.4, marker="o", ms=3.4, zorder=3, label=label)
+    for n in head:
+        r = by_arm["w8a8"][n]
+        ax.scatter([idx[n]], [r["map50"] / base_map * 100], s=130, facecolor="none",
+                   edgecolor=style.RED, linewidth=2.0, zorder=5)
+    worst = min(head, key=lambda n: by_arm["w8a8"][n]["map50"])
+    lo = min(by_arm["w8a8"][n]["map50"] / base_map * 100 for n in order)
+    ax.set_ylim(lo - 0.45, 100.2)
+    ax.annotate("the three Detect head convolutions —\nthe only cells that move at all",
+                xy=(idx[worst], by_arm["w8a8"][worst]["map50"] / base_map * 100),
+                xytext=(len(order) * 0.30, lo + 0.25), ha="left", fontsize=9.5,
+                color=style.RED, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=style.RED, lw=1.3))
+    ax.set_xlabel("the 60 convolutions, in forward order")
+    ax.set_ylabel("mAP50 kept, % of the unquantized model")
+    ax.set_title("1. Quantize one layer: what does it cost?", fontsize=12, loc="left")
+    ax.legend(loc="lower left", fontsize=9.5)
+    style.tidy(ax)
+
+    # ---- panel 2: the slice that finds the real victim -------------------
+    ax = axes[1]
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=2)
+    xs = [idx[n] for n in order]
+    ys = [by_arm["w8a8"][n]["tiny_plume"] / base_tiny * 100 for n in order]
+    cols = [style.RED if n in head else style.BLUE for n in order]
+    ax.bar(xs, ys, color=cols, width=0.82, zorder=3)
+    ax.set_ylim(0, 125)
+
+    # Both callouts go in the empty left half, stacked, so the arrows fan out to
+    # the right instead of crossing each other over the bars.
+    ranked = sorted(order, key=lambda n: by_arm["w8a8"][n]["tiny_plume"])[:2]
+    for n, ty in zip(ranked, (40, 72)):
+        r = by_arm["w8a8"][n]
+        keep = r["tiny_plume"] / base_tiny * 100
+        ax.annotate(f"{n} — {keep:.0f}% kept\n(its aggregate mAP50 fell only "
+                    f"{r['rel_drop_pct']:.1f}%)",
+                    xy=(idx[n], keep), xytext=(2, ty), ha="left", va="center",
+                    fontsize=9.2, zorder=6,
+                    color=style.RED if n in head else style.INK,
+                    fontweight="bold",
+                    # The callouts sit over the bars, so they carry their own
+                    # background or the bar colour swallows the text.
+                    bbox=dict(boxstyle="round,pad=0.35", fc=style.SURFACE,
+                              ec="none", alpha=0.93),
+                    arrowprops=dict(arrowstyle="->", lw=1.3, zorder=6,
+                                    connectionstyle="arc3,rad=-0.12",
+                                    color=style.RED if n in head else style.INK_2))
+    ax.set_xlabel("the 60 convolutions, in forward order")
+    ax.set_ylabel("tiny-plume mAP50 kept, % of the unquantized model")
+    ax.set_title("2. The same 60 cells, scored on distant smoke only\n"
+                 "(red = a Detect head convolution)", fontsize=12, loc="left")
+    style.tidy(ax)
+
+    fig.tight_layout()
+    return save(fig, "xp07e1_sensitivity.png")
+
+
+
+
+def fig_xp07e2(records) -> Path | None:
+    """Both ends of the clipping sweep are wrong, and the middle was never tested."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e2_calibration.json")
+    if not d:
+        return None
+    bl = d["baseline_fp16"]
+    base_map, base_tiny = bl["map50"], bl["tiny_plume"]["map50"]
+    meth = d["methods"]
+
+    order = ["entropy", "minmax", "percentile_99.9", "mse", "percentile_99.99"]
+    order = [m for m in order if m in meth]
+    nice = {"entropy": "entropy\n(TRT default)",
+            "minmax": "min-max\n(XP10's fix)",
+            "percentile_99.9": "percentile\n99.9",
+            "mse": "MSE", "percentile_99.99": "percentile\n99.99"}
+
+    fig = plt.figure(figsize=(17.4, 5.4))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1.25, 0.85], wspace=0.30)
+    fig.suptitle("Calibration decides almost everything at INT8 — for free, and both ends "
+                 "of the sweep are wrong", y=1.06, fontsize=14.5)
+    style.subtitle(fig, "Whole network W8A8, per-channel weights, no retraining, "
+                        "512 calibration images. Validation split.", y=1.0)
+
+    # ---- panel 1: what each method costs --------------------------------
+    ax = fig.add_subplot(gs[0, 0])
+    x = np.arange(len(order))
+    agg = [meth[m]["map50"] / base_map * 100 for m in order]
+    tin = [meth[m]["tiny_plume"] / base_tiny * 100 for m in order]
+    ax.bar(x - 0.20, agg, width=0.38, color=style.BLUE, zorder=3, label="aggregate mAP50")
+    ax.bar(x + 0.20, tin, width=0.38, color=style.ORANGE, zorder=3,
+           label="tiny plumes (<0.1%)")
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    for i, (a, t) in enumerate(zip(agg, tin)):
+        ax.text(i - 0.20, a + 2.5, f"{a:.0f}", ha="center", fontsize=8.6,
+                color=style.BLUE, fontweight="bold")
+        ax.text(i + 0.20, t + 2.5, f"{t:.0f}", ha="center", fontsize=8.6,
+                color=style.ORANGE, fontweight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels([nice[m] for m in order], fontsize=8.0)
+    ax.set_ylim(0, 118)
+    ax.set_ylabel("% of the unquantized model kept")
+    ax.set_title("1. One setting, 62 points of mAP50", fontsize=12, loc="left")
+    # Every arm ships the same bytes, which is what makes the spread free.
+    sz = {m: (meth[m].get("size") or {}).get("total_mb") for m in order}
+    same = {v for v in sz.values() if v}
+    if len(same) == 1:
+        fp16_mb = next(iter(meth.values()))["size"]["fp16_baseline_mb"]
+        ax.text(0.5, 0.965, f"all five arms ship the same model: "
+                            f"{next(iter(same)):.2f} MB, from {fp16_mb:.2f} MB FP16",
+                transform=ax.transAxes, ha="center", va="top", fontsize=9.2,
+                color=style.INK, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.4", fc="#eef5ee", ec="#8ec9b4", lw=1.0))
+    ax.legend(loc="lower right", fontsize=9)
+    style.tidy(ax)
+
+    # ---- panel 2: the mechanism -----------------------------------------
+    ax = fig.add_subplot(gs[0, 1])
+    layers = list(meth["minmax"]["scales"])
+    xs = np.arange(len(layers))
+    for m, colour, lw in (("minmax", style.RED, 1.6),
+                          ("percentile_99.99", style.AQUA, 1.6),
+                          ("entropy", "#8e44ad", 1.3)):
+        ax.plot(xs, [meth[m]["scales"][n] for n in layers], color=colour, lw=lw,
+                zorder=3, label=nice[m].replace("\n", " — "))
+    ax.set_yscale("log")
+    ax.set_ylim(bottom=0.07)          # headroom below the lines for the callout + legend
+    key = "model.24.m.0"
+    if key in meth["minmax"]["scales"]:
+        i = layers.index(key)
+        ax.scatter([i, i], [meth["minmax"]["scales"][key],
+                            meth["percentile_99.99"]["scales"][key]],
+                   s=70, facecolor="none", edgecolor=style.INK, linewidth=1.8, zorder=5)
+        ax.annotate(f"{key} — the stride-8 head,\nE1's worst layer: "
+                    f"{meth['minmax']['scales'][key]:.0f} vs "
+                    f"{meth['percentile_99.99']['scales'][key]:.0f}".replace(
+                        " — the stride-8 head,\n", "\n(stride-8 head) "),
+                    xy=(i, meth["minmax"]["scales"][key]), xytext=(1.5, 0.30),
+                    ha="left", va="center", fontsize=8.8, color=style.INK,
+                    fontweight="bold", zorder=6,
+                    bbox=dict(boxstyle="round,pad=0.35", fc=style.SURFACE, ec="none",
+                              alpha=0.93),
+                    arrowprops=dict(arrowstyle="->", color=style.INK_2, lw=1.2))
+    ax.set_xlabel("the 60 convolutions, in forward order")
+    ax.set_ylabel("range the method decides the tensor needs, log scale")
+    ax.set_title("2. Why: min-max lets one outlier set the step size\n"
+                 "(2.7x wider than percentile on the median layer)",
+                 fontsize=12, loc="left")
+    ax.legend(loc="lower right", fontsize=8.4)
+    style.tidy(ax)
+
+    # ---- panel 3: and how much data it needs ----------------------------
+    ax = fig.add_subplot(gs[0, 2])
+    sizes = d.get("sizes") or {}
+    ns = sorted(int(k) for k in sizes)
+    if ns:
+        ax.plot(ns, [sizes[str(n)]["map50"] / base_map * 100 for n in ns],
+                color=style.BLUE, marker="o", lw=1.8, zorder=3, label="aggregate mAP50")
+        ax.plot(ns, [sizes[str(n)]["tiny_plume"] / base_tiny * 100 for n in ns],
+                color=style.ORANGE, marker="o", lw=1.8, zorder=3, label="tiny plumes")
+        ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(ns)
+        ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+        ax.set_ylim(80, 108)
+    ax.set_xlabel("calibration images (nested subsets)")
+    ax.set_ylabel("% of the unquantized model kept")
+    ax.set_title("3. …and 32 images is enough", fontsize=12, loc="left")
+    ax.legend(loc="lower right", fontsize=9)
+    style.tidy(ax)
+
+    return save(fig, "xp07e2_calibration.png")
+
+
+
+
+def fig_xp07e4(records) -> Path | None:
+    """The board: what INT8 bought, and what TensorRT actually did with it."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e4_engines.json")
+    if not d:
+        return None
+    arms = d.get("arms") or {}
+    order = [a for a in ("fp16", "int8", "int8_fp16", "int8_head_fp16") if a in arms]
+    if not order:
+        return None
+    nice = {"fp16": "FP16\n(the line)", "int8": "INT8\nno float fallback",
+            "int8_fp16": "INT8 + FP16\nTRT chooses", "int8_head_fp16": "INT8, head\npinned FP16"}
+    base = arms.get("fp16") or {}
+    bmap = base.get("map50") or _calib_fp16("map50")
+    btiny = base.get("tiny_plume")
+    bfps = base.get("fps_batched")
+
+    fig, axes = plt.subplots(1, 3, figsize=(17.2, 5.2))
+    fig.suptitle("INT8 on the board: the speed is real, and so is what it costs "
+                 "distant smoke", y=1.05, fontsize=14.5)
+    style.subtitle(fig, "Full 4,306-image test set at 512 px, batch 16, Jetson Orin Nano "
+                        "Super. Every engine built from the same ONNX.", y=0.995)
+
+    x = np.arange(len(order))
+
+    # ---- panel 1: accuracy, aggregate vs distant smoke -------------------
+    ax = axes[0]
+    agg = [(arms[a].get("map50") or 0) / bmap * 100 if bmap else 0 for a in order]
+    tin = [(arms[a].get("tiny_plume") or 0) / btiny * 100 if btiny else 0 for a in order]
+    ax.bar(x - 0.20, agg, width=0.38, color=style.BLUE, zorder=3, label="aggregate mAP50")
+    ax.bar(x + 0.20, tin, width=0.38, color=style.ORANGE, zorder=3, label="tiny plumes")
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    for i, (a, t) in enumerate(zip(agg, tin)):
+        ax.text(i - 0.20, a + 2, f"{a:.0f}", ha="center", fontsize=8.8,
+                color=style.BLUE, fontweight="bold")
+        ax.text(i + 0.20, t + 2, f"{t:.0f}", ha="center", fontsize=8.8,
+                color=style.ORANGE, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels([nice[a] for a in order], fontsize=8.4)
+    ax.set_ylim(0, 118)
+    ax.set_ylabel("% of the FP16 engine kept")
+    ax.set_title("1. What each engine keeps", fontsize=12, loc="left")
+    ax.legend(loc="lower right", fontsize=9)
+    style.tidy(ax)
+
+    # ---- panel 2: speed, energy, size ------------------------------------
+    ax = axes[1]
+    fps = [arms[a].get("fps_batched") or 0 for a in order]
+    ax.bar(x, fps, width=0.55, color=style.AQUA, zorder=3)
+    if bfps:
+        ax.axhline(bfps, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    for i, a in enumerate(order):
+        r = arms[a]
+        j = (r.get("power") or {}).get("j_per_1k")
+        ax.text(i, (r.get("fps_batched") or 0) + max(fps) * 0.02,
+                f"{r.get('fps_batched', 0):.0f} img/s\n{r.get('engine_mb', 0):.1f} MB"
+                + (f"\n{j:.0f} J/1k" if j else ""),
+                ha="center", fontsize=8.8, color=style.INK, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels([nice[a] for a in order], fontsize=8.4)
+    ax.set_ylim(0, max(fps) * 1.34 if fps else 1)
+    ax.set_ylabel("throughput, images/s at batch 16")
+    ax.set_title("2. What it bought", fontsize=12, loc="left")
+    style.tidy(ax)
+
+    # ---- panel 3: what the compiler actually did -------------------------
+    ax = axes[2]
+    prec_order = ["int8", "fp16", "fp32", "unknown"]
+    prec_col = {"int8": "#8e44ad", "fp16": style.BLUE, "fp32": style.MUTED,
+                "unknown": "#cccccc"}
+    have = False
+    bottom = np.zeros(len(order))
+    for pk in prec_order:
+        vals = []
+        for a in order:
+            cc = ((arms[a].get("precision_report") or {}).get("convolution_counts") or {})
+            vals.append(cc.get(pk, 0))
+        if any(vals):
+            have = True
+            ax.bar(x, vals, bottom=bottom, width=0.55, color=prec_col[pk],
+                   zorder=3, label=pk.upper())
+            bottom += np.array(vals, dtype=float)
+    if have:
+        for i, a in enumerate(order):
+            rep = arms[a].get("precision_report") or {}
+            n8, tot = rep.get("convolutions_in_int8"), rep.get("convolutions_total")
+            if tot:
+                ax.text(i, bottom[i] + tot * 0.02, f"{n8}/{tot} in INT8",
+                        ha="center", fontsize=8.8, color=style.INK, fontweight="bold")
+        # Headroom for the legend, so it sits above the bars instead of on the
+        # first one's label.
+        ax.set_ylim(0, max(bottom) * 1.45)
+        ax.legend(loc="upper center", fontsize=9, ncol=3, columnspacing=1.1,
+                  title="convolutions ran in")
+        ax.set_ylabel("convolutions in the built engine")
+        ax.set_title("3. What TensorRT actually did\n"
+                     '("INT8" is a request; this is the answer)', fontsize=12, loc="left")
+    else:
+        ax.text(0.5, 0.5, "per-layer precision not recorded\n"
+                          "(engines need detailed profiling verbosity)",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=10, color=style.MUTED)
+        ax.set_title("3. What TensorRT actually did", fontsize=12, loc="left")
+    ax.set_xticks(x); ax.set_xticklabels([nice[a] for a in order], fontsize=8.4)
+    style.tidy(ax)
+
+    fig.tight_layout()
+    return save(fig, "xp07e4_engines.png")
+
+
+def _calib_fp16(key: str):
+    """The XP9 line, for when an E4 run skipped its own FP16 arm."""
+    return {"map50": 0.7776, "tiny_plume": 0.1376, "fps_batched": 474.0}.get(key)
+
+
+
+
+def fig_xp07e5(records) -> Path | None:
+    """The size is free and the speed is not: weights cost nothing, activations cost it all."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e5_targets.json")
+    if not d:
+        return None
+    bl = d["baseline_fp16"]
+    bmap, btiny = bl["map50"], bl["tiny_plume"]["map50"]
+    rows = {r["arm"]: r for r in d["rows"]}
+    order = [a for a in ("w8_only", "a8_only", "w8a8") if a in rows]
+    nice = {"w8_only": "W8\nweights only", "a8_only": "A8\nactivations only\n(control)",
+            "w8a8": "W8A8\nboth"}
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.6, 4.8),
+                             gridspec_kw={"width_ratios": [1.15, 1]})
+    fig.suptitle("Quantizing the weights is free. Quantizing the activations is the whole cost.",
+                 y=1.05, fontsize=14)
+    style.subtitle(fig, "Whole network, min-max calibration, no retraining. Validation split, "
+                        f"{d['n_val_images']} images.", y=0.995)
+
+    # ---- panel 1: what each target keeps, and what it weighs -------------
+    ax = axes[0]
+    x = np.arange(len(order) + 1)
+    agg = [100] + [rows[a]["damage"]["map50"] / bmap * 100 for a in order]
+    tin = [100] + [rows[a]["damage"]["tiny_plume"] / btiny * 100 for a in order]
+    mb = [(rows[order[0]].get("size") or {}).get("fp16_baseline_mb")] + \
+         [(rows[a].get("size") or {}).get("total_mb") for a in order]
+    ax.bar(x - 0.20, agg, width=0.38, color=style.BLUE, zorder=3, label="aggregate mAP50")
+    ax.bar(x + 0.20, tin, width=0.38, color=style.ORANGE, zorder=3, label="tiny plumes")
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    for i, (a, t, m) in enumerate(zip(agg, tin, mb)):
+        ax.text(i - 0.20, a + 2, f"{a:.0f}", ha="center", fontsize=9,
+                color=style.BLUE, fontweight="bold")
+        ax.text(i + 0.20, t + 2, f"{t:.0f}", ha="center", fontsize=9,
+                color=style.ORANGE, fontweight="bold")
+        if m:
+            ax.text(i, 112, f"{m:.2f} MB", ha="center", fontsize=9.5,
+                    color=style.INK, fontweight="bold",
+                    bbox=dict(boxstyle="round,pad=0.25", fc="#eef2f6", ec="none"))
+    ax.set_xticks(x)
+    ax.set_xticklabels(["FP16\nunquantized"] + [nice[a] for a in order], fontsize=8.6)
+    ax.set_ylim(0, 124)
+    ax.set_ylabel("% of the unquantized model kept")
+    ax.set_title("1. What each target costs — and what it weighs", fontsize=12, loc="left")
+    ax.legend(loc="lower left", fontsize=9)
+    style.tidy(ax)
+
+    # ---- panel 2: the decomposition --------------------------------------
+    ax = axes[1]
+    att = d.get("attribution") or {}
+    parts = [("weights alone", att.get("cost_of_weights_pct"), style.AQUA),
+             ("activations alone", att.get("cost_of_activations_pct"), style.RED),
+             ("interaction", att.get("interaction_pct"), style.MUTED)]
+    parts = [(n, v, c) for n, v, c in parts if v is not None]
+    labels = [n for n, _, _ in parts][::-1]
+    vals = [v for _, v, _ in parts][::-1]
+    cols = [c for _, _, c in parts][::-1]
+    ax.barh(labels, vals, color=cols, zorder=3, height=0.5)
+    total = att.get("cost_of_both_pct")
+    if total:
+        ax.axvline(total, color=style.INK_2, ls="--", lw=1.2, zorder=4)
+        ax.text(total, len(vals) - 0.75, f"both together\n{total:.3f}%", fontsize=9,
+                color=style.INK_2, ha="center", va="top", fontweight="bold")
+    for i, v in enumerate(vals):
+        ax.text(v + total * 0.03, i, f"{v:+.3f}%", va="center", fontsize=10.5,
+                color=style.INK, fontweight="bold")
+    ax.set_xlim(0, total * 1.42 if total else 1)
+    ax.set_ylim(-0.6, len(vals) - 0.1)
+    ax.set_xlabel("mAP50 given up, % of the unquantized model")
+    ax.set_title("2. Where the loss actually comes from\n"
+                 "(the two effects are additive — no conspiracy)", fontsize=12, loc="left")
+    style.tidy(ax, ygrid=False)
+
+    fig.tight_layout()
+    return save(fig, "xp07e5_targets.png")
+
+
+
+
+def fig_xp07e3(records) -> Path | None:
+    """The granularity everyone tunes is worth nothing; the flag nobody mentions is worth 31x."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e3_granularity.json")
+    if not d:
+        return None
+    bl = d["baseline_fp16"]
+    bmap = bl["map50"]
+    rows = {r["arm"]: r for r in d["rows"]}
+    order = [a for a in ("per_tensor_sym", "per_channel_sym",
+                         "per_channel_asym", "per_tensor_asym") if a in rows]
+    nice = {"per_tensor_sym": "per-tensor\nsymmetric",
+            "per_channel_sym": "per-channel\nsymmetric",
+            "per_channel_asym": "per-channel\nasymmetric",
+            "per_tensor_asym": "per-tensor\nasymmetric"}
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.8, 4.9),
+                             gridspec_kw={"width_ratios": [1.2, 1]})
+    fig.suptitle("The scale count nobody needs, and the zero point nobody mentions",
+                 y=1.05, fontsize=14)
+    style.subtitle(fig, "Whole network W8A8, min-max calibration, no retraining. Weights are "
+                        "symmetric in every arm.", y=0.995)
+
+    # ---- panel 1: the four arms -----------------------------------------
+    ax = axes[0]
+    x = np.arange(len(order))
+    vals = [rows[a]["damage"]["map50"] / bmap * 100 for a in order]
+    cols = [style.MUTED if "sym" in a and "asym" not in a else style.AQUA for a in order]
+    ax.bar(x, vals, width=0.58, color=cols, zorder=3)
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    for i, a in enumerate(order):
+        sz = rows[a].get("size") or {}
+        ax.text(i, vals[i] + 0.35,
+                f"{rows[a]['damage']['map50']:.4f}\n{sz.get('weight_scales', 0):,} scales\n"
+                f"{sz.get('total_mb', 0):.3f} MB",
+                ha="center", fontsize=8.8, color=style.INK, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels([nice[a] for a in order], fontsize=9)
+    ax.set_ylim(88, 104)
+    ax.set_ylabel("% of the unquantized mAP50 kept")
+    ax.set_title("1. Four settings, one that matters", fontsize=12, loc="left")
+    style.tidy(ax)
+
+    # ---- panel 2: the two decisions, side by side ------------------------
+    ax = axes[1]
+    dl = d.get("deltas") or {}
+    pairs = [("per-channel vs\nper-tensor weights",
+              dl.get("per_channel_minus_per_tensor"), style.MUTED),
+             ("asymmetric vs symmetric\nactivations",
+              dl.get("asymmetric_minus_symmetric_acts"), style.AQUA)]
+    pairs = [(n, v, c) for n, v, c in pairs if v is not None]
+    names = [n for n, _, _ in pairs]
+    vals2 = [v for _, v, _ in pairs]
+    ax.barh(names, vals2, color=[c for _, _, c in pairs], zorder=3, height=0.42)
+    for i, v in enumerate(vals2):
+        ax.text(v + max(vals2) * 0.03, i, f"{v:+.4f} mAP50", va="center",
+                fontsize=11.5, color=style.INK, fontweight="bold")
+    if len(vals2) == 2 and vals2[0]:
+        ax.text(max(vals2) * 0.52, 0.5, f"{vals2[1] / vals2[0]:.0f}x", ha="center",
+                fontsize=17, color=style.AQUA, fontweight="bold")
+    ax.set_xlim(0, max(vals2) * 1.5)
+    ax.set_xlabel("mAP50 gained")
+    ax.set_title("2. What each decision is actually worth", fontsize=12, loc="left")
+    style.tidy(ax, ygrid=False)
+
+    fig.tight_layout()
+    return save(fig, "xp07e3_granularity.png")
+
+
+
+
+def fig_xp07e6(records) -> Path | None:
+    """Three of sixty layers, chosen by measurement, recover the distant-smoke loss."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07e6_mixed.json")
+    dt = _side("xp07e6_mixed_tiny.json")
+    e5 = _side("xp07e5_targets.json")
+    if not d:
+        return None
+    bl = d["baseline_fp16"]
+    bmap, btiny = bl["map50"], bl["tiny_plume"]["map50"]
+    rows = {r["arm"]: r for r in d["rows"]}
+
+    fig, axes = plt.subplots(1, 2, figsize=(15.4, 5.0),
+                             gridspec_kw={"width_ratios": [1, 1.25]})
+    fig.suptitle("The damage has an address: three of sixty convolutions",
+                 y=1.05, fontsize=14.5)
+    style.subtitle(fig, "Whole network W8A8, min-max calibration, no retraining. The layers left "
+                        "in FP16 were read out of E1's map, not chosen by hand.", y=0.995)
+
+    # ---- panel 1: the decode cliff --------------------------------------
+    ax = axes[0]
+    order = [a for a in ("uniform", "head_out", "head_out_decode_out") if a in rows]
+    nice = {"uniform": "all 60 INT8\ndecode INT8",
+            "head_out": "57 INT8\ndecode INT8",
+            "head_out_decode_out": "57 INT8\ndecode FLOAT"}
+    vals = [rows[a]["damage"]["map50"] / bmap * 100 for a in order]
+    cols = [style.RED if v < 1 else style.AQUA for v in vals]
+    ax.bar(np.arange(len(order)), vals, width=0.55, color=cols, zorder=3)
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    for i, (a, v) in enumerate(zip(order, vals)):
+        ax.text(i, v + 2.5, f"{rows[a]['damage']['map50']:.4f}", ha="center",
+                fontsize=10.5, color=style.INK, fontweight="bold")
+    ax.text(0.5, 46, "quantizing the decode output\ndoes not degrade the detector —\n"
+                     "it switches it off", ha="center", fontsize=10, color=style.RED,
+            fontweight="bold")
+    dq = rows[order[0]].get("decode_output_scale") or {}
+    if dq:
+        ax.text(0.5, 26, f"one INT8 step = {dq['scale']:.2f}\n"
+                         f"a probability gets {1/dq['scale']:.3f} of a level",
+                ha="center", fontsize=9, color=style.INK_2)
+    ax.set_xticks(np.arange(len(order)))
+    ax.set_xticklabels([nice[a] for a in order], fontsize=9)
+    ax.set_ylim(0, 118)
+    ax.set_ylabel("% of the unquantized mAP50 kept")
+    ax.set_title("1. Protecting the head convolutions does not help.\n"
+                 "Protecting the tensor they feed does.", fontsize=12, loc="left")
+    style.tidy(ax)
+
+    # ---- panel 2: which three, and what it is worth ----------------------
+    ax = axes[1]
+    arms = []
+    if e5:
+        w = next((r for r in e5["rows"] if r["arm"] == "w8a8"), None)
+        if w:
+            arms.append(("nothing protected\n(all 60 INT8)", w["damage"], style.MUTED))
+    arms.append(("3 layers, ranked by\naggregate mAP50",
+                 rows["head_out_decode_out"]["damage"], style.BLUE))
+    if dt:
+        r = next((x for x in dt["rows"] if x["arm"] == "head_out_decode_out"), None)
+        if r:
+            arms.append(("3 layers, ranked by\ntiny-plume damage", r["damage"], style.AQUA))
+
+    x = np.arange(len(arms))
+    agg = [a[1]["map50"] / bmap * 100 for a in arms]
+    tin = [a[1]["tiny_plume"] / btiny * 100 for a in arms]
+    ax.bar(x - 0.20, agg, width=0.38, color=style.BLUE, zorder=3, label="aggregate mAP50")
+    ax.bar(x + 0.20, tin, width=0.38, color=style.ORANGE, zorder=3,
+           label="tiny plumes (<0.1%)")
+    ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    for i, (a, t) in enumerate(zip(agg, tin)):
+        ax.text(i - 0.20, a + 2.5, f"{a:.0f}", ha="center", fontsize=9.5,
+                color=style.BLUE, fontweight="bold")
+        ax.text(i + 0.20, t + 2.5, f"{t:.0f}", ha="center", fontsize=9.5,
+                color=style.ORANGE, fontweight="bold")
+    # A straight annotation in the empty band above the bars; the earlier arc
+    # crossed the middle bar's own label.
+    ax.annotate("", xy=(len(arms) - 1 + 0.20, tin[-1] + 6), xytext=(0.20, tin[0] + 6),
+                arrowprops=dict(arrowstyle="->", color=style.ORANGE, lw=1.8,
+                                connectionstyle="arc3,rad=-0.34"))
+    ax.text(len(arms) / 2 - 0.5, 140,
+            f"{tin[-1] / tin[0]:.1f}x the distant-smoke accuracy, for 29 KB",
+            ha="center", fontsize=10.5, color=style.ORANGE, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels([a[0] for a in arms], fontsize=9)
+    ax.set_ylim(0, 156)
+    ax.set_ylabel("% of the unquantized model kept")
+    ax.set_title("2. Which three layers — and it is a real decision", fontsize=12, loc="left")
+    ax.legend(loc="upper left", fontsize=9)
+    style.tidy(ax)
+
+    fig.tight_layout()
+    return save(fig, "xp07e6_mixed.png")
+
+
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
             fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9, fig_xp15, fig_xp15_confusion,
             fig_xp06e6,
-            fig_xp06e7]
+            fig_xp06e7,
+            fig_xp07_concepts, fig_xp07_head, fig_xp07e9,
+            fig_xp07e9_fire, fig_xp07e9_tiny, fig_xp07e1, fig_xp07e2, fig_xp07e4, fig_xp07e5, fig_xp07e3, fig_xp07e6]
 
 
 # --------------------------------------------------------------------------

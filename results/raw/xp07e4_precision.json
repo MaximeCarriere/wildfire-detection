@@ -1,0 +1,1055 @@
+{
+  "experiment": "xp07_e4_precision",
+  "question": "how many of the convolutions did TensorRT actually place in INT8?",
+  "why": "XP6 found the compiler declines optimisations it advertises; a request for INT8 is not evidence that INT8 ran",
+  "reports": {
+    "xp07_qdq_percentile9999_pc_512": {
+      "engine": "xp07_qdq_percentile9999_pc_512.engine",
+      "num_layers": 147,
+      "counts": {
+        "unknown": 89,
+        "int8": 58
+      },
+      "convolution_counts": {
+        "int8": 55,
+        "unknown": 3
+      },
+      "convolutions_total": 58,
+      "convolutions_in_int8": 55,
+      "convolutions_int8_pct": 94.8,
+      "layers": [
+        {
+          "name": "images_QuantizeLinear",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_823_quantized + /model.0/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "ampere_int8x4_icudnn_int8x4_128x32_relu_medium_c32_nn_v1",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.0/act/Sigmoid, /model.0/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_826_quantized + /model.1/conv/Conv + PWN(/model.1/act/Sigmoid, /model.1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_829_quantized + /model.2/cv1/conv/Conv + PWN(/model.2/cv1/act/Sigmoid, /model.2/cv1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_832_quantized + /model.2/m/m.0/cv1/conv/Conv + PWN(/model.2/m/m.0/cv1/act/Sigmoid, /model.2/m/m.0/cv1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_835_quantized + /model.2/m/m.0/cv2/conv/Conv + PWN(PWN(/model.2/m/m.0/cv2/act/Sigmoid, /model.2/m/m.0/cv2/act/Mul), /model.2/m/m.",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_838_quantized + /model.2/cv2/conv/Conv + PWN(/model.2/cv2/act/Sigmoid, /model.2/cv2/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "Reformatting CopyNode for Output Tensor 0 to onnx::Conv_838_quantized + /model.2/cv2/conv/Conv + PWN(/model.2/cv2/act/Sigmoid, /model.2/cv2/",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": true
+        },
+        {
+          "name": "/model.2/Concat_/model.2/m/m.0/Add_output_0_clone_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_841_quantized + /model.2/cv3/conv/Conv + PWN(/model.2/cv3/act/Sigmoid, /model.2/cv3/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_844_quantized + /model.3/conv/Conv + PWN(/model.3/act/Sigmoid, /model.3/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_847_quantized + /model.4/cv1/conv/Conv + PWN(/model.4/cv1/act/Sigmoid, /model.4/cv1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_850_quantized + /model.4/m/m.0/cv1/conv/Conv + PWN(/model.4/m/m.0/cv1/act/Sigmoid, /model.4/m/m.0/cv1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_853_quantized + /model.4/m/m.0/cv2/conv/Conv + PWN(PWN(/model.4/m/m.0/cv2/act/Sigmoid, /model.4/m/m.0/cv2/act/Mul), /model.4/m/m.",
+          "precision": "int8",
+          "layer_type": "CaskJitConv",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_856_quantized + /model.4/m/m.1/cv1/conv/Conv + PWN(/model.4/m/m.1/cv1/act/Sigmoid, /model.4/m/m.1/cv1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_859_quantized + /model.4/m/m.1/cv2/conv/Conv + PWN(PWN(/model.4/m/m.1/cv2/act/Sigmoid, /model.4/m/m.1/cv2/act/Mul), /model.4/m/m.",
+          "precision": "int8",
+          "layer_type": "CaskJitConv",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_862_quantized + /model.4/cv2/conv/Conv + PWN(/model.4/cv2/act/Sigmoid, /model.4/cv2/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "/model.4/Concat_/model.4/m/m.1/Add_output_0_clone_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_865_quantized + /model.4/cv3/conv/Conv + PWN(/model.4/cv3/act/Sigmoid, /model.4/cv3/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "/model.4/cv3/act/Mul_output_0_DequantizeLinear_clone_1 + /model.16/Concat_output_0_QuantizeLinear_clone_1",
+          "precision": "unknown",
+          "layer_type": "Scale",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_868_quantized + /model.5/conv/Conv + PWN(/model.5/act/Sigmoid, /model.5/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_871_quantized + /model.6/cv1/conv/Conv || onnx::Conv_892_quantized + /model.6/cv2/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.6/cv1/act/Sigmoid, /model.6/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_874_quantized + /model.6/m/m.0/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.6/m/m.0/cv1/act/Sigmoid, /model.6/m/m.0/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_877_quantized + /model.6/m/m.0/cv2/conv/Conv + PWN(PWN(/model.6/m/m.0/cv2/act/Sigmoid, /model.6/m/m.0/cv2/act/Mul), /model.6/m/m.",
+          "precision": "int8",
+          "layer_type": "CaskJitConv",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_880_quantized + /model.6/m/m.1/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.6/m/m.1/cv1/act/Sigmoid, /model.6/m/m.1/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_883_quantized + /model.6/m/m.1/cv2/conv/Conv + PWN(PWN(/model.6/m/m.1/cv2/act/Sigmoid, /model.6/m/m.1/cv2/act/Mul), /model.6/m/m.",
+          "precision": "int8",
+          "layer_type": "CaskJitConv",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_886_quantized + /model.6/m/m.2/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.6/m/m.2/cv1/act/Sigmoid, /model.6/m/m.2/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_889_quantized + /model.6/m/m.2/cv2/conv/Conv + PWN(PWN(/model.6/m/m.2/cv2/act/Sigmoid, /model.6/m/m.2/cv2/act/Mul), /model.6/m/m.",
+          "precision": "int8",
+          "layer_type": "CaskJitConv",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.6/cv2/act/Sigmoid, /model.6/cv2/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.6/Concat_/model.6/m/m.2/Add_output_0_clone_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_895_quantized + /model.6/cv3/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.6/cv3/act/Sigmoid, /model.6/cv3/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.6/cv3/act/Mul_output_0_DequantizeLinear_clone_1 + /model.12/Concat_output_0_QuantizeLinear_clone_1",
+          "precision": "unknown",
+          "layer_type": "Scale",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_898_quantized + /model.7/conv/Conv + PWN(/model.7/act/Sigmoid, /model.7/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_901_quantized + /model.8/cv1/conv/Conv || onnx::Conv_910_quantized + /model.8/cv2/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.8/cv1/act/Sigmoid, /model.8/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_904_quantized + /model.8/m/m.0/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.8/m/m.0/cv1/act/Sigmoid, /model.8/m/m.0/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "Reformatting CopyNode for Input Tensor 0 to onnx::Conv_907_quantized + /model.8/m/m.0/cv2/conv/Conv + PWN(PWN(/model.8/m/m.0/cv2/act/Sigmoid",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": true
+        },
+        {
+          "name": "Reformatting CopyNode for Input Tensor 1 to onnx::Conv_907_quantized + /model.8/m/m.0/cv2/conv/Conv + PWN(PWN(/model.8/m/m.0/cv2/act/Sigmoid",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_907_quantized + /model.8/m/m.0/cv2/conv/Conv + PWN(PWN(/model.8/m/m.0/cv2/act/Sigmoid, /model.8/m/m.0/cv2/act/Mul), /model.8/m/m.",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_i8i8_i8i32_f32_nhwckrsc_nhwc_tilesize256x128x64_stage4_warps",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.8/cv2/act/Sigmoid, /model.8/cv2/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.8/Concat_/model.8/m/m.0/Add_output_0_clone_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_913_quantized + /model.8/cv3/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.8/cv3/act/Sigmoid, /model.8/cv3/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_916_quantized + /model.9/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.9/cv1/act/Sigmoid, /model.9/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.9/m/MaxPool",
+          "precision": "int8",
+          "layer_type": "CaskPooling",
+          "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.9/m_1/MaxPool",
+          "precision": "int8",
+          "layer_type": "CaskPooling",
+          "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.9/m_2/MaxPool",
+          "precision": "int8",
+          "layer_type": "CaskPooling",
+          "tactic": "sm72_xmma_pooling_IMMA_NCxHW32_generic_kMAX",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.9/m/MaxPool_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.9/m_1/MaxPool_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.9/m_2/MaxPool_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_919_quantized + /model.9/cv2/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.9/cv2/act/Sigmoid, /model.9/cv2/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_922_quantized + /model.10/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.10/act/Sigmoid, /model.10/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.12/Concat_output_0_QuantizeLinear_clone_0",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.11/Resize",
+          "precision": "unknown",
+          "layer_type": "Resize",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.12/Concat_/model.11/Resize_output_0_clone_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_925_quantized + /model.13/cv1/conv/Conv || onnx::Conv_934_quantized + /model.13/cv2/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.13/cv1/act/Sigmoid, /model.13/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_928_quantized + /model.13/m/m.0/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.13/m/m.0/cv1/act/Sigmoid, /model.13/m/m.0/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_931_quantized + /model.13/m/m.0/cv2/conv/Conv + PWN(/model.13/m/m.0/cv2/act/Sigmoid, /model.13/m/m.0/cv2/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.13/cv2/act/Sigmoid, /model.13/cv2/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_937_quantized + /model.13/cv3/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.13/cv3/act/Sigmoid, /model.13/cv3/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_940_quantized + /model.14/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.14/act/Sigmoid, /model.14/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.16/Concat_output_0_QuantizeLinear_clone_0",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.15/Resize",
+          "precision": "unknown",
+          "layer_type": "Resize",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.16/Concat_/model.15/Resize_output_0_clone_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_943_quantized + /model.17/cv1/conv/Conv + PWN(/model.17/cv1/act/Sigmoid, /model.17/cv1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_946_quantized + /model.17/m/m.0/cv1/conv/Conv + PWN(/model.17/m/m.0/cv1/act/Sigmoid, /model.17/m/m.0/cv1/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_949_quantized + /model.17/m/m.0/cv2/conv/Conv + PWN(/model.17/m/m.0/cv2/act/Sigmoid, /model.17/m/m.0/cv2/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_952_quantized + /model.17/cv2/conv/Conv + PWN(/model.17/cv2/act/Sigmoid, /model.17/cv2/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_955_quantized + /model.17/cv3/conv/Conv + PWN(/model.17/cv3/act/Sigmoid, /model.17/cv3/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "onnx::Conv_958_quantized + /model.18/conv/Conv + PWN(/model.18/act/Sigmoid, /model.18/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "model.24.m.0.weight_quantized + /model.24/m.0/Conv + PWN(/model.24/Sigmoid)",
+          "precision": "int8",
+          "layer_type": "CaskJitConv",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "Reformatting CopyNode for Input Tensor 0 to /model.24/Reshape + /model.24/Transpose",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape + /model.24/Transpose",
+          "precision": "unknown",
+          "layer_type": "Shuffle",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_321",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_327",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.19/Concat_output_0_QuantizeLinear_clone_1",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_961_quantized + /model.20/cv1/conv/Conv || onnx::Conv_970_quantized + /model.20/cv2/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.20/cv1/act/Sigmoid, /model.20/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_964_quantized + /model.20/m/m.0/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.20/m/m.0/cv1/act/Sigmoid, /model.20/m/m.0/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_967_quantized + /model.20/m/m.0/cv2/conv/Conv + PWN(/model.20/m/m.0/cv2/act/Sigmoid, /model.20/m/m.0/cv2/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.20/cv2/act/Sigmoid, /model.20/cv2/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_973_quantized + /model.20/cv3/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.20/cv3/act/Sigmoid, /model.20/cv3/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_976_quantized + /model.21/conv/Conv + PWN(/model.21/act/Sigmoid, /model.21/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "model.24.m.1.weight_quantized + /model.24/m.1/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.24/Sigmoid_1)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "Reformatting CopyNode for Input Tensor 0 to /model.24/Reshape_2 + /model.24/Transpose_1",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_2 + /model.24/Transpose_1",
+          "precision": "unknown",
+          "layer_type": "Shuffle",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_1",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_1_380",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_1_386",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.22/Concat_output_0_QuantizeLinear_clone_1",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_979_quantized + /model.23/cv1/conv/Conv || onnx::Conv_988_quantized + /model.23/cv2/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.23/cv1/act/Sigmoid, /model.23/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_982_quantized + /model.23/m/m.0/cv1/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.23/m/m.0/cv1/act/Sigmoid, /model.23/m/m.0/cv1/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_985_quantized + /model.23/m/m.0/cv2/conv/Conv + PWN(/model.23/m/m.0/cv2/act/Sigmoid, /model.23/m/m.0/cv2/act/Mul)",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.23/cv2/act/Sigmoid, /model.23/cv2/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "onnx::Conv_991_quantized + /model.23/cv3/conv/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_conv_fprop_smallk_i8i8_i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw_vect_c_32_warpt",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.23/cv3/act/Sigmoid, /model.23/cv3/act/Mul)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "model.24.m.2.weight_quantized + /model.24/m.2/Conv",
+          "precision": "int8",
+          "layer_type": "CaskConvolution",
+          "tactic": "sm80_xmma_fprop_implicit_gemm_interleaved_i8i8_i8i32_f32_nchw_vect_c_32kcrs_vect_c_32_nchw",
+          "is_convolution": true
+        },
+        {
+          "name": "PWN(/model.24/Sigmoid_2)",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "Reformatting CopyNode for Input Tensor 0 to /model.24/Reshape_4 + /model.24/Transpose_2",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_4 + /model.24/Transpose_2",
+          "precision": "unknown",
+          "layer_type": "Shuffle",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_2",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_2_432",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Split_2_438",
+          "precision": "unknown",
+          "layer_type": "Slice",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Constant_36_output_0",
+          "precision": "unknown",
+          "layer_type": "Constant",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "PWN(PWN(/model.24/Constant_34_output_0 + ONNXTRT_Broadcast_442 + /model.24/Mul_14, PWN(/model.24/Constant_35_output_0 + ONNXTRT_Broadcast_44",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Constant_32_output_0",
+          "precision": "unknown",
+          "layer_type": "Constant",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "PWN(PWN(/model.24/Constant_31_output_0 + ONNXTRT_Broadcast_440 + /model.24/Mul_12, /model.24/Add_2), /model.24/Constant_33_output_0 + ONNXTR",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Mul_13_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Mul_15_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_5",
+          "precision": "unknown",
+          "layer_type": "NoOp",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_5_copy_output",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Constant_23_output_0",
+          "precision": "unknown",
+          "layer_type": "Constant",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "PWN(PWN(/model.24/Constant_21_output_0 + ONNXTRT_Broadcast_390 + /model.24/Mul_8, PWN(/model.24/Constant_22_output_0 + ONNXTRT_Broadcast_392",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Constant_19_output_0",
+          "precision": "unknown",
+          "layer_type": "Constant",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "PWN(PWN(/model.24/Constant_18_output_0 + ONNXTRT_Broadcast_388 + /model.24/Mul_6, /model.24/Add_1), /model.24/Constant_20_output_0 + ONNXTRT",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Mul_7_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Mul_9_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_3",
+          "precision": "unknown",
+          "layer_type": "NoOp",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_3_copy_output",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Constant_10_output_0",
+          "precision": "unknown",
+          "layer_type": "Constant",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "PWN(PWN(/model.24/Constant_8_output_0 + ONNXTRT_Broadcast_330 + /model.24/Mul_2, PWN(/model.24/Constant_9_output_0 + ONNXTRT_Broadcast_332, ",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Constant_6_output_0",
+          "precision": "unknown",
+          "layer_type": "Constant",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "PWN(PWN(/model.24/Constant_5_output_0 + ONNXTRT_Broadcast + /model.24/Mul, /model.24/Add), /model.24/Constant_7_output_0 + ONNXTRT_Broadcast",
+          "precision": "unknown",
+          "layer_type": "PointWiseV2",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Mul_1_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Mul_3_output_0 copy",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_1",
+          "precision": "unknown",
+          "layer_type": "NoOp",
+          "tactic": "",
+          "is_convolution": false
+        },
+        {
+          "name": "/model.24/Reshape_1_copy_output",
+          "precision": "unknown",
+          "layer_type": "Reformat",
+          "tactic": "",
+          "is_convolution": false
+        }
+      ],
+      "layers_with_metadata": 147,
+      "source": "tensorrt engine inspector, DETAILED profiling verbosity (not a log scrape)"
+    }
+  }
+}

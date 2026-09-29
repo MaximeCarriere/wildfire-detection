@@ -1,0 +1,1374 @@
+{
+  "experiment": "xp07_e9_frontier",
+  "question": "every technique in the series against every other \u2014 accuracy, size, latency, throughput, energy",
+  "axis": "none \u2014 the summary of the whole compression arc",
+  "board": "Jetson Orin Nano Super",
+  "caveats": {
+    "runtime": "PyTorch and TensorRT throughput are different measurements; the headline chart uses engine rows only",
+    "pairing": "rows with accuracy_paired_from had accuracy and speed measured on the same checkpoint but in separate runs",
+    "energy": "j_per_1k comes from two protocols -- see j_per_1k_protocol on each row. On the same FP16 engine the batch-1 window reports 52.1 J/1k at 11.6 W and the flat-out batch-16 window reports 43.3 J/1k at 20.5 W. Energy is therefore comparable WITHIN a protocol and not across one, which is why the figure says so rather than averaging them into one marker scale."
+  },
+  "fp16_line": {
+    "map50": 0.7776,
+    "fps_batched": 474.0,
+    "j_per_1k": 51.8,
+    "small_plume": 0.6061,
+    "tiny_plume": 0.1376,
+    "engine_mb": 17.0
+  },
+  "rows": [
+    {
+      "label": "YOLOv5s FP16 @512  (the line)",
+      "family": "baseline",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.7776,
+      "map50_fire": 0.7184,
+      "map50_smoke": 0.8367,
+      "small_plume": 0.6061,
+      "tiny_plume": 0.1376,
+      "size_disk_mb": 17.037,
+      "params_m": 7.025,
+      "fps_batched": 473.73,
+      "ms_per_image_batched": 2.111,
+      "latency_ms_median": 4.101,
+      "fps_batch1": 219.54,
+      "j_per_1k": 52.11,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 11.631,
+      "mem_mb": 317.5,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp09_yolov5s_trt_fp16_512.json"
+      ]
+    },
+    {
+      "label": "YOLOv5s FP16 @640",
+      "family": "resolution",
+      "runtime": "trt_fp16",
+      "input_res": 640,
+      "map50": 0.7707,
+      "map50_fire": 0.7206,
+      "map50_smoke": 0.8208,
+      "small_plume": 0.6363,
+      "tiny_plume": 0.1659,
+      "size_disk_mb": 16.941,
+      "params_m": 7.025,
+      "fps_batched": 308.29,
+      "ms_per_image_batched": 3.244,
+      "latency_ms_median": 5.405,
+      "fps_batch1": 170.43,
+      "j_per_1k": 80.76,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 13.9,
+      "mem_mb": 317.5,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp09_yolov5s_trt_fp16_640.json"
+      ]
+    },
+    {
+      "label": "YOLOv5l FP16 @640  (bigger model)",
+      "family": "baseline",
+      "runtime": "trt_fp16",
+      "input_res": 640,
+      "map50": 0.7853,
+      "map50_fire": 0.7215,
+      "map50_smoke": 0.849,
+      "small_plume": 0.6425,
+      "tiny_plume": 0.1974,
+      "size_disk_mb": 94.7,
+      "params_m": 46.144,
+      "fps_batched": 73.21,
+      "ms_per_image_batched": 13.66,
+      "latency_ms_median": 16.116,
+      "fps_batch1": 61.68,
+      "j_per_1k": 317.3,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 19.661,
+      "mem_mb": 317.5,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp09_yolov5l_trt_fp16_640.json"
+      ]
+    },
+    {
+      "label": "INT8 min-max @512",
+      "family": "quantization",
+      "runtime": "trt_int8mm",
+      "input_res": 512,
+      "map50": 0.7181,
+      "map50_fire": 0.6573,
+      "map50_smoke": 0.7789,
+      "small_plume": 0.4995,
+      "tiny_plume": 0.0572,
+      "size_disk_mb": 9.149,
+      "params_m": 7.025,
+      "fps_batched": 716.26,
+      "ms_per_image_batched": 1.396,
+      "latency_ms_median": 4.644,
+      "fps_batch1": 198.44,
+      "j_per_1k": 36.45,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 7.307,
+      "mem_mb": 317.6,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp10_yolov5s_int8mm_512.json"
+      ]
+    },
+    {
+      "label": "INT8 entropy @512  (the default)",
+      "family": "quantization",
+      "runtime": "trt_int8",
+      "input_res": 512,
+      "map50": 0.2543,
+      "map50_fire": 0.1604,
+      "map50_smoke": 0.3483,
+      "small_plume": 0.042,
+      "tiny_plume": 0.0016,
+      "size_disk_mb": 9.157,
+      "params_m": 7.025,
+      "fps_batched": 724.2,
+      "ms_per_image_batched": 1.381,
+      "latency_ms_median": 3.864,
+      "fps_batch1": 247.74,
+      "j_per_1k": 33.26,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 8.401,
+      "mem_mb": 317.6,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp10_yolov5s_int8_512.json"
+      ]
+    },
+    {
+      "label": "INT8 min-max @640",
+      "family": "quantization",
+      "runtime": "trt_int8mm",
+      "input_res": 640,
+      "map50": 0.6907,
+      "map50_fire": 0.6166,
+      "map50_smoke": 0.7648,
+      "small_plume": 0.4732,
+      "tiny_plume": 0.0724,
+      "size_disk_mb": 9.126,
+      "params_m": 7.025,
+      "fps_batched": 484.68,
+      "ms_per_image_batched": 2.063,
+      "latency_ms_median": 4.759,
+      "fps_batch1": 189.68,
+      "j_per_1k": 48.73,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 9.363,
+      "mem_mb": 317.6,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp10_yolov5s_int8mm_640.json"
+      ]
+    },
+    {
+      "label": "Pruned 25%, one-shot + 12ep",
+      "family": "pruning",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.7297,
+      "map50_fire": 0.6673,
+      "map50_smoke": 0.7922,
+      "small_plume": 0.5516,
+      "tiny_plume": 0.096,
+      "size_disk_mb": 12.195,
+      "params_m": 4.2404,
+      "fps_batched": 381.12,
+      "ms_per_image_batched": 2.624,
+      "latency_ms_median": 4.278,
+      "fps_batch1": 208.37,
+      "j_per_1k": 54.32,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 11.46,
+      "mem_mb": 702.1,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp06_dfire_yolov5s_pruned25_recovered_trt.json"
+      ]
+    },
+    {
+      "label": "Pruned 25%, iterative + 12ep",
+      "family": "pruning",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.6771,
+      "map50_fire": 0.5945,
+      "map50_smoke": 0.7596,
+      "small_plume": 0.4386,
+      "tiny_plume": 0.0653,
+      "size_disk_mb": 12.752,
+      "params_m": 4.5139,
+      "fps_batched": 450.16,
+      "ms_per_image_batched": 2.221,
+      "latency_ms_median": 4.159,
+      "fps_batch1": 212.35,
+      "j_per_1k": 46.48,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 10.017,
+      "mem_mb": 1127.1,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp06_dfire_yolov5s_pruned25_iter_recovered_trt.json"
+      ]
+    },
+    {
+      "label": "Pruned 25%, widths rounded to 32",
+      "family": "pruning",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.7377,
+      "map50_fire": 0.6755,
+      "map50_smoke": 0.7999,
+      "small_plume": 0.5622,
+      "tiny_plume": 0.1072,
+      "size_disk_mb": 9.793,
+      "params_m": 3.5225,
+      "fps_batched": 641.89,
+      "ms_per_image_batched": 1.558,
+      "latency_ms_median": 3.978,
+      "fps_batch1": 241.98,
+      "j_per_1k": 37.97,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 9.427,
+      "mem_mb": 202.1,
+      "accuracy_paired_from": "xp06e3_dfire_yolov5s_round32.json",
+      "sources": [
+        "xp06e3b_yolov5s_round32.json",
+        "xp06e3_dfire_yolov5s_round32.json"
+      ]
+    },
+    {
+      "label": "Pruned 25%, widths rounded to 16",
+      "family": "pruning",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.7351,
+      "map50_fire": 0.6692,
+      "map50_smoke": 0.801,
+      "small_plume": 0.5531,
+      "tiny_plume": 0.1033,
+      "size_disk_mb": 10.18,
+      "params_m": 3.789,
+      "fps_batched": 622.4,
+      "ms_per_image_batched": 1.607,
+      "latency_ms_median": 3.872,
+      "fps_batch1": 240.39,
+      "j_per_1k": 37.47,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 9.207,
+      "mem_mb": 202.1,
+      "accuracy_paired_from": "xp06e3_dfire_yolov5s_round16.json",
+      "sources": [
+        "xp06e3b_yolov5s_round16.json",
+        "xp06e3_dfire_yolov5s_round16.json"
+      ]
+    },
+    {
+      "label": "2:4 sparsity, sparse engine",
+      "family": "sparsity",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.7527,
+      "map50_fire": 0.6931,
+      "map50_smoke": 0.8122,
+      "small_plume": 0.588,
+      "tiny_plume": 0.1249,
+      "size_disk_mb": 16.018,
+      "params_m": 7.025,
+      "fps_batched": 487.39,
+      "ms_per_image_batched": 2.052,
+      "latency_ms_median": 3.782,
+      "fps_batch1": 240.71,
+      "j_per_1k": 51.08,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 12.42,
+      "mem_mb": 280.4,
+      "accuracy_paired_from": "xp06e4_dfire_yolov5s_sparse24.json",
+      "sources": [
+        "xp06e4b_yolov5s_sparse24_sparse.json",
+        "xp06e4_dfire_yolov5s_sparse24.json"
+      ]
+    },
+    {
+      "label": "2:4 sparsity, dense engine",
+      "family": "sparsity",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.7527,
+      "map50_fire": 0.6931,
+      "map50_smoke": 0.8122,
+      "small_plume": 0.588,
+      "tiny_plume": 0.1249,
+      "size_disk_mb": 17.06,
+      "params_m": 7.025,
+      "fps_batched": 481.74,
+      "ms_per_image_batched": 2.076,
+      "latency_ms_median": 3.821,
+      "fps_batch1": 238.89,
+      "j_per_1k": 50.86,
+      "j_per_1k_protocol": "batch-1 latency window (XP9/XP10 protocol)",
+      "power_w": 12.373,
+      "mem_mb": 280.4,
+      "accuracy_paired_from": "xp06e4_dfire_yolov5s_sparse24.json",
+      "sources": [
+        "xp06e4b_yolov5s_sparse24_nosparse.json",
+        "xp06e4_dfire_yolov5s_sparse24.json"
+      ]
+    },
+    {
+      "label": "XP7 FP16 (line, rebuilt)",
+      "family": "baseline",
+      "runtime": "trt_fp16",
+      "input_res": 512,
+      "map50": 0.7776,
+      "map50_fire": 0.7184,
+      "map50_smoke": 0.8367,
+      "small_plume": 0.6061,
+      "tiny_plume": 0.1376,
+      "size_disk_mb": 16.73,
+      "params_m": null,
+      "fps_batched": 471.91,
+      "ms_per_image_batched": 2.119,
+      "latency_ms_median": null,
+      "fps_batch1": null,
+      "j_per_1k": 43.0,
+      "j_per_1k_protocol": "flat-out batch-16 window (XP7-E4 protocol)",
+      "power_w": 20.657,
+      "mem_mb": null,
+      "int8_layers": null,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp07e4_engines.json"
+      ]
+    },
+    {
+      "label": "XP7 int8",
+      "family": "quantization",
+      "runtime": "trt_int8",
+      "input_res": 512,
+      "map50": 0.6985,
+      "map50_fire": 0.6108,
+      "map50_smoke": 0.7863,
+      "small_plume": 0.4584,
+      "tiny_plume": 0.0421,
+      "size_disk_mb": 9.09,
+      "params_m": null,
+      "fps_batched": 720.34,
+      "ms_per_image_batched": 1.388,
+      "latency_ms_median": null,
+      "fps_batch1": null,
+      "j_per_1k": 24.1,
+      "j_per_1k_protocol": "flat-out batch-16 window (XP7-E4 protocol)",
+      "power_w": 17.749,
+      "mem_mb": null,
+      "int8_layers": 63,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp07e4_engines.json"
+      ]
+    },
+    {
+      "label": "XP7 int8_fp16",
+      "family": "quantization",
+      "runtime": "trt_int8",
+      "input_res": 512,
+      "map50": 0.6985,
+      "map50_fire": 0.6108,
+      "map50_smoke": 0.7863,
+      "small_plume": 0.4584,
+      "tiny_plume": 0.0421,
+      "size_disk_mb": 9.11,
+      "params_m": null,
+      "fps_batched": 718.84,
+      "ms_per_image_batched": 1.391,
+      "latency_ms_median": null,
+      "fps_batch1": null,
+      "j_per_1k": 24.1,
+      "j_per_1k_protocol": "flat-out batch-16 window (XP7-E4 protocol)",
+      "power_w": 17.774,
+      "mem_mb": null,
+      "int8_layers": 63,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp07e4_engines.json"
+      ]
+    },
+    {
+      "label": "XP7 int8_head_fp16",
+      "family": "quantization",
+      "runtime": "trt_int8",
+      "input_res": 512,
+      "map50": 0.7005,
+      "map50_fire": 0.6137,
+      "map50_smoke": 0.7874,
+      "small_plume": 0.4582,
+      "tiny_plume": 0.0423,
+      "size_disk_mb": 9.16,
+      "params_m": null,
+      "fps_batched": 712.71,
+      "ms_per_image_batched": 1.403,
+      "latency_ms_median": null,
+      "fps_batch1": null,
+      "j_per_1k": 24.11,
+      "j_per_1k_protocol": "flat-out batch-16 window (XP7-E4 protocol)",
+      "power_w": 17.781,
+      "mem_mb": null,
+      "int8_layers": 60,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp07e4_engines.json"
+      ]
+    },
+    {
+      "label": "XP7 qdq_percentile9999_pc",
+      "family": "quantization",
+      "runtime": "trt_int8",
+      "input_res": 512,
+      "map50": 0.5903,
+      "map50_fire": 0.4961,
+      "map50_smoke": 0.6844,
+      "small_plume": 0.3701,
+      "tiny_plume": 0.0626,
+      "size_disk_mb": 9.45,
+      "params_m": null,
+      "fps_batched": 668.61,
+      "ms_per_image_batched": 1.496,
+      "latency_ms_median": null,
+      "fps_batch1": null,
+      "j_per_1k": 26.91,
+      "j_per_1k_protocol": "flat-out batch-16 window (XP7-E4 protocol)",
+      "power_w": 18.514,
+      "mem_mb": null,
+      "int8_layers": 58,
+      "accuracy_paired_from": null,
+      "sources": [
+        "xp07e4_qdq.json"
+      ]
+    }
+  ],
+  "verdict": {
+    "line": {
+      "label": "YOLOv5s FP16 @512  (the line)",
+      "map50": 0.7776,
+      "fps_batched": 473.73,
+      "size_disk_mb": 17.037,
+      "j_per_1k": 52.11
+    },
+    "best_accuracy": {
+      "label": "YOLOv5l FP16 @640  (bigger model)",
+      "family": "baseline",
+      "map50": 0.7853
+    },
+    "fastest": {
+      "label": "INT8 entropy @512  (the default)",
+      "family": "quantization",
+      "fps_batched": 724.2,
+      "map50": 0.2543
+    },
+    "smallest": {
+      "label": "XP7 int8",
+      "family": "quantization",
+      "size_disk_mb": 9.09,
+      "map50": 0.6985
+    },
+    "lowest_energy": {
+      "label": "XP7 int8",
+      "family": "quantization",
+      "j_per_1k": 24.1,
+      "map50": 0.6985
+    },
+    "best_tiny_plume": {
+      "label": "YOLOv5l FP16 @640  (bigger model)",
+      "family": "baseline",
+      "tiny_plume": 0.1974,
+      "map50": 0.7853
+    },
+    "dominates_the_line_on_accuracy_speed_and_size": [],
+    "fastest_at_each_accuracy_floor": {
+      "map50>=0.77": {
+        "fastest": "YOLOv5s FP16 @512  (the line)",
+        "family": "baseline",
+        "fps": 473.73,
+        "map50": 0.7776,
+        "size_mb": 17.037,
+        "j_per_1k": 52.11
+      },
+      "map50>=0.75": {
+        "fastest": "2:4 sparsity, sparse engine",
+        "family": "sparsity",
+        "fps": 487.39,
+        "map50": 0.7527,
+        "size_mb": 16.018,
+        "j_per_1k": 51.08
+      },
+      "map50>=0.73": {
+        "fastest": "Pruned 25%, widths rounded to 32",
+        "family": "pruning",
+        "fps": 641.89,
+        "map50": 0.7377,
+        "size_mb": 9.793,
+        "j_per_1k": 37.97
+      },
+      "map50>=0.7": {
+        "fastest": "INT8 min-max @512",
+        "family": "quantization",
+        "fps": 716.26,
+        "map50": 0.7181,
+        "size_mb": 9.149,
+        "j_per_1k": 36.45
+      }
+    },
+    "per_metric": {
+      "map50": {
+        "title": "aggregate mAP50",
+        "line_value": 0.7776,
+        "retention": [
+          {
+            "label": "YOLOv5l FP16 @640  (bigger model)",
+            "family": "baseline",
+            "value": 0.7853,
+            "kept_pct": 101.0,
+            "fps": 73.21,
+            "size_mb": 94.7,
+            "j_per_1k": 317.3
+          },
+          {
+            "label": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "value": 0.7776,
+            "kept_pct": 100.0,
+            "fps": 473.73,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          {
+            "label": "XP7 FP16 (line, rebuilt)",
+            "family": "baseline",
+            "value": 0.7776,
+            "kept_pct": 100.0,
+            "fps": 471.91,
+            "size_mb": 16.73,
+            "j_per_1k": 43.0
+          },
+          {
+            "label": "YOLOv5s FP16 @640",
+            "family": "resolution",
+            "value": 0.7707,
+            "kept_pct": 99.1,
+            "fps": 308.29,
+            "size_mb": 16.941,
+            "j_per_1k": 80.76
+          },
+          {
+            "label": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "value": 0.7527,
+            "kept_pct": 96.8,
+            "fps": 487.39,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          {
+            "label": "2:4 sparsity, dense engine",
+            "family": "sparsity",
+            "value": 0.7527,
+            "kept_pct": 96.8,
+            "fps": 481.74,
+            "size_mb": 17.06,
+            "j_per_1k": 50.86
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 32",
+            "family": "pruning",
+            "value": 0.7377,
+            "kept_pct": 94.9,
+            "fps": 641.89,
+            "size_mb": 9.793,
+            "j_per_1k": 37.97
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 16",
+            "family": "pruning",
+            "value": 0.7351,
+            "kept_pct": 94.5,
+            "fps": 622.4,
+            "size_mb": 10.18,
+            "j_per_1k": 37.47
+          },
+          {
+            "label": "Pruned 25%, one-shot + 12ep",
+            "family": "pruning",
+            "value": 0.7297,
+            "kept_pct": 93.8,
+            "fps": 381.12,
+            "size_mb": 12.195,
+            "j_per_1k": 54.32
+          },
+          {
+            "label": "INT8 min-max @512",
+            "family": "quantization",
+            "value": 0.7181,
+            "kept_pct": 92.3,
+            "fps": 716.26,
+            "size_mb": 9.149,
+            "j_per_1k": 36.45
+          },
+          {
+            "label": "XP7 int8_head_fp16",
+            "family": "quantization",
+            "value": 0.7005,
+            "kept_pct": 90.1,
+            "fps": 712.71,
+            "size_mb": 9.16,
+            "j_per_1k": 24.11
+          },
+          {
+            "label": "XP7 int8",
+            "family": "quantization",
+            "value": 0.6985,
+            "kept_pct": 89.8,
+            "fps": 720.34,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "XP7 int8_fp16",
+            "family": "quantization",
+            "value": 0.6985,
+            "kept_pct": 89.8,
+            "fps": 718.84,
+            "size_mb": 9.11,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "INT8 min-max @640",
+            "family": "quantization",
+            "value": 0.6907,
+            "kept_pct": 88.8,
+            "fps": 484.68,
+            "size_mb": 9.126,
+            "j_per_1k": 48.73
+          },
+          {
+            "label": "Pruned 25%, iterative + 12ep",
+            "family": "pruning",
+            "value": 0.6771,
+            "kept_pct": 87.1,
+            "fps": 450.16,
+            "size_mb": 12.752,
+            "j_per_1k": 46.48
+          },
+          {
+            "label": "XP7 qdq_percentile9999_pc",
+            "family": "quantization",
+            "value": 0.5903,
+            "kept_pct": 75.9,
+            "fps": 668.61,
+            "size_mb": 9.45,
+            "j_per_1k": 26.91
+          },
+          {
+            "label": "INT8 entropy @512  (the default)",
+            "family": "quantization",
+            "value": 0.2543,
+            "kept_pct": 32.7,
+            "fps": 724.2,
+            "size_mb": 9.157,
+            "j_per_1k": 33.26
+          }
+        ],
+        "fastest_at_each_floor": {
+          "keep>=98%": {
+            "absolute": 0.762,
+            "fastest": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "fps": 473.73,
+            "value": 0.7776,
+            "kept_pct": 100.0,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          "keep>=95%": {
+            "absolute": 0.7387,
+            "fastest": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "fps": 487.39,
+            "value": 0.7527,
+            "kept_pct": 96.8,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          "keep>=90%": {
+            "absolute": 0.6998,
+            "fastest": "INT8 min-max @512",
+            "family": "quantization",
+            "fps": 716.26,
+            "value": 0.7181,
+            "kept_pct": 92.3,
+            "size_mb": 9.149,
+            "j_per_1k": 36.45
+          },
+          "keep>=80%": {
+            "absolute": 0.6221,
+            "fastest": "XP7 int8",
+            "family": "quantization",
+            "fps": 720.34,
+            "value": 0.6985,
+            "kept_pct": 89.8,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          "keep>=60%": {
+            "absolute": 0.4666,
+            "fastest": "XP7 int8",
+            "family": "quantization",
+            "fps": 720.34,
+            "value": 0.6985,
+            "kept_pct": 89.8,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          }
+        }
+      },
+      "map50_fire": {
+        "title": "flame / fire class",
+        "line_value": 0.7184,
+        "retention": [
+          {
+            "label": "YOLOv5l FP16 @640  (bigger model)",
+            "family": "baseline",
+            "value": 0.7215,
+            "kept_pct": 100.4,
+            "fps": 73.21,
+            "size_mb": 94.7,
+            "j_per_1k": 317.3
+          },
+          {
+            "label": "YOLOv5s FP16 @640",
+            "family": "resolution",
+            "value": 0.7206,
+            "kept_pct": 100.3,
+            "fps": 308.29,
+            "size_mb": 16.941,
+            "j_per_1k": 80.76
+          },
+          {
+            "label": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "value": 0.7184,
+            "kept_pct": 100.0,
+            "fps": 473.73,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          {
+            "label": "XP7 FP16 (line, rebuilt)",
+            "family": "baseline",
+            "value": 0.7184,
+            "kept_pct": 100.0,
+            "fps": 471.91,
+            "size_mb": 16.73,
+            "j_per_1k": 43.0
+          },
+          {
+            "label": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "value": 0.6931,
+            "kept_pct": 96.5,
+            "fps": 487.39,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          {
+            "label": "2:4 sparsity, dense engine",
+            "family": "sparsity",
+            "value": 0.6931,
+            "kept_pct": 96.5,
+            "fps": 481.74,
+            "size_mb": 17.06,
+            "j_per_1k": 50.86
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 32",
+            "family": "pruning",
+            "value": 0.6755,
+            "kept_pct": 94.0,
+            "fps": 641.89,
+            "size_mb": 9.793,
+            "j_per_1k": 37.97
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 16",
+            "family": "pruning",
+            "value": 0.6692,
+            "kept_pct": 93.2,
+            "fps": 622.4,
+            "size_mb": 10.18,
+            "j_per_1k": 37.47
+          },
+          {
+            "label": "Pruned 25%, one-shot + 12ep",
+            "family": "pruning",
+            "value": 0.6673,
+            "kept_pct": 92.9,
+            "fps": 381.12,
+            "size_mb": 12.195,
+            "j_per_1k": 54.32
+          },
+          {
+            "label": "INT8 min-max @512",
+            "family": "quantization",
+            "value": 0.6573,
+            "kept_pct": 91.5,
+            "fps": 716.26,
+            "size_mb": 9.149,
+            "j_per_1k": 36.45
+          },
+          {
+            "label": "INT8 min-max @640",
+            "family": "quantization",
+            "value": 0.6166,
+            "kept_pct": 85.8,
+            "fps": 484.68,
+            "size_mb": 9.126,
+            "j_per_1k": 48.73
+          },
+          {
+            "label": "XP7 int8_head_fp16",
+            "family": "quantization",
+            "value": 0.6137,
+            "kept_pct": 85.4,
+            "fps": 712.71,
+            "size_mb": 9.16,
+            "j_per_1k": 24.11
+          },
+          {
+            "label": "XP7 int8",
+            "family": "quantization",
+            "value": 0.6108,
+            "kept_pct": 85.0,
+            "fps": 720.34,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "XP7 int8_fp16",
+            "family": "quantization",
+            "value": 0.6108,
+            "kept_pct": 85.0,
+            "fps": 718.84,
+            "size_mb": 9.11,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "Pruned 25%, iterative + 12ep",
+            "family": "pruning",
+            "value": 0.5945,
+            "kept_pct": 82.8,
+            "fps": 450.16,
+            "size_mb": 12.752,
+            "j_per_1k": 46.48
+          },
+          {
+            "label": "XP7 qdq_percentile9999_pc",
+            "family": "quantization",
+            "value": 0.4961,
+            "kept_pct": 69.1,
+            "fps": 668.61,
+            "size_mb": 9.45,
+            "j_per_1k": 26.91
+          },
+          {
+            "label": "INT8 entropy @512  (the default)",
+            "family": "quantization",
+            "value": 0.1604,
+            "kept_pct": 22.3,
+            "fps": 724.2,
+            "size_mb": 9.157,
+            "j_per_1k": 33.26
+          }
+        ],
+        "fastest_at_each_floor": {
+          "keep>=98%": {
+            "absolute": 0.704,
+            "fastest": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "fps": 473.73,
+            "value": 0.7184,
+            "kept_pct": 100.0,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          "keep>=95%": {
+            "absolute": 0.6825,
+            "fastest": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "fps": 487.39,
+            "value": 0.6931,
+            "kept_pct": 96.5,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          "keep>=90%": {
+            "absolute": 0.6466,
+            "fastest": "INT8 min-max @512",
+            "family": "quantization",
+            "fps": 716.26,
+            "value": 0.6573,
+            "kept_pct": 91.5,
+            "size_mb": 9.149,
+            "j_per_1k": 36.45
+          },
+          "keep>=80%": {
+            "absolute": 0.5747,
+            "fastest": "XP7 int8",
+            "family": "quantization",
+            "fps": 720.34,
+            "value": 0.6108,
+            "kept_pct": 85.0,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          "keep>=60%": {
+            "absolute": 0.431,
+            "fastest": "XP7 int8",
+            "family": "quantization",
+            "fps": 720.34,
+            "value": 0.6108,
+            "kept_pct": 85.0,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          }
+        }
+      },
+      "map50_smoke": {
+        "title": "smoke class",
+        "line_value": 0.8367,
+        "retention": [
+          {
+            "label": "YOLOv5l FP16 @640  (bigger model)",
+            "family": "baseline",
+            "value": 0.849,
+            "kept_pct": 101.5,
+            "fps": 73.21,
+            "size_mb": 94.7,
+            "j_per_1k": 317.3
+          },
+          {
+            "label": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "value": 0.8367,
+            "kept_pct": 100.0,
+            "fps": 473.73,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          {
+            "label": "XP7 FP16 (line, rebuilt)",
+            "family": "baseline",
+            "value": 0.8367,
+            "kept_pct": 100.0,
+            "fps": 471.91,
+            "size_mb": 16.73,
+            "j_per_1k": 43.0
+          },
+          {
+            "label": "YOLOv5s FP16 @640",
+            "family": "resolution",
+            "value": 0.8208,
+            "kept_pct": 98.1,
+            "fps": 308.29,
+            "size_mb": 16.941,
+            "j_per_1k": 80.76
+          },
+          {
+            "label": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "value": 0.8122,
+            "kept_pct": 97.1,
+            "fps": 487.39,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          {
+            "label": "2:4 sparsity, dense engine",
+            "family": "sparsity",
+            "value": 0.8122,
+            "kept_pct": 97.1,
+            "fps": 481.74,
+            "size_mb": 17.06,
+            "j_per_1k": 50.86
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 16",
+            "family": "pruning",
+            "value": 0.801,
+            "kept_pct": 95.7,
+            "fps": 622.4,
+            "size_mb": 10.18,
+            "j_per_1k": 37.47
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 32",
+            "family": "pruning",
+            "value": 0.7999,
+            "kept_pct": 95.6,
+            "fps": 641.89,
+            "size_mb": 9.793,
+            "j_per_1k": 37.97
+          },
+          {
+            "label": "Pruned 25%, one-shot + 12ep",
+            "family": "pruning",
+            "value": 0.7922,
+            "kept_pct": 94.7,
+            "fps": 381.12,
+            "size_mb": 12.195,
+            "j_per_1k": 54.32
+          },
+          {
+            "label": "XP7 int8_head_fp16",
+            "family": "quantization",
+            "value": 0.7874,
+            "kept_pct": 94.1,
+            "fps": 712.71,
+            "size_mb": 9.16,
+            "j_per_1k": 24.11
+          },
+          {
+            "label": "XP7 int8",
+            "family": "quantization",
+            "value": 0.7863,
+            "kept_pct": 94.0,
+            "fps": 720.34,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "XP7 int8_fp16",
+            "family": "quantization",
+            "value": 0.7863,
+            "kept_pct": 94.0,
+            "fps": 718.84,
+            "size_mb": 9.11,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "INT8 min-max @512",
+            "family": "quantization",
+            "value": 0.7789,
+            "kept_pct": 93.1,
+            "fps": 716.26,
+            "size_mb": 9.149,
+            "j_per_1k": 36.45
+          },
+          {
+            "label": "INT8 min-max @640",
+            "family": "quantization",
+            "value": 0.7648,
+            "kept_pct": 91.4,
+            "fps": 484.68,
+            "size_mb": 9.126,
+            "j_per_1k": 48.73
+          },
+          {
+            "label": "Pruned 25%, iterative + 12ep",
+            "family": "pruning",
+            "value": 0.7596,
+            "kept_pct": 90.8,
+            "fps": 450.16,
+            "size_mb": 12.752,
+            "j_per_1k": 46.48
+          },
+          {
+            "label": "XP7 qdq_percentile9999_pc",
+            "family": "quantization",
+            "value": 0.6844,
+            "kept_pct": 81.8,
+            "fps": 668.61,
+            "size_mb": 9.45,
+            "j_per_1k": 26.91
+          },
+          {
+            "label": "INT8 entropy @512  (the default)",
+            "family": "quantization",
+            "value": 0.3483,
+            "kept_pct": 41.6,
+            "fps": 724.2,
+            "size_mb": 9.157,
+            "j_per_1k": 33.26
+          }
+        ],
+        "fastest_at_each_floor": {
+          "keep>=98%": {
+            "absolute": 0.82,
+            "fastest": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "fps": 473.73,
+            "value": 0.8367,
+            "kept_pct": 100.0,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          "keep>=95%": {
+            "absolute": 0.7949,
+            "fastest": "Pruned 25%, widths rounded to 32",
+            "family": "pruning",
+            "fps": 641.89,
+            "value": 0.7999,
+            "kept_pct": 95.6,
+            "size_mb": 9.793,
+            "j_per_1k": 37.97
+          },
+          "keep>=90%": {
+            "absolute": 0.753,
+            "fastest": "XP7 int8",
+            "family": "quantization",
+            "fps": 720.34,
+            "value": 0.7863,
+            "kept_pct": 94.0,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          "keep>=80%": {
+            "absolute": 0.6694,
+            "fastest": "XP7 int8",
+            "family": "quantization",
+            "fps": 720.34,
+            "value": 0.7863,
+            "kept_pct": 94.0,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          "keep>=60%": {
+            "absolute": 0.502,
+            "fastest": "XP7 int8",
+            "family": "quantization",
+            "fps": 720.34,
+            "value": 0.7863,
+            "kept_pct": 94.0,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          }
+        }
+      },
+      "tiny_plume": {
+        "title": "tiny plumes (<0.1% of frame)",
+        "line_value": 0.1376,
+        "retention": [
+          {
+            "label": "YOLOv5l FP16 @640  (bigger model)",
+            "family": "baseline",
+            "value": 0.1974,
+            "kept_pct": 143.5,
+            "fps": 73.21,
+            "size_mb": 94.7,
+            "j_per_1k": 317.3
+          },
+          {
+            "label": "YOLOv5s FP16 @640",
+            "family": "resolution",
+            "value": 0.1659,
+            "kept_pct": 120.6,
+            "fps": 308.29,
+            "size_mb": 16.941,
+            "j_per_1k": 80.76
+          },
+          {
+            "label": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "value": 0.1376,
+            "kept_pct": 100.0,
+            "fps": 473.73,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          {
+            "label": "XP7 FP16 (line, rebuilt)",
+            "family": "baseline",
+            "value": 0.1376,
+            "kept_pct": 100.0,
+            "fps": 471.91,
+            "size_mb": 16.73,
+            "j_per_1k": 43.0
+          },
+          {
+            "label": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "value": 0.1249,
+            "kept_pct": 90.8,
+            "fps": 487.39,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          {
+            "label": "2:4 sparsity, dense engine",
+            "family": "sparsity",
+            "value": 0.1249,
+            "kept_pct": 90.8,
+            "fps": 481.74,
+            "size_mb": 17.06,
+            "j_per_1k": 50.86
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 32",
+            "family": "pruning",
+            "value": 0.1072,
+            "kept_pct": 77.9,
+            "fps": 641.89,
+            "size_mb": 9.793,
+            "j_per_1k": 37.97
+          },
+          {
+            "label": "Pruned 25%, widths rounded to 16",
+            "family": "pruning",
+            "value": 0.1033,
+            "kept_pct": 75.1,
+            "fps": 622.4,
+            "size_mb": 10.18,
+            "j_per_1k": 37.47
+          },
+          {
+            "label": "Pruned 25%, one-shot + 12ep",
+            "family": "pruning",
+            "value": 0.096,
+            "kept_pct": 69.8,
+            "fps": 381.12,
+            "size_mb": 12.195,
+            "j_per_1k": 54.32
+          },
+          {
+            "label": "INT8 min-max @640",
+            "family": "quantization",
+            "value": 0.0724,
+            "kept_pct": 52.6,
+            "fps": 484.68,
+            "size_mb": 9.126,
+            "j_per_1k": 48.73
+          },
+          {
+            "label": "Pruned 25%, iterative + 12ep",
+            "family": "pruning",
+            "value": 0.0653,
+            "kept_pct": 47.5,
+            "fps": 450.16,
+            "size_mb": 12.752,
+            "j_per_1k": 46.48
+          },
+          {
+            "label": "XP7 qdq_percentile9999_pc",
+            "family": "quantization",
+            "value": 0.0626,
+            "kept_pct": 45.5,
+            "fps": 668.61,
+            "size_mb": 9.45,
+            "j_per_1k": 26.91
+          },
+          {
+            "label": "INT8 min-max @512",
+            "family": "quantization",
+            "value": 0.0572,
+            "kept_pct": 41.6,
+            "fps": 716.26,
+            "size_mb": 9.149,
+            "j_per_1k": 36.45
+          },
+          {
+            "label": "XP7 int8_head_fp16",
+            "family": "quantization",
+            "value": 0.0423,
+            "kept_pct": 30.7,
+            "fps": 712.71,
+            "size_mb": 9.16,
+            "j_per_1k": 24.11
+          },
+          {
+            "label": "XP7 int8",
+            "family": "quantization",
+            "value": 0.0421,
+            "kept_pct": 30.6,
+            "fps": 720.34,
+            "size_mb": 9.09,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "XP7 int8_fp16",
+            "family": "quantization",
+            "value": 0.0421,
+            "kept_pct": 30.6,
+            "fps": 718.84,
+            "size_mb": 9.11,
+            "j_per_1k": 24.1
+          },
+          {
+            "label": "INT8 entropy @512  (the default)",
+            "family": "quantization",
+            "value": 0.0016,
+            "kept_pct": 1.2,
+            "fps": 724.2,
+            "size_mb": 9.157,
+            "j_per_1k": 33.26
+          }
+        ],
+        "fastest_at_each_floor": {
+          "keep>=98%": {
+            "absolute": 0.1348,
+            "fastest": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "fps": 473.73,
+            "value": 0.1376,
+            "kept_pct": 100.0,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          "keep>=95%": {
+            "absolute": 0.1307,
+            "fastest": "YOLOv5s FP16 @512  (the line)",
+            "family": "baseline",
+            "fps": 473.73,
+            "value": 0.1376,
+            "kept_pct": 100.0,
+            "size_mb": 17.037,
+            "j_per_1k": 52.11
+          },
+          "keep>=90%": {
+            "absolute": 0.1238,
+            "fastest": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "fps": 487.39,
+            "value": 0.1249,
+            "kept_pct": 90.8,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          "keep>=80%": {
+            "absolute": 0.1101,
+            "fastest": "2:4 sparsity, sparse engine",
+            "family": "sparsity",
+            "fps": 487.39,
+            "value": 0.1249,
+            "kept_pct": 90.8,
+            "size_mb": 16.018,
+            "j_per_1k": 51.08
+          },
+          "keep>=60%": {
+            "absolute": 0.0826,
+            "fastest": "Pruned 25%, widths rounded to 32",
+            "family": "pruning",
+            "fps": 641.89,
+            "value": 0.1072,
+            "kept_pct": 77.9,
+            "size_mb": 9.793,
+            "j_per_1k": 37.97
+          }
+        }
+      }
+    }
+  }
+}

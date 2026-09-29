@@ -788,3 +788,19 @@ python analysis/xp06_tables.py      # every table, from the same JSON
 ```
 
 An interactive walkthrough of the techniques is in [`course/`](course/).
+
+---
+
+## Where this sits in the series
+
+Pruning lost to the FP16 line here, and it stays lost —
+[XP7-E9](../xp07_quant/README.md#e9-the-frontier--every-technique-against-every-other) puts every
+technique in the study on one chart and finds **nothing beats 0.7776 @ 474 img/s on accuracy,
+speed and size at once**. But the ranking is not one ranking. At an accuracy floor of 0.75 the
+fastest arm is 2:4 sparsity; at 0.73 it is this page's pruned round-to-32 model (0.7377 @ 641.9);
+at 0.70 it is INT8. They are rungs, not competitors.
+
+And the slice re-orders them again: scored on plumes under 0.1% of the frame, **2:4 keeps 91% of
+the line's accuracy where pruning keeps 70–78% and INT8 keeps 42%** — so XP6-E4's verdict that 2:4
+held its accuracy and the compiler refused to pay for it looks better in hindsight than it did at
+the time.

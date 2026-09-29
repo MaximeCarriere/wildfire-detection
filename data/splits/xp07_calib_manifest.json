@@ -1,0 +1,15 @@
+{
+  "n": 512,
+  "seed": 707,
+  "source": "train split only, uniform random \u2014 the deployment distribution",
+  "why_not_xp0_calib": "XP0's calib.txt is 90% hard cases; XP10 measured +22% accuracy from a representative sample instead",
+  "nested_sizes": [
+    8,
+    32,
+    128,
+    512
+  ],
+  "checksum": "61bb308c46715e06",
+  "small_plume_images": 141,
+  "small_plume_frac": 0.2754
+}

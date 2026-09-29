@@ -1,0 +1,188 @@
+{
+  "experiment": "xp07_e8_lowbit",
+  "question": "INT4 / codebook / storage-only compression \u2014 what does it buy?",
+  "axis": "bit-width",
+  "board_claim": "none \u2014 the Orin has no INT4 convolution path; these are accuracy and size results only",
+  "split": "val",
+  "n_val_images": 1721,
+  "subsampled": false,
+  "activations": "FP16 in every arm",
+  "group_size": 128,
+  "gptq_calibration_images": 128,
+  "baseline_fp16": {
+    "map5095": 0.631,
+    "map50": 0.9494,
+    "per_class": {
+      "smoke": {
+        "map5095": 0.6801,
+        "map50": 0.9672
+      },
+      "fire": {
+        "map5095": 0.5819,
+        "map50": 0.9316
+      }
+    },
+    "small_plume": {
+      "map5095": 0.4552,
+      "map50": 0.8721
+    },
+    "tiny_plume": {
+      "map5095": 0.1091,
+      "map50": 0.3363
+    },
+    "background": {
+      "conf": 0.25,
+      "n_background_images": 783,
+      "n_alarmed": 10,
+      "false_alarm_rate": 0.0128,
+      "correctly_silent_rate": 0.9872,
+      "false_boxes_per_bg_image": 0.014
+    },
+    "n_images": 1721,
+    "n_images_small_plume": 483,
+    "n_images_tiny_plume": 127,
+    "n_detections": 14073,
+    "fingerprint": "80cd8eb04506a466"
+  },
+  "arms": {
+    "w8_rtn_pergroup": {
+      "map50": 0.9488,
+      "map5095": 0.6309,
+      "small_plume": 0.8717,
+      "tiny_plume": 0.3372,
+      "quantize_seconds": 0.1,
+      "size": {
+        "bytes": {
+          "quantized_weights": 7005952,
+          "untouched_params": 38142,
+          "weight_scales": 220620,
+          "activation_scales": 0,
+          "total": 7264714,
+          "fp16_baseline": 14050046
+        },
+        "params_total_m": 7.025,
+        "params_quantized_m": 7.006,
+        "params_quantized_pct": 99.7,
+        "weight_bits": 8,
+        "granularity": "per_group",
+        "quantized_weights_mb": 7.006,
+        "untouched_params_mb": 0.038,
+        "weight_scales": 55155,
+        "weight_scale_overhead_kb": 220.62,
+        "activation_scales": 0,
+        "activation_scale_overhead_kb": 0.0,
+        "total_mb": 7.265,
+        "fp16_baseline_mb": 14.05,
+        "compression_x": 1.934,
+        "note": "counted from the configuration, not measured on disk \u2014 fake-quant leaves every tensor a float. E4's engine sizes are the measured counterpart and are larger by the engine's own metadata."
+      }
+    },
+    "w8_rtn_perchannel": {
+      "map50": 0.9492,
+      "map5095": 0.6302,
+      "small_plume": 0.8715,
+      "tiny_plume": 0.335,
+      "quantize_seconds": 0.1,
+      "size": {
+        "bytes": {
+          "quantized_weights": 7005952,
+          "untouched_params": 38142,
+          "weight_scales": 38268,
+          "activation_scales": 0,
+          "total": 7082362,
+          "fp16_baseline": 14050046
+        },
+        "params_total_m": 7.025,
+        "params_quantized_m": 7.006,
+        "params_quantized_pct": 99.7,
+        "weight_bits": 8,
+        "granularity": "per_channel",
+        "quantized_weights_mb": 7.006,
+        "untouched_params_mb": 0.038,
+        "weight_scales": 9567,
+        "weight_scale_overhead_kb": 38.27,
+        "activation_scales": 0,
+        "activation_scale_overhead_kb": 0.0,
+        "total_mb": 7.082,
+        "fp16_baseline_mb": 14.05,
+        "compression_x": 1.984,
+        "note": "counted from the configuration, not measured on disk \u2014 fake-quant leaves every tensor a float. E4's engine sizes are the measured counterpart and are larger by the engine's own metadata."
+      }
+    },
+    "w4_rtn_pergroup": {
+      "map50": 0.8577,
+      "map5095": 0.4889,
+      "small_plume": 0.6946,
+      "tiny_plume": 0.2165,
+      "quantize_seconds": 0.1,
+      "size": {
+        "bytes": {
+          "quantized_weights": 3502976,
+          "untouched_params": 38142,
+          "weight_scales": 220620,
+          "activation_scales": 0,
+          "total": 3761738,
+          "fp16_baseline": 14050046
+        },
+        "params_total_m": 7.025,
+        "params_quantized_m": 7.006,
+        "params_quantized_pct": 99.7,
+        "weight_bits": 4,
+        "granularity": "per_group",
+        "quantized_weights_mb": 3.503,
+        "untouched_params_mb": 0.038,
+        "weight_scales": 55155,
+        "weight_scale_overhead_kb": 220.62,
+        "activation_scales": 0,
+        "activation_scale_overhead_kb": 0.0,
+        "total_mb": 3.762,
+        "fp16_baseline_mb": 14.05,
+        "compression_x": 3.735,
+        "note": "counted from the configuration, not measured on disk \u2014 fake-quant leaves every tensor a float. E4's engine sizes are the measured counterpart and are larger by the engine's own metadata."
+      }
+    },
+    "w4_rtn_perchannel": {
+      "map50": 0.8447,
+      "map5095": 0.4586,
+      "small_plume": 0.6716,
+      "tiny_plume": 0.1865,
+      "quantize_seconds": 0.1,
+      "size": {
+        "bytes": {
+          "quantized_weights": 3502976,
+          "untouched_params": 38142,
+          "weight_scales": 38268,
+          "activation_scales": 0,
+          "total": 3579386,
+          "fp16_baseline": 14050046
+        },
+        "params_total_m": 7.025,
+        "params_quantized_m": 7.006,
+        "params_quantized_pct": 99.7,
+        "weight_bits": 4,
+        "granularity": "per_channel",
+        "quantized_weights_mb": 3.503,
+        "untouched_params_mb": 0.038,
+        "weight_scales": 9567,
+        "weight_scale_overhead_kb": 38.27,
+        "activation_scales": 0,
+        "activation_scale_overhead_kb": 0.0,
+        "total_mb": 3.579,
+        "fp16_baseline_mb": 14.05,
+        "compression_x": 3.925,
+        "note": "counted from the configuration, not measured on disk \u2014 fake-quant leaves every tensor a float. E4's engine sizes are the measured counterpart and are larger by the engine's own metadata."
+      }
+    }
+  },
+  "codebook": {
+    "weights": 7005952,
+    "fp16_mb": 14.012,
+    "indices_mb": 3.503,
+    "huffman_mb": 3.23,
+    "codebook_tables_kb": 1.92,
+    "mean_huffman_bits_per_weight": 3.686,
+    "map50": 0.6761,
+    "small_plume": 0.6147,
+    "tiny_plume": 0.1304
+  }
+}

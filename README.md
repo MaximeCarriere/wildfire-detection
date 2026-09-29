@@ -31,12 +31,15 @@ That runs on a fanless $249 computer drawing about 11 watts.
 | [XP1](experiments/xp01_baselines/) | Baselines | **A 6.6× bigger model buys 1.4 accuracy points** at 3.3× the energy |
 | [XP2](experiments/xp02_resolution/) | Resolution, the cheapest knob | **512px beats 640px outright**; overall accuracy hides a 77% collapse in distant-smoke detection |
 | [XP6](experiments/xp06_pruning/) | Pruning | **Loses on accuracy and speed** against the unpruned model; cutting 2% of channels costs 9 accuracy points |
+| [XP7](experiments/xp07_quant/) | Quantization, systematically | **Calibration decides everything — 0.62 mAP50 between settings**, and the one XP10 recommended is the wrong one. Ends with every technique in the series on one chart |
 | [XP9](experiments/xp09_tensorrt_fp16/) | TensorRT FP16 | **Up to 5× faster, accuracy free**, and it exposed that all earlier speed numbers were measuring the software |
 | [XP10](experiments/xp10_int8_slices/) | INT8 quantization | **One default setting cost 67% of the accuracy**; fixed, the real cost is about 8% |
 | [XP12](experiments/xp12_endurance/) | Endurance | 10 min flat out, 280k images, −1.3% drift, no throttling |
 
-Not yet run: knowledge distillation, 2:4 sparsity, quantization-aware training, a live demo,
-and a two-stage cascade that keeps the expensive detector asleep. See [PLAN.md](PLAN.md).
+Not yet run: knowledge distillation, a live demo, and a two-stage cascade that keeps the expensive
+detector asleep. Quantization-aware training is
+[specified and costed](experiments/xp07_quant/HANDOFF_TO_GPU.md) but training-bound on a 15 W
+board. See [PLAN.md](PLAN.md).
 
 ## Three findings worth the click
 

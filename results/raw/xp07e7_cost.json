@@ -1,0 +1,19 @@
+{
+  "experiment": "xp07_e7_cost",
+  "question": "what does a 12-epoch recovery actually cost on this board?",
+  "why": "every recovered column in XP7 costs this; it had been an estimate",
+  "board": "Jetson Orin Nano Super",
+  "mode": "QAT (fake-quant hooks live)",
+  "resolution": 512,
+  "batch": 8,
+  "warmup_steps": 10,
+  "timed_steps": 60,
+  "elapsed_s": 27.97,
+  "images_per_s": 17.161,
+  "train_split_images": 15500,
+  "seconds_per_epoch": 903.2,
+  "minutes_per_epoch": 15.05,
+  "hours_for_12_epochs": 3.01,
+  "hours_for_e7_as_specified": 9.03,
+  "note": "projected from timed steps, not a measured full epoch \u2014 stated as a projection because that is what it is"
+}

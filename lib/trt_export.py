@@ -106,7 +106,8 @@ def make_calibrator(image_paths, res: int, yolov5_repo: Path, cache_path: Path,
 def build_int8_engine(onnx_path: Path, engine_path: Path, *, calibrator,
                       res: int, max_batch: int = 16,
                       workspace_gb: float = 3.0, fp16_head: bool = True,
-                      fp16_head_convs: int = 3) -> Path:
+                      fp16_head_convs: int = 3, allow_fp16: bool = True,
+                      detailed_profiling: bool = False) -> Path:
     """Build an INT8 engine with a dynamic batch profile.
 
     FP16 is left enabled alongside INT8: TensorRT falls back to FP16 for layers
@@ -156,7 +157,21 @@ def build_int8_engine(onnx_path: Path, engine_path: Path, *, calibrator,
     config = builder.create_builder_config()
     config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, int(workspace_gb * (1 << 30)))
     config.set_flag(trt.BuilderFlag.INT8)
-    config.set_flag(trt.BuilderFlag.FP16)
+    # ``allow_fp16`` defaults to True, which is the standard and honest deployment
+    # configuration described above and the behaviour every existing caller gets.
+    # XP7-E4 sets it False for one arm only, to separate two claims that are
+    # otherwise indistinguishable: "INT8 was requested" and "INT8 was permitted to
+    # fall back to FP16 wherever the builder preferred". With both flags set those
+    # two arms build byte-identical engines, which makes the comparison vacuous.
+    if allow_fp16:
+        config.set_flag(trt.BuilderFlag.FP16)
+    if detailed_profiling:
+        # Records per-layer tactic and format metadata *into the engine*, which is
+        # the only way IEngineInspector can report what precision each layer
+        # actually ran in. Distinct from the logger's --verbose, which XP6 found
+        # turns a 3-minute build into a 20-minute one: this is engine metadata,
+        # not console output, and costs build time only in the noise.
+        config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
     config.int8_calibrator = calibrator
 
     if fp16_head:
@@ -289,7 +304,8 @@ def export_onnx_from_model(model, onnx_path: Path, *, res: int = 512,
 def build_fp16_engine(onnx_path: Path, engine_path: Path, *, res: int,
                       max_batch: int = 16, opt_batch: int = 1,
                       trtexec: str = "/usr/src/tensorrt/bin/trtexec",
-                      sparsity: bool = False, log_path: Path | None = None) -> Path:
+                      sparsity: bool = False, log_path: Path | None = None,
+                      detailed_profiling: bool = False) -> Path:
     """FP16 engine via trtexec — the same path XP9's engines were built with, so
     the pruned models land on exactly the same measurement footing.
 
@@ -320,6 +336,9 @@ def build_fp16_engine(onnx_path: Path, engine_path: Path, *, res: int,
            "--skipInference"]
     if sparsity:
         cmd += ["--sparsity=enable"]
+    if detailed_profiling:
+        # Engine metadata for IEngineInspector. NOT --verbose — see below.
+        cmd += ["--profilingVerbosity=detailed"]
     # NOT --verbose. TensorRT reports its sparsity decision at info level, and
     # verbose output on this board turns a 3-minute build into a 20-minute one
     # while adding nothing that is read here.

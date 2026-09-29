@@ -6,6 +6,15 @@ cost in accuracy?
 **Outcome:** with TensorRT's **default** settings, 67% of the accuracy. That turned out to
 be a single wrong option rather than a property of INT8. Fixed, the real cost is about 8%.
 
+> **Partly superseded by [XP7-E2](../xp07_quant/README.md#e2-calibration-method-and-size).** The
+> diagnosis on this page holds: TensorRT's default entropy calibrator is catastrophic here, and for
+> the reason given below. **The prescription does not.** This page compared entropy against
+> min-max, found min-max enormously better, and stopped — but those are the two *ends* of the
+> clipping sweep, and the middle was never tested. XP7 swept five methods on the full validation
+> split and found min-max costs **62% of the tiny-plume accuracy** where **percentile 99.99 costs
+> 5%**. The min/max engines below are therefore a *lower bound* on what INT8 can do on this
+> detector, as is every INT8 number in this repo built with min-max.
+
 ![One default setting cost 67% of the accuracy](../../results/figures/xp10_int8.png)
 
 ## Results
@@ -68,6 +77,14 @@ accuracy still falls 58%.
 **Every INT8 number anywhere should state its calibration method.** Labelled only "INT8",
 these two engines differ by 36× on the metric that matters most here.
 
+**And "min/max" is not the end of that sentence.**
+[XP7-E2](../xp07_quant/README.md#e2-calibration-method-and-size) swept five methods rather than two
+and found the spread is **0.62 mAP50** — the largest single-decision effect measured anywhere in
+this series. Min-max clips nothing, which sounds safe and is not: one outlier activation sets the
+step size for the whole tensor, and on the stride-8 detection head it picks a range **4.8x wider
+than necessary**. The tiny-plume column recovers from 38% to 95% of the unquantized model by
+changing one string.
+
 ## Limitations
 
 - Tiny-plume accuracy is still badly hurt (0.1376 → 0.0572). INT8 damages small-object
@@ -77,5 +94,7 @@ these two engines differ by 36× on the metric that matters most here.
 
 ## Next
 
-Quantization-aware training, and re-testing whether INT8 beats the FP16 frontier once the
-remaining small-object loss is addressed.
+Picked up by [XP7](../xp07_quant/README.md), which turns this page's one-variable finding into the
+systematic study: per-layer sensitivity (the damage is three activation tensors, and the stride-8
+head's input alone costs 63% of distant smoke), the full calibration sweep that supersedes the
+prescription above, and every technique in the series on one chart.

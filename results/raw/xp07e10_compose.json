@@ -1,0 +1,35 @@
+{
+  "experiment": "xp07_e10_compose",
+  "question": "do XP6's pruning savings and XP7's quantization savings stack?",
+  "axis": "composition",
+  "xp6_best": {
+    "map50": 0.7377,
+    "fps_batched": 641.9,
+    "j_per_1k": 38.0,
+    "recipe": "L1 criterion, 25% channel cut, round_to=32"
+  },
+  "recipe": "w8_a8_per_channel_minmax_sym",
+  "split": "val",
+  "n_val_images": 1721,
+  "calibration_discipline": "re-collected on the pruned model \u2014 pruning changed the activation statistics, so the dense cache is invalid",
+  "arms": {
+    "prune_then_quantize": {
+      "pruned_fp16": {
+        "map50": 0.8604,
+        "small_plume": 0.7379,
+        "tiny_plume": 0.1805
+      },
+      "damage": {
+        "map50": 0.8196,
+        "small_plume": 0.6173,
+        "tiny_plume": 0.0655
+      },
+      "quantization_cost_pct": 4.742,
+      "quantization_cost_tiny_pct": 63.712,
+      "calibration": "re-collected on the pruned model, never reused from dense",
+      "start_from": "yolov5s_pruned25_recovered.pt"
+    }
+  },
+  "board": "skipped",
+  "naive_expectation": "1.36x (XP6) x whatever E4 measured for INT8 \u2014 stated so it can be contradicted, not because it is believed"
+}
