@@ -252,35 +252,36 @@ Moving `T` trades one error against the other, and they pull in opposite directi
 There is no default that is safe on both, because **the right `T` depends on the shape of the
 tensor** — and one network contains both shapes:
 
-![What clipping is, and why both ends of the sweep are wrong](../../results/figures/xp07_clipping.png)
+![What clipping is, and what each calibration method's choice costs](../../results/figures/xp07_clipping.png)
 
-| tensor | shape | best `T` | what that means |
+| tensor | shape | best `T` | so the right move is |
 |---|---|---:|---|
-| `model.0.conv` (input) | bounded, fills 0–1 | **100% of max** | clipping anything is pure loss |
-| `model.24.m.0` (inner) | long tail to 142 | **40% of max** | clipping is mandatory |
+| `model.0.conv` (input) | bounded, fills 0–1 | **100% of max** | clip nothing — there is no tail to cut |
+| `model.24.m.0` (inner) | long tail out to 142 | **40% of max** | clip hard — the top 60% is nearly empty |
 
-Two consequences, measured on the histograms above, not argued:
+Panel 2 scores each method against the best `T` that tensor allows, so **1.0x is as good as it gets
+and 10x is ten times worse**:
 
-- **Discarding almost nothing can help a lot.** On `model.24.m.0`, MSE clips **0.0031%** of values —
-  3 in 100,000 — and that alone cuts the total error **2.4x** versus min-max, because the surviving
-  99.997% get **2.6x** the resolution (127 steps across 0–55.4 instead of 0–142).
-- **Discarding a little more destroys it.** On the input, entropy clips **22%** of all values and
-  costs **5,607x** the error of the best choice.
-
-Each method's error, as a multiple of the best possible `T` for that tensor:
-
-| method | `model.0.conv` | `model.24.m.0` | fails |
+| method | input tensor | inner tensor | how it fails |
 |---|---:|---:|---|
-| **MSE** | 1.1x | **1.0x** | never |
+| **MSE** | 1.1x | **1.0x** | it doesn't |
 | **percentile 99.99** | 1.1x | 1.6x | never badly |
-| min-max | 1.1x | 2.4x | on long tails — *too wide* |
-| entropy (TRT default) | **5,607x** | 8.4x | on bounded inputs — *too narrow* |
+| min-max | 1.2x | **2.4x** | *too late* on long tails — stretches 127 steps over empty space |
+| entropy (TRT default) | **5,898x** | 8.4x | *too early* on bounded inputs — erases 22% of the data |
 
-That table is computed from activation histograms alone — no detector, no mAP, no inference run —
-and it **recovers the accuracy ranking measured below**: the two safe methods first, min-max next,
-entropy far behind. It was computed after the sweep, so it explains the result rather than having
-predicted it; its value is that it reaches the same ordering from the tensors alone, so the ordering
-is a property of this network's activations and not of one evaluation split.
+Two things to take from it:
+
+- **Discarding almost nothing buys a lot.** On the inner tensor MSE clips **0.0031%** of values —
+  3 in 100,000 — and that alone cuts the error **2.4x** versus min-max, because the surviving
+  99.997% get **2.6x** the resolution (127 steps across 0–55.4 instead of 0–142).
+- **Discarding a little more destroys everything.** On the input, entropy clips **22%** of all
+  values and lands **5,898x** off the best possible choice.
+
+Both ends of the sweep are therefore wrong, in opposite directions, and each tensor demonstrates
+one of them. This is computed from activation histograms alone — no detector, no mAP, no inference
+run — and it **recovers the accuracy ranking measured below**. It was computed after the sweep, so
+it explains the result rather than having predicted it; its value is that the same ordering falls
+out of the tensors alone, so it is a property of this network's activations and not of one split.
 
 **Method**
 

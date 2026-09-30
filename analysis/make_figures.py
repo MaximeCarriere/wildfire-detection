@@ -3530,7 +3530,7 @@ def fig_xp07e9b(records) -> Path | None:
 
 
 def fig_xp07_clipping(records) -> Path | None:
-    """What clipping is, and why both ends of the sweep are wrong — on real tensors."""
+    """What clipping is, and what each calibration method's choice costs."""
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -3542,118 +3542,111 @@ def fig_xp07_clipping(records) -> Path | None:
     if INNER not in H or INPUT not in H:
         return None
 
+    ORDER = ["mse", "percentile_99.99", "minmax", "entropy"]
     nice = {"minmax": "min-max", "percentile_99.99": "percentile 99.99",
-            "entropy": "entropy (TRT default)", "mse": "MSE"}
-    MSIZE = {"minmax": 210, "percentile_99.99": 140, "entropy": 92, "mse": 48}
+            "entropy": "entropy\n(TensorRT default)", "mse": "MSE"}
     mcol = {"minmax": style.RED, "percentile_99.99": style.AQUA,
             "entropy": "#8e44ad", "mse": style.BLUE}
 
     def prep(name):
-        h = np.array(H[name]["hist_counts"], float)
-        bw = H[name]["bin_width"]
-        return h, bw, (np.arange(len(h)) + 0.5) * bw, h.sum(), H[name]
+        m = H[name]
+        h = np.array(m["hist_counts"], float)
+        return h, (np.arange(len(h)) + 0.5) * m["bin_width"], h.sum(), m
 
-    def errors(c, h, T):
+    def err(c, h, T):
         S = T / 127.0
         lo = c <= T
-        rnd = ((c[lo] - np.round(c[lo] / S) * S) ** 2 * h[lo]).sum()
-        clp = ((c[~lo] - T) ** 2 * h[~lo]).sum()
-        return rnd, clp
+        return (((c[lo] - np.round(c[lo] / S) * S) ** 2 * h[lo]).sum()
+                + ((c[~lo] - T) ** 2 * h[~lo]).sum())
 
-    fig, axes = plt.subplots(1, 3, figsize=(17.4, 5.2))
-    fig.suptitle("Calibration is one choice: where to stop. Clip too little and every value is "
-                 "coarse; clip too much and real signal is erased.", y=1.06, fontsize=14)
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(15.4, 5.6), gridspec_kw={"width_ratios": [1, 1.18]})
+    fig.suptitle("INT8 forces one choice — where to stop — and there is no setting that is safe "
+                 "on every tensor.", y=1.045, fontsize=14)
     style.subtitle(fig, "Measured activation histograms from this detector over the frozen "
-                        "calibration set. INT8 spreads 127 steps between 0 and the clip point, "
-                        "and flattens everything above it onto that point.", y=0.995)
+                        "512-image calibration set. No detector was run: everything here comes "
+                        "from the tensors.", y=0.985)
 
-    # ---- panel 1: what clipping does ------------------------------------
-    h, bw, c, tot, meta = prep(INNER)
-    ax = axes[0]
+    # ---- left: what clipping does, on one real tensor --------------------
+    h, c, tot, meta = prep(INNER)
     T = meta["clips"]["mse"]
     ax.fill_between(c, h, color=style.BLUE, alpha=0.30, step="mid", zorder=2)
     ax.plot(c, h, color=style.BLUE, lw=1.1, zorder=3)
     ax.set_yscale("log")
     ax.axvline(T, color=style.INK, lw=2.0, zorder=5)
     ax.axvspan(T, c[-1], color=style.RED, alpha=0.13, zorder=1)
-    pct = h[c > T].sum() / tot * 100
-    ax.annotate(f"clip point\nT = {T:.1f}", xy=(T, h[h > 0].max() * 0.25),
-                xytext=(T * 0.42, h[h > 0].max() * 0.25), ha="right", va="center",
-                fontsize=10, color=style.INK, fontweight="bold",
+    top = h[h > 0].max()
+    ax.annotate(f"stop here\nT = {T:.0f}", xy=(T, top * 0.25), xytext=(T * 0.42, top * 0.25),
+                ha="right", va="center", fontsize=10.5, color=style.INK, fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=style.INK, lw=1.4))
-    ax.text(T * 1.06, h[h > 0].max() * 0.012,
-            f"only {pct:.3f}% of values\nare out here — and every\none is stored as {T:.0f}",
-            fontsize=9.4, color=style.RED, fontweight="bold", va="center")
-    ax.text(T * 0.5, h[h > 0].max() * 0.0015,
-            f"127 steps are spread\nacross 0 → {T:.0f}", ha="center",
-            fontsize=9.4, color=style.BLUE, fontweight="bold")
+    ax.text(T * 1.06, top * 0.02,
+            f"above the line: {h[c > T].sum() / tot * 100:.3f}% of values\n"
+            f"(3 in 100,000) — every one of\nthem is stored as {T:.0f}",
+            fontsize=9.6, color=style.RED, fontweight="bold", va="center")
+    ax.text(T * 0.5, top * 0.0012, "below the line:\n127 evenly spaced steps", ha="center",
+            fontsize=9.6, color=style.BLUE, fontweight="bold")
     ax.set_xlim(0, meta["observed_max"] * 1.02)
     ax.set_xlabel(f"activation value arriving at {INNER}")
-    ax.set_ylabel("how many values, log scale")
-    ax.set_title("1. Clipping = choosing where to stop", fontsize=12, loc="left")
+    ax.set_ylabel("how many values (log scale)")
+    ax.set_title("1. Clipping = choosing where to stop", fontsize=12.5, loc="left")
     style.tidy(ax)
 
-    # ---- panels 2 and 3: the trade-off on two tensors --------------------
-    for ax, name, title in (
-            (axes[1], INNER, "2. A long-tailed inner tensor:\nthe best choice clips"),
-            (axes[2], INPUT, "3. The bounded input tensor:\nthe best choice clips nothing")):
-        h, bw, c, tot, meta = prep(name)
-        Ts = np.linspace(meta["observed_max"] * 0.03, meta["observed_max"], 220)
-        E = np.array([errors(c, h, t) for t in Ts])
-        rnd, clp = E[:, 0], E[:, 1]
-        tot_e = rnd + clp
-        ax.plot(Ts, np.maximum(rnd, 1e-3), color=style.BLUE, lw=1.6,
-                label="rounding error (coarse steps)")
-        ax.plot(Ts, np.maximum(clp, 1e-3), color=style.RED, lw=1.6,
-                label="clipping error (signal erased)")
-        ax.plot(Ts, tot_e, color=style.INK, lw=2.4, label="total")
-        ax.set_yscale("log")
-        ibest = int(np.argmin(tot_e))
-        best, ebest = Ts[ibest], tot_e[ibest]
-        ax.axvline(best, color=style.AQUA, lw=1.6, ls="--", zorder=4)
-        right = best > meta["observed_max"] * 0.6
-        ax.annotate(f"best T = {best:.3g}\n({best / meta['observed_max'] * 100:.0f}% of max)",
-                    xy=(best, 0.03), xycoords=("data", "axes fraction"),
-                    xytext=(-7 if right else 7, 0), textcoords="offset points",
-                    ha="right" if right else "left", va="bottom",
-                    fontsize=9.4, color="#0d5f43", fontweight="bold")
-        worst = None
-        for k, sz in MSIZE.items():
-            T = meta["clips"].get(k)
-            if T is None:
-                continue
-            r, cl = errors(c, h, T)
-            ax.scatter([T], [r + cl], s=sz, color=mcol[k], zorder=6,
-                       edgecolor="white", linewidth=1.2)
-            if worst is None or r + cl > worst[1]:
-                worst = (T, r + cl, k)
-        # say what the worst choice actually costs, in multiples of the best
-        T, e, k = worst
-        ax.text(0.975, 0.955, f"worst choice here: {nice[k]}\nstops at T = {T:.3g}, and costs\n"
-                              f"{e / ebest:,.0f}x the error of the best",
-                transform=ax.transAxes, ha="right", va="top",
-                fontsize=9.4, color=mcol[k], fontweight="bold",
-                bbox=dict(boxstyle="round,pad=0.45", fc="white", ec=mcol[k], lw=1.1, alpha=0.95))
-        ax.set_ylim(bottom=tot_e.min() / 1e5, top=tot_e.max() * 40)
-        ax.set_xlabel(f"clip point T for {name}")
-        ax.set_ylabel("squared error over the tensor, log scale")
-        ax.set_title(title, fontsize=12, loc="left")
-        style.tidy(ax)
-    curves = [plt.Line2D([], [], color=style.BLUE, lw=2, label="rounding error — steps too coarse"),
-              plt.Line2D([], [], color=style.RED, lw=2, label="clipping error — signal erased"),
-              plt.Line2D([], [], color=style.INK, lw=2.6, label="total error (what you pay)")]
-    leg1 = fig.legend(handles=curves, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.085),
-                      frameon=False, fontsize=10, title="panels 2 and 3: the two errors trade off "
-                                                       "(markers nest, so a hidden method still shows as a ring)")
-    leg1.get_title().set_fontweight("bold")
-    fig.add_artist(leg1)
-    handles = [plt.Line2D([], [], marker="o", ls="", color=mcol[k],
-                          markersize=(MSIZE[k] / 3.1) ** 0.5 * 1.55, label=nice[k])
-               for k in MSIZE]
-    leg2 = fig.legend(handles=handles, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.195),
-                      frameon=False, fontsize=10, title="where each calibration method stops")
-    leg2.get_title().set_fontweight("bold")
+    # ---- right: what each method's choice costs --------------------------
+    groups = [(INPUT, "THE INPUT TENSOR  —  values fill 0 to 1, with no tail",
+               {"entropy": "stops too early: 22% of the data is erased"}),
+              (INNER, "AN INNER TENSOR  —  a long tail reaching out to 142",
+               {"minmax": "stops too late: the 127 steps are stretched over empty space"})]
+    ys, lab, cols, ratios, notes, calls = [], [], [], [], [], []
+    y = 0.0
+    for name, gtitle, callout in groups:
+        h, c, tot, meta = prep(name)
+        Ts = np.linspace(meta["observed_max"] * 0.03, meta["observed_max"], 400)
+        E = np.array([err(c, h, t) for t in Ts])
+        ebest, tbest = E.min(), Ts[int(E.argmin())]
+        bx.text(0.0, y - 1.62, gtitle, transform=bx.get_yaxis_transform(),
+                ha="left", va="center", fontsize=10.6, fontweight="bold", color=style.INK)
+        bx.text(0.0, y - 0.95, f"the best any choice can do on this tensor: stop at {tbest:.3g}"
+                               f"  —  {tbest / meta['observed_max'] * 100:.0f}% of its largest value",
+                transform=bx.get_yaxis_transform(), ha="left", va="center",
+                fontsize=9.5, color="#0d5f43", fontweight="bold")
+        for k in ORDER:
+            Tk = meta["clips"][k]
+            ys.append(y); lab.append(nice[k]); cols.append(mcol[k])
+            ratios.append(err(c, h, Tk) / ebest)
+            frac = h[c > Tk].sum() / tot * 100
+            shown = f"{Tk:.3f}" if Tk < 10 else f"{Tk:.1f}"
+            notes.append(f"stops at {shown}, clips {frac:.2f}% of values" if frac >= 0.005
+                         else f"stops at {shown}, clips almost nothing")
+            calls.append(callout.get(k))
+            y += 1
+        y += 3.0
+
+    ratios = np.array(ratios)
+    bx.barh(ys, ratios, height=0.70, color=cols, zorder=3, alpha=0.9)
+    bx.set_xscale("log")
+    bx.set_xlim(1, ratios.max() * 9)
+    bx.axvline(1.0, color=style.INK, lw=1.8, zorder=5)
+    for yy, r, n, call in zip(ys, ratios, notes, calls):
+        txt = f"{r:,.1f}x" if r < 100 else f"{r:,.0f}x"
+        if call and r < 100:                      # short bar: callout sits after the number
+            bx.text(r * 1.22, yy, f"{txt}   {call}", va="center", fontsize=10.2,
+                    fontweight="bold", color=style.INK)
+        else:
+            bx.text(r * 1.22, yy, txt, va="center", fontsize=10.2,
+                    fontweight="bold", color=style.INK)
+            if call:                              # long bar: callout goes inside it
+                bx.text(1.55, yy, call, va="center", fontsize=9.8, fontweight="bold",
+                        color="white", zorder=6)
+        bx.text(1.06, yy - 0.44, n, va="center", fontsize=8.8, color=style.INK_2, zorder=7)
+    bx.set_yticks(ys)
+    bx.set_yticklabels(lab, fontsize=9.8)
+    bx.set_ylim(max(ys) + 0.9, min(ys) - 2.1)
+    bx.set_xlabel("error compared with the best possible stopping point for that tensor\n"
+                  "(1x = as good as this tensor allows  ·  10x = ten times worse)")
+    bx.set_title("2. What each method's choice costs", fontsize=12.5, loc="left")
+    style.tidy(bx)
+    bx.grid(axis="x", alpha=0.25)
     fig.tight_layout()
+    fig.subplots_adjust(left=0.055, wspace=0.42)
     return save(fig, "xp07_clipping.png")
 
 
