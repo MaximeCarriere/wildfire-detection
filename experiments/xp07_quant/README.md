@@ -242,6 +242,16 @@ real value does the largest code stand for?** Call it `T`.
 - Everything from `0` to `T` gets **127 evenly spaced steps**.
 - Everything **above `T` is flattened onto `T`** — that is clipping.
 
+**The four calibration methods are four rules for picking `T`.** They all read the same histogram
+and disagree about where to stop:
+
+| rule | where it stops | clips |
+|---|---|---|
+| **min-max** | at the largest value ever seen | nothing, by definition |
+| **percentile 99.99** | where 99.99% of values fit below | the top 0.01% |
+| **entropy (KL)** — *TensorRT's default* | where the clipped histogram's *shape* best matches the original | whatever that implies |
+| **MSE** | tries many stopping points, keeps the least-error one | whatever that implies |
+
 Moving `T` trades one error against the other, and they pull in opposite directions:
 
 | pick `T` too **large** | pick `T` too **small** |
@@ -250,17 +260,21 @@ Moving `T` trades one error against the other, and they pull in opposite directi
 | **rounding error** — every value slightly wrong | **clipping error** — a few values very wrong |
 
 There is no default that is safe on both, because **the right `T` depends on the shape of the
-tensor** — and one network contains both shapes:
+tensor** — and one network contains both shapes. The two below are at opposite ends of it:
+
+| | **input tensor** — `model.0.conv` | **inner tensor** — `model.24.m.0` |
+|---|---|---|
+| where | the **first** convolution | deep in the **detection head** |
+| what it sees | the image itself | 24 layers of accumulated activations |
+| bounded? | **yes** — pixels are scaled to 0–1, so a tail is impossible | **no** — a few strong features reach 142 |
+| so | there is nothing to clip | the top 60% of the range is nearly empty |
+
 
 ![What clipping is, and what each calibration method's choice costs](../../results/figures/xp07_clipping.png)
 
-| tensor | shape | best `T` | so the right move is |
-|---|---|---:|---|
-| `model.0.conv` (input) | bounded, fills 0–1 | **100% of max** | clip nothing — there is no tail to cut |
-| `model.24.m.0` (inner) | long tail out to 142 | **40% of max** | clip hard — the top 60% is nearly empty |
-
-Panel 2 scores each method against the best `T` that tensor allows, so **1.0x is as good as it gets
-and 10x is ten times worse**:
+The best `T` for each is therefore at opposite ends too: **100% of the max** for the input (clip
+nothing) and **40% of the max** for the inner tensor (clip hard). Panel 2 scores each rule against
+the best `T` *that* tensor allows, so **1.0x is as good as it gets and 10x is ten times worse**:
 
 | method | input tensor | inner tensor | how it fails |
 |---|---:|---:|---|
@@ -276,6 +290,9 @@ Two things to take from it:
   99.997% get **2.6x** the resolution (127 steps across 0–55.4 instead of 0–142).
 - **Discarding a little more destroys everything.** On the input, entropy clips **22%** of all
   values and lands **5,898x** off the best possible choice.
+
+MSE's 1.0x is partly by construction — the yardstick is squared error, which is MSE's own
+objective. The independent check is the measured mAP50 table below, where percentile 99.99 wins.
 
 Both ends of the sweep are therefore wrong, in opposite directions, and each tensor demonstrates
 one of them. This is computed from activation histograms alone — no detector, no mAP, no inference
