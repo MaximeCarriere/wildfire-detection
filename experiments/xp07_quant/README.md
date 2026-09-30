@@ -4,19 +4,17 @@
 baseline (XP6). Does INT8 — the one compression TensorRT executes with dedicated silicon on this
 board — finally beat it?
 
-**Outcome.** On the board: **1.53x throughput, 54% of the size, 56% of the energy per frame**, the
-largest single gain in the series. It also keeps **31% of the distant-smoke accuracy**, and that
-half is fixable. Five findings, in order of how much they change practice:
+**Outcome.** **1.53x throughput at 54% of the size and 56% of the energy** — the largest single gain
+in the series — while keeping **31% of the distant-smoke accuracy**. That half is fixable:
 
-- **Calibration decides more than any other choice in this series — 0.62 mAP50 between methods** —
-  and `min-max`, which XP10 prescribed and every engine here ships, is the wrong end of the sweep.
-- **The size is free; the speed is not.** Weights cost **0.021%** of mAP50, activations **6.85%**,
-  and the weights are the half that delivers the 2x size reduction.
-- **The damage has an address.** Three activation tensors carry it. The **stride-8 head's input**
-  costs **63% of distant smoke** alone while moving the headline 2%.
-- **Protecting three of sixty convolutions** takes distant smoke from **38% to 84%**, for 29 KB.
-- **Aggregate mAP50 is the wrong axis to compose on.** Pruning then quantizing looks like two
-  single-digit costs and leaves **19.5%** of the distant-smoke capability.
+- **Calibration decides most** — **0.62 mAP50** between methods, and `min-max`, which XP10
+  prescribed and every engine here ships, is the wrong end of the sweep.
+- **The size is free, the speed is not.** Weights cost **0.021%** of mAP50, activations **6.85%**.
+- **The damage has an address:** three activation tensors. The stride-8 head's input alone costs
+  **63% of distant smoke** while moving the headline 2%.
+- **Protecting 3 of 60 convolutions** takes distant smoke from **38% to 84%**, for 29 KB.
+- **Don't compose on aggregate mAP50.** Prune then quantize reads as two single-digit costs and
+  leaves **17.2%** of the distant-smoke capability.
 
 **The line to beat, unchanged:** YOLOv5s at 512 px, TensorRT FP16, **0.7776 mAP50 at 474 img/s,
 51.8 J/1k** on the Jetson Orin Nano Super.
@@ -26,15 +24,9 @@ half is fixable. Five findings, in order of how much they change practice:
 | Model | YOLOv5s, 7.03 M parameters, `0 = smoke`, `1 = fire` — the same weights as XP6 |
 | Weights | The D-Fire authors' detectors ([pedbrgs/Fire-Detection](https://github.com/pedbrgs/Fire-Detection)), not ours |
 | Data | [D-Fire](https://github.com/gaiasd/DFireDataset), splits frozen at 15,500 / 1,721 / 4,306 |
-| Accuracy | Final numbers on the full 4,306-image **test** set. Configuration choices scored on **val** |
+| Accuracy | Full 4,306-image **test** set; configuration choices scored on **val**. Reported separately for **small** (<1% of frame) and **tiny** (<0.1%, ~20x20 px) plumes — tiny plumes are distant smoke, which is what early detection is |
 | Speed | **Jetson only.** An engine is built for one GPU; accuracy-only arms carry no throughput |
 | Calibration | 512 train images, frozen and hash-pinned (`data/splits/xp07_calib.txt`, `61bb308c46715e06`) |
-
-> **"Plume"** = the visible smoke or flame to be found. Reported separately for **small** (<1% of
-> frame) and **tiny** (<0.1%, ~20x20 px) plumes. Tiny plumes are distant smoke — what early
-> detection actually is.
-
-![What small and tiny plume mean](../../results/figures/plume_definition.png)
 
 ## Why quantization had a better hardware story than pruning
 
