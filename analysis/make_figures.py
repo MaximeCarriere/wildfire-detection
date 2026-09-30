@@ -2905,13 +2905,14 @@ def fig_xp07e2(records) -> Path | None:
             "percentile_99.9": "percentile\n99.9",
             "mse": "MSE", "percentile_99.99": "percentile\n99.99"}
 
-    fig = plt.figure(figsize=(17.4, 5.4))
-    gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1.25, 0.85], wspace=0.30)
+    fig = plt.figure(figsize=(12.8, 5.6))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.32, 1.0], wspace=0.28)
     fig.suptitle("Calibration decides almost everything at INT8 — for free, and both ends "
-                 "of the sweep are wrong", y=1.06, fontsize=14.5)
-    style.subtitle(fig, "Whole network W8A8, per-channel weights, no retraining, 512 calibration "
-                        "images.\nOne bar pair (left) or line (middle) = one calibration method, "
-                        f"scored on the {d['n_val_images']}-image validation split.", y=0.995)
+                 "of the sweep are wrong", y=1.05, fontsize=14.5)
+    style.subtitle(fig, "Whole network W8A8, per-channel weights, no retraining. Left: five "
+                        "calibration rules, 512 images each. Right: the winner, on nested "
+                        f"subsets.\nBoth scored on the {d['n_val_images']}-image validation "
+                        "split. Why the rules differ is the previous figure.", y=0.995)
 
     # ---- panel 1: what each method costs --------------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -2932,6 +2933,7 @@ def fig_xp07e2(records) -> Path | None:
     ax.set_ylim(0, 118)
     ax.set_ylabel("% of the unquantized model kept")
     ax.set_title("1. One setting, 62 points of mAP50", fontsize=12, loc="left")
+    ax.set_ylim(0, 122)
     # Every arm ships the same bytes, which is what makes the spread free.
     sz = {m: (meth[m].get("size") or {}).get("total_mb") for m in order}
     same = {v for v in sz.values() if v}
@@ -2942,46 +2944,12 @@ def fig_xp07e2(records) -> Path | None:
                 transform=ax.transAxes, ha="center", va="top", fontsize=9.2,
                 color=style.INK, fontweight="bold",
                 bbox=dict(boxstyle="round,pad=0.4", fc="#eef5ee", ec="#8ec9b4", lw=1.0))
-    ax.legend(loc="lower right", fontsize=9)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2,
+              fontsize=9, frameon=False)
     style.tidy(ax)
 
-    # ---- panel 2: the mechanism -----------------------------------------
+    # ---- panel 2: and how much data it needs ----------------------------
     ax = fig.add_subplot(gs[0, 1])
-    layers = list(meth["minmax"]["scales"])
-    xs = np.arange(len(layers))
-    for m, colour, lw in (("minmax", style.RED, 1.6),
-                          ("percentile_99.99", style.AQUA, 1.6),
-                          ("entropy", "#8e44ad", 1.3)):
-        ax.plot(xs, [meth[m]["scales"][n] for n in layers], color=colour, lw=lw,
-                zorder=3, label=nice[m].replace("\n", " — "))
-    ax.set_yscale("log")
-    ax.set_ylim(bottom=0.07)          # headroom below the lines for the callout + legend
-    key = "model.24.m.0"
-    if key in meth["minmax"]["scales"]:
-        i = layers.index(key)
-        ax.scatter([i, i], [meth["minmax"]["scales"][key],
-                            meth["percentile_99.99"]["scales"][key]],
-                   s=70, facecolor="none", edgecolor=style.INK, linewidth=1.8, zorder=5)
-        ax.annotate(f"{key} — the stride-8 head,\nE1's worst layer: "
-                    f"{meth['minmax']['scales'][key]:.0f} vs "
-                    f"{meth['percentile_99.99']['scales'][key]:.0f}".replace(
-                        " — the stride-8 head,\n", "\n(stride-8 head) "),
-                    xy=(i, meth["minmax"]["scales"][key]), xytext=(1.5, 0.30),
-                    ha="left", va="center", fontsize=8.8, color=style.INK,
-                    fontweight="bold", zorder=6,
-                    bbox=dict(boxstyle="round,pad=0.35", fc=style.SURFACE, ec="none",
-                              alpha=0.93),
-                    arrowprops=dict(arrowstyle="->", color=style.INK_2, lw=1.2))
-    ax.set_xlabel("the 60 convolutions, in forward order")
-    ax.set_ylabel("range the method decides the tensor needs, log scale")
-    ax.set_title("2. Why: min-max lets one outlier set the step size\n"
-                 "(2.7x wider than percentile on the median layer)",
-                 fontsize=12, loc="left")
-    ax.legend(loc="lower right", fontsize=8.4)
-    style.tidy(ax)
-
-    # ---- panel 3: and how much data it needs ----------------------------
-    ax = fig.add_subplot(gs[0, 2])
     sizes = d.get("sizes") or {}
     ns = sorted(int(k) for k in sizes)
     if ns:
@@ -2996,10 +2964,12 @@ def fig_xp07e2(records) -> Path | None:
         ax.set_ylim(80, 108)
     ax.set_xlabel("calibration images (nested subsets)")
     ax.set_ylabel("% of the unquantized model kept")
-    ax.set_title("3. …and 32 images is enough", fontsize=12, loc="left")
-    ax.legend(loc="lower right", fontsize=9)
+    ax.set_title("2. …and 32 images is enough", fontsize=12, loc="left")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2,
+              fontsize=9, frameon=False)
     style.tidy(ax)
 
+    fig.subplots_adjust(top=0.88, bottom=0.20)
     return save(fig, "xp07e2_calibration.png")
 
 
