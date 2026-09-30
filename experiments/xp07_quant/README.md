@@ -130,75 +130,40 @@ serve both. If true, `model.24.m.*` are the worst cells in the sweep.
   single float pass records the right range for every layer. 60x cheaper, and unsound only once two
   quantized layers feed each other — which is why every whole-network arm re-calibrates.
 
-**The mechanism, measured before the sweep ran:**
+**The mechanism**, measured before the sweep ran:
 
 ![One tensor, two populations, one grid](../../results/figures/xp07_head.png)
 
-YOLOv5's final layer writes **7 numbers per candidate box into one tensor**: `x, y, w, h` in
-**pixels**, and `obj, smoke, fire` in **[0, 1]**. Measured over calibration images, the largest
-value each channel reaches is:
+- YOLOv5's final layer writes **7 numbers per candidate box into one tensor** — `x, y, w, h` in
+  **pixels**, `obj, smoke, fire` in **[0, 1]**.
+- Measured maxima: `x 527.5 · y 509.5 · w 1479 · h 1268` against `obj 0.91 · smoke 1.0 · fire 1.0`.
+  **Two populations, 1,500x apart.** (`w` exceeds the 512 px input because width decodes as
+  `(2·sigmoid(t))²·anchor`.)
+- INT8 uses **one step for the whole tensor**, sized so the largest value fits in 127 steps:
+  **`S = 1479 / 127 = 11.65`**. Representable values are `0, 11.65, 23.30, …` — nothing between.
+- A box coordinate of 527.5 → 45 steps → 524.2. **~11 px granularity, survives.**
+- A class score of 1.0 → **0.086 of a step → rounds to 0.** Every probability in the tensor becomes
+  **exactly zero**, nothing clears the detection threshold, and mAP50 is **0.0000** by construction.
+- **No other step size fixes it.** One small enough for probabilities (`1/127 = 0.0079`) would need
+  **187,000 steps** for the boxes. With one scale you must annihilate one population or the other.
 
-```
-x = 527.5   y = 509.5   w = 1479   h = 1268   |   obj = 0.91   smoke = 1.0   fire = 1.0
-```
-
-(`w` exceeds the 512 px input because YOLOv5 decodes width as `(2·sigmoid(t))²·anchor` — a
-predicted box can be larger than the frame.) **Two populations, 1,500x apart, in one tensor.**
-
-**INT8 stores 256 levels spaced by a single step size `S`, chosen so the largest value fits in
-127 steps:**
-
-```
-S = 1479 / 127 = 11.65
-```
-
-The only representable values are now `0, 11.65, 23.30, 34.94, …` — **nothing in between**:
-
-| value | ÷ 11.65 | rounds to | stored as |
-|---|---:|---:|---|
-| a box coordinate, 527.5 px | 45.3 | 45 | 524.2 — ~11 px granularity, survives |
-| objectness, 0.91 | 0.078 | **0** | **0** |
-| class score, 1.0 | 0.086 | **0** | **0** |
-
-**Every probability in the tensor becomes exactly zero** — not degraded, zero. Boxes come out with
-zero confidence, nothing clears the detection threshold, and mAP50 is **0.0000** by construction.
-That is the meaning of "a probability gets 0.086 of a level": *it cannot reach the first non-zero
-step.*
-
-**And no other step size fixes it.** Pick `S` small enough for probabilities — say `1/127 = 0.0079`
-— and the boxes need 1479 / 0.0079 = **187,000 steps**. There are 127. Every box saturates and box
-regression is destroyed instead. **With one scale you must annihilate one population or the
-other.**
-
-> **Does this mean YOLO — or any box detector — cannot use INT8?** No, and the reason matters.
-> The problem is **the ratio, not the magnitude**. A tensor reaching 1479 is perfectly fine in INT8
-> on its own (127 levels, ~11 px resolution); so is a tensor of probabilities on its own
-> (`S = 0.0079`, 127 levels). Only the *concatenation* breaks, because INT8's grid is **uniform**
-> and cannot span two ranges 1,500x apart. So this is a property of the **graph**, not of detection
-> and not of INT8.
+> **Not a reason box detectors can't use INT8.** The problem is the *ratio*, not the magnitude:
+> boxes alone are fine in INT8, probabilities alone are fine, only the concatenation breaks — a
+> property of the **graph**, not of detection. Four things remove the constraint:
 >
-> In practice nobody hits it: **TensorRT keeps the decode out of INT8 on its own**, which is why
-> XP10's engines score 0.7181 and not 0, and why E4's do too. The 57 convolutions *before* the
-> decode quantize essentially for free (below). E6 had to force the bad case deliberately in order
-> to measure what the default is protecting you from. The usual deployment recipe — export the
-> graph without the decode and do it in postprocessing — exists for exactly this reason.
+> | fix | available here? |
+> |---|---|
+> | don't quantize the decode — negligible FLOPs | **yes**, TensorRT's default |
+> | split the tensor — separate scales, 11.65 and 0.0079 | **yes**, E6's decode-out arm |
+> | per-channel *activation* scales | **no** — TensorRT is per-tensor for activations |
+> | a format with an exponent (FP8) | **no** — [no FP8 silicon here](../../results/raw/xp07_precision_support.json) |
 >
-> **Is the gap unbridgeable?** Only for *one uniform grid shared by one tensor*. Drop either
-> constraint and it goes away:
->
-> | fix | what it does | available here? |
-> |---|---|---|
-> | **don't quantize the decode** | keep it in float — a negligible share of FLOPs | **yes** — TensorRT's default |
-> | **split the tensor** | boxes and scores as separate outputs, each with its own scale (11.65 and 0.0079) | **yes** — E6's decode-out arm |
-> | **per-channel activation scales** | one scale per channel instead of per tensor; both populations fit | **no** — TensorRT quantizes activations per-tensor only |
-> | **a format with an exponent** | small numbers get small steps; no shared grid at all | **no** — [no FP8 silicon on this board](../../results/raw/xp07_precision_support.json) |
->
-> Two of the four are standard practice, which is why this failure is a curiosity rather than a
-> blocker. The third is a **runtime limitation, not a mathematical one** — per-channel activation
-> quantization would solve it outright.
+> Two are standard practice, which is why this is a curiosity rather than a blocker — E6 forced the
+> bad case deliberately, to measure what the default protects you from. The third would solve it
+> outright and is a **runtime limitation, not a mathematical one.**
 
-That asymmetry is the fingerprint XP10 saw and could not explain: mAP50 0.2554, tiny plumes −99%,
-while the night slice still held 0.48 — **box regression destroyed, classification limping on.**
+That asymmetry is XP10's unexplained fingerprint: mAP50 0.2554, tiny plumes −99%, night slice still
+0.48 — **box regression destroyed, classification limping on.**
 
 **Results** — unquantized: **0.9494** mAP50, **0.3363** tiny.
 

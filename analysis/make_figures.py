@@ -2495,8 +2495,9 @@ def fig_xp07_head(records) -> Path | None:
             color=[style.BLUE, style.ORANGE], zorder=3, height=0.34)
     ax.set_xscale("log"); ax.set_xlim(0.02, 4000)
     ax.axvline(1.0, color=style.RED, lw=1.8, zorder=4)
-    ax.text(1.0, -0.52, "one step", fontsize=9.5, color=style.RED,
-            fontweight="bold", ha="center", va="center")
+    # ha="left" off the line: centred on x=1.0 the axvline runs through the text.
+    ax.text(1.25, -0.52, "one step", fontsize=9.5, color=style.RED,
+            fontweight="bold", ha="left", va="center")
     ax.text(lb * 1.30, 0, f"{lb:.0f} levels", va="center", fontsize=11,
             color=style.BLUE, fontweight="bold")
     # Starts right of the "one step" line so the line does not strike through it.
