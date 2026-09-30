@@ -3544,11 +3544,9 @@ def fig_xp07_clipping(records) -> Path | None:
 
     ORDER = ["mse", "percentile_99.99", "minmax", "entropy"]
     nice = {"minmax": "min-max", "percentile_99.99": "percentile 99.99",
-            "entropy": "entropy\n(TRT default)", "mse": "MSE"}
-    RULE = {"minmax": "stop at the largest value ever seen",
-            "percentile_99.99": "stop where 99.99% of values fit below",
-            "entropy": "stop where the histogram's shape is best preserved",
-            "mse": "try many stopping points, keep the least-error one"}
+            "entropy": "entropy / KL", "mse": "MSE"}
+    RULE = {"minmax": "(cuts nothing)", "percentile_99.99": "(cuts the top 0.01%)",
+            "entropy": "(TensorRT's default)", "mse": "(least-error search)"}
     mcol = {"minmax": style.RED, "percentile_99.99": style.AQUA,
             "entropy": "#8e44ad", "mse": style.BLUE}
 
@@ -3563,7 +3561,7 @@ def fig_xp07_clipping(records) -> Path | None:
         return (((c[lo] - np.round(c[lo] / S) * S) ** 2 * h[lo]).sum()
                 + ((c[~lo] - T) ** 2 * h[~lo]).sum())
 
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(17.6, 6.6), gridspec_kw={"width_ratios": [1, 1.34]})
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(16.4, 5.6), gridspec_kw={"width_ratios": [1, 1.2]})
     fig.suptitle("INT8 forces one choice — where to stop — and there is no setting that is safe "
                  "on every tensor.", y=1.045, fontsize=14)
     style.subtitle(fig, "Measured activation histograms from this detector over the frozen "
@@ -3586,7 +3584,7 @@ def fig_xp07_clipping(records) -> Path | None:
             f"above the line: {h[c > T].sum() / tot * 100:.3f}% of values\n"
             f"(3 in 100,000) — every one of\nthem is stored as {T:.0f}",
             fontsize=9.6, color=style.RED, fontweight="bold", va="center")
-    ax.text(T * 0.06, top * 0.0012, "below the line:\n127 evenly spaced steps", ha="left",
+    ax.text(T * 0.14, top * 0.0012, "below the line:\n127 evenly spaced steps", ha="left",
             fontsize=9.6, color=style.BLUE, fontweight="bold")
     ax.set_xlim(0, meta["observed_max"] * 1.02)
     ax.set_xlabel(f"activation value arriving at {INNER}  (an inner tensor)")
@@ -3595,73 +3593,44 @@ def fig_xp07_clipping(records) -> Path | None:
     style.tidy(ax)
 
     # ---- right: what each method's choice costs --------------------------
-    groups = [(INPUT, "THE INPUT TENSOR — the first convolution, model.0.conv",
-               "it sees the image itself: pixels already scaled to 0-1, so a tail is impossible",
-               {"entropy": "stops too early: 22% of the data is erased"}),
-              (INNER, "AN INNER TENSOR — deep in the detection head, model.24.m.0",
-               "it sees 24 layers of accumulated activations: nothing bounds it, and a few strong "
-               "features reach 142",
-               {"minmax": "stops too late: the 127 steps are stretched over empty space"})]
-    ys, lab, cols, ratios, notes, calls = [], [], [], [], [], []
-    y = 0.0
-    for name, gtitle, gwhat, callout in groups:
+    TCOL = {INPUT: style.AQUA, INNER: "#2c3e6b"}
+    best, ratio = {}, {}
+    for name in (INPUT, INNER):
         h, c, tot, meta = prep(name)
         Ts = np.linspace(meta["observed_max"] * 0.03, meta["observed_max"], 400)
         E = np.array([err(c, h, t) for t in Ts])
-        ebest, tbest = E.min(), Ts[int(E.argmin())]
-        bx.text(0.0, y - 2.22, gtitle, transform=bx.get_yaxis_transform(),
-                ha="left", va="center", fontsize=10.8, fontweight="bold", color=style.INK)
-        bx.text(0.0, y - 1.66, gwhat, transform=bx.get_yaxis_transform(),
-                ha="left", va="center", fontsize=9.4, color=style.INK_2, style="italic")
-        bx.text(0.0, y - 0.95, f"the best any choice can do on this tensor: stop at {tbest:.3g}"
-                               f"  —  {tbest / meta['observed_max'] * 100:.0f}% of its largest value",
-                transform=bx.get_yaxis_transform(), ha="left", va="center",
-                fontsize=9.5, color="#0d5f43", fontweight="bold")
-        for k in ORDER:
-            Tk = meta["clips"][k]
-            ys.append(y); lab.append(nice[k]); cols.append(mcol[k])
-            ratios.append(err(c, h, Tk) / ebest)
-            frac = h[c > Tk].sum() / tot * 100
-            shown = f"{Tk:.3f}" if Tk < 10 else f"{Tk:.1f}"
-            got = (f"T = {shown}, clips {frac:.2f}% of values" if frac >= 0.005
-                   else f"T = {shown}, clips almost nothing")
-            notes.append(f"rule: {RULE[k]}   \u2192   {got}")
-            calls.append(callout.get(k))
-            y += 1
-        y += 3.6
+        best[name] = (E.min(), Ts[int(E.argmin())] / meta["observed_max"] * 100)
+        ratio[name] = {k: err(c, h, meta["clips"][k]) / E.min() for k in ORDER}
 
-    ratios = np.array(ratios)
-    bx.barh(ys, ratios, height=0.70, color=cols, zorder=3, alpha=0.9)
+    CALL = {(INPUT, "entropy"): "   erases 22% of the data",
+            (INNER, "minmax"): "   range 2.6x too wide"}
+    ys = np.arange(len(ORDER))
+    for i, name in enumerate((INPUT, INNER)):
+        off = (0.5 - i) * 0.42
+        vals = [ratio[name][k] for k in ORDER]
+        bx.barh(ys + off, vals, height=0.38, color=TCOL[name], zorder=3,
+                label=f"{'input' if name is INPUT else 'inner'} tensor  ({name})   "
+                      f"best stop: {best[name][1]:.0f}% of its largest value")
+        for k, y, v in zip(ORDER, ys + off, vals):
+            tag = CALL.get((name, k), "")
+            bx.text(v * 1.3, y, (f"{v:,.1f}x" if v < 100 else f"{v:,.0f}x") + tag,
+                    va="center", fontsize=10, fontweight="bold", color=style.INK)
+
     bx.set_xscale("log")
-    bx.set_xlim(1, ratios.max() * 9)
+    bx.set_xlim(1, max(max(r.values()) for r in ratio.values()) * 9)
     bx.axvline(1.0, color=style.INK, lw=1.8, zorder=5)
-    for yy, r, n, call in zip(ys, ratios, notes, calls):
-        txt = f"{r:,.1f}x" if r < 100 else f"{r:,.0f}x"
-        if call and r < 100:                      # short bar: callout sits after the number
-            bx.text(r * 1.22, yy, f"{txt}   {call}", va="center", fontsize=10.2,
-                    fontweight="bold", color=style.INK)
-        else:
-            bx.text(r * 1.22, yy, txt, va="center", fontsize=10.2,
-                    fontweight="bold", color=style.INK)
-            if call:                              # long bar: callout goes inside it
-                bx.text(1.55, yy, call, va="center", fontsize=9.8, fontweight="bold",
-                        color="white", zorder=6)
-        bx.text(1.06, yy - 0.46, n, va="center", fontsize=8.7, color=style.INK_2, zorder=7)
     bx.set_yticks(ys)
-    bx.set_yticklabels(lab, fontsize=9.6, linespacing=1.3)
-    bx.set_ylim(max(ys) + 1.5, min(ys) - 2.8)
-    bx.set_xlabel("error compared with the best possible stopping point for that tensor\n"
-                  "(1x = as good as this tensor allows  ·  10x = ten times worse)")
-    bx.set_title("2. Four rules for choosing T, and what each one costs", fontsize=12.5, loc="left")
-    bx.text(0.0, -0.175, "Caveat: the yardstick is squared error, which is MSE's own objective, "
-                         "so its 1.0x is partly by construction. The independent check is the "
-                         "measured mAP50 table, where percentile 99.99 wins.",
-            transform=bx.transAxes, ha="left", va="top", fontsize=8.7,
-            color=style.MUTED, style="italic")
+    bx.set_yticklabels([f"{nice[k]}\n{RULE[k]}" for k in ORDER], fontsize=9.6, linespacing=1.45)
+    bx.set_ylim(len(ORDER) - 0.45, -0.55)
+    bx.set_xlabel("error compared with the best stopping point that tensor allows\n"
+                  "(1x = as good as it gets  \u00b7  10x = ten times worse)")
+    bx.set_title("2. Four rules for choosing T, and what each one costs",
+                 fontsize=12.5, loc="left")
+    bx.legend(loc="upper right", fontsize=9.2, frameon=True, framealpha=0.95)
     style.tidy(bx)
     bx.grid(axis="x", alpha=0.25)
     fig.tight_layout()
-    fig.subplots_adjust(left=0.050, right=0.985, top=0.83, bottom=0.17, wspace=0.24)
+    fig.subplots_adjust(left=0.052, right=0.985, top=0.83, bottom=0.20, wspace=0.26)
     return save(fig, "xp07_clipping.png")
 
 

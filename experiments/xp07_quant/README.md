@@ -273,8 +273,9 @@ tensor** — and one network contains both shapes. The two below are at opposite
 ![What clipping is, and what each calibration method's choice costs](../../results/figures/xp07_clipping.png)
 
 The best `T` for each is therefore at opposite ends too: **100% of the max** for the input (clip
-nothing) and **40% of the max** for the inner tensor (clip hard). Panel 2 scores each rule against
-the best `T` *that* tensor allows, so **1.0x is as good as it gets and 10x is ten times worse**:
+nothing) and **40% of the max** for the inner tensor (clip hard). Panel 2 gives each rule two bars,
+one per tensor, scored against the best `T` *that* tensor allows — **1.0x is as good as it gets,
+10x is ten times worse**:
 
 | method | input tensor | inner tensor | how it fails |
 |---|---:|---:|---|
