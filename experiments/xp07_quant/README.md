@@ -219,8 +219,6 @@ the axis now needs 0–120%. Same perturbations, same models; the slice is what 
   `24.m.0`, `17.cv3.conv`; ranked on distant smoke, `24.m.0`, `20.cv3.conv`, `17.m.0.cv2.conv`.
   **Only `24.m.0` appears in both**, and `17.cv3.conv` — third-worst on the aggregate — is the
   *best* cell of all 60 on distant smoke.
-- **So E6 has a real choice to make, not a detail.** It ran both splits; they differ by 45 points
-  of distant-smoke accuracy.
 
 ---
 

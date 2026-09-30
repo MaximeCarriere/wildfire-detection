@@ -2838,6 +2838,14 @@ def fig_xp07e1(records) -> Path | None:
     cols = [style.RED if n in head else style.BLUE for n in order]
     ax.bar(xs, ys, color=cols, width=0.82, zorder=3)
     ax.set_ylim(0, 125)
+    # Panel 1 has a legend separating the two arms; this panel plots only one of
+    # them, and without saying so the reader cannot tell which.
+    ax.text(0.015, 0.965, "W8A8 arm — weights + input activation\n"
+                          "(the W8 arm is flat here too, and omitted)",
+            transform=ax.transAxes, va="top", ha="left", fontsize=9.2,
+            color=style.BLUE, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.35", fc=style.SURFACE,
+                      ec=style.BLUE, lw=1.0, alpha=0.95))
 
     # Both callouts go in the empty left half, stacked, so the arrows fan out to
     # the right instead of crossing each other over the bars.
@@ -2858,10 +2866,10 @@ def fig_xp07e1(records) -> Path | None:
                     arrowprops=dict(arrowstyle="->", lw=1.3, zorder=6,
                                     connectionstyle="arc3,rad=-0.12",
                                     color=style.RED if n in head else style.INK_2))
-    ax.set_xlabel("the same 60 convolutions, same experiments\n"
-                  "(one bar = that layer quantized alone)")
+    ax.set_xlabel("the same 60 convolutions — the W8A8 arm only\n"
+                  "(one bar = that layer's weights AND input activation quantized)")
     ax.set_ylabel("tiny-plume mAP50 kept, % of the unquantized model")
-    ax.set_title("2. The same 60 cells, scored on distant smoke only\n"
+    ax.set_title("2. The W8A8 cells only, scored on distant smoke\n"
                  "— now the axis needs 0–120% (red = a Detect head conv)",
                  fontsize=12, loc="left")
     style.tidy(ax)
