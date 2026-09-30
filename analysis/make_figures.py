@@ -3609,8 +3609,11 @@ def fig_xp07_clipping(records) -> Path | None:
         off = (0.5 - i) * 0.42
         vals = [ratio[name][k] for k in ORDER]
         bx.barh(ys + off, vals, height=0.38, color=TCOL[name], zorder=3,
-                label=f"{'input' if name is INPUT else 'inner'} tensor  ({name})   "
-                      f"best stop: {best[name][1]:.0f}% of its largest value")
+                label=(f"input tensor \u2014 the image itself: range is 0 to 1 "
+                       f"by construction, so nothing should be clipped"
+                       if name is INPUT else
+                       f"inner tensor ({name}) \u2014 unbounded, tail to 142: "
+                       f"best stop is {best[name][1]:.0f}% of its largest value"))
         for k, y, v in zip(ORDER, ys + off, vals):
             tag = CALL.get((name, k), "")
             bx.text(v * 1.3, y, (f"{v:,.1f}x" if v < 100 else f"{v:,.0f}x") + tag,
@@ -3618,10 +3621,13 @@ def fig_xp07_clipping(records) -> Path | None:
 
     bx.set_xscale("log")
     bx.set_xlim(1, max(max(r.values()) for r in ratio.values()) * 9)
+    bx.axvspan(1.0, 1.3, color=style.MUTED, alpha=0.13, zorder=1)
+    bx.text(1.02, len(ORDER) - 0.38, "inside this shaded band the rules are indistinguishable",
+            fontsize=8.8, color=style.MUTED, style="italic", va="center", ha="left")
     bx.axvline(1.0, color=style.INK, lw=1.8, zorder=5)
     bx.set_yticks(ys)
     bx.set_yticklabels([f"{nice[k]}\n{RULE[k]}" for k in ORDER], fontsize=9.6, linespacing=1.45)
-    bx.set_ylim(len(ORDER) - 0.45, -0.55)
+    bx.set_ylim(len(ORDER) - 0.28, -0.55)
     bx.set_xlabel("error compared with the best stopping point that tensor allows\n"
                   "(1x = as good as it gets  \u00b7  10x = ten times worse)")
     bx.set_title("2. Four rules for choosing T, and what each one costs",

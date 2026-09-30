@@ -267,7 +267,22 @@ tensor** — and one network contains both shapes. The two below are at opposite
 | where | the **first** convolution | deep in the **detection head** |
 | what it sees | the image itself | 24 layers of accumulated activations |
 | bounded? | **yes** — pixels are scaled to 0–1, so a tail is impossible | **no** — a few strong features reach 142 |
-| so | there is nothing to clip | the top 60% of the range is nearly empty |
+| range known in advance? | **yes, exactly `[0, 1]`** — no calibration needed | **no** — only measurement can find it |
+| so | **never clip it** | the top 60% of the range is nearly empty, so clip hard |
+
+**The input tensor should never be clipped at all** — its range is fixed by the preprocessing, not
+discovered from data. Min-max reporting `1.0000` is rediscovering a known bound, not learning one.
+And the image is not merely bounded, it is *dense at the bound*: **0.55% of all 50.3M pixel values
+sit in the very top bin** (saturated sky, flame cores), so clipping even slightly is punished at
+once — `T=0.98` costs **1.7x**, `T=0.95` costs **9.2x**, `T=0.90` costs **44.9x**.
+
+> **TensorRT clips it anyway, by default.** This is not a simulation result: XP10 decoded
+> TensorRT's own calibration cache from a real engine build and found `IInt8EntropyCalibrator2`
+> assigning the input tensor `0.0035237 × 127 = ` **`0.4475`** — the same number this page's
+> independent KL implementation reaches. The cache decoding is verified against a constant with a
+> known answer (the anchor grid, `0.00393797 × 127 = 0.5` exactly). So TensorRT's default discards
+> **55% of the input range** and **22% of all pixel values**, on the one tensor whose correct
+> answer required no measurement.
 
 
 ![What clipping is, and what each calibration method's choice costs](../../results/figures/xp07_clipping.png)
@@ -283,6 +298,9 @@ one per tensor, scored against the best `T` *that* tensor allows — **1.0x is a
 | **percentile 99.99** | 1.1x | 1.6x | never badly |
 | min-max | 1.2x | **2.4x** | *too late* on long tails — stretches 127 steps over empty space |
 | entropy (TRT default) | **5,898x** | 8.4x | *too early* on bounded inputs — erases 22% of the data |
+
+The three sane rules span **1.15–1.20x** on the input tensor: that is grid alignment, not a ranking,
+and they should be read as tied. Only entropy separates itself, by four orders of magnitude.
 
 Two things to take from it:
 
