@@ -170,7 +170,8 @@ That asymmetry is XP10's unexplained fingerprint: mAP50 0.2554, tiny plumes −9
 ![Where INT8 damage lives](../../results/figures/xp07e1_sensitivity.png)
 
 *Both panels plot the same 60 experiments — one point or bar per convolution, that layer quantized
-alone with the other 59 left in FP16 — and both y-axes are **% of the unquantized model kept**.
+alone with the other 59 left in FP16 — and both y-axes are **detection accuracy kept** (mAP50 as a % of the unquantized
+model), never a count of values.
 **Left**, scored on aggregate mAP50: the whole panel spans 3.1%, and only the three head
 convolutions move at all. **Right**, the identical runs scored on plumes under 0.1% of the frame:
 the axis now needs 0–120%. Same perturbations, same models; the slice is what separates them.*
@@ -310,6 +311,13 @@ Two things to take from it:
 - **Discarding a little more destroys everything.** On the input, entropy clips **22%** of all
   values and lands **5,898x** off the best possible choice.
 
+> **Careful: two different measurements, two different units.** The ratios above are
+> **numerical error in the tensor's numbers** — how far the stored values drift from the real
+> ones. The results table further down is **detection accuracy** (mAP50). The first is the cause,
+> the second the effect: it is entropy adding 5,898x the numerical error on the input tensor that
+> produces its 34% accuracy row. Neither is a count of weights or values; where this page does
+> mean a count of values, it says so ("clips 22% of the pixel values").
+
 MSE's 1.0x is partly by construction — the yardstick is squared error, which is MSE's own
 objective. The independent check is the measured mAP50 table below, where percentile 99.99 wins.
 
@@ -333,7 +341,8 @@ out of the tensors alone, so it is a property of this network's activations and 
 the exact number XP10 decoded from TensorRT's own calibration cache (0.0035237 × 127). The
 simulation predicts the engine rather than approximating it.
 
-**Results** — unquantized: **0.9494** mAP50, **0.3363** tiny, **14.05 MB**.
+**Results** — unquantized: **0.9494** mAP50, **0.3363** tiny, **14.05 MB**. Every "kept" column
+below is **detection accuracy** as a percentage of those two baselines.
 
 ![Calibration decides almost everything at INT8](../../results/figures/xp07e2_calibration.png)
 

@@ -2913,8 +2913,8 @@ def fig_xp07e2(records) -> Path | None:
                         "calibration rules, 512 images each. Right: the winner, on nested "
                         f"subsets.\nBoth scored on the {d['n_val_images']}-image validation "
                         f"split.\n100% = the unquantized FP16 model ({base_map:.4f} mAP50 "
-                        f"overall, {base_tiny:.4f} on tiny plumes); the drop below 100 is what "
-                        "quantizing costs.", y=0.995)
+                        f"overall, {base_tiny:.4f} on tiny plumes); the drop below 100 is "
+                        "DETECTION ACCURACY lost to quantizing, not values lost.", y=0.995)
 
     # ---- panel 1: what each method costs --------------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -2925,7 +2925,7 @@ def fig_xp07e2(records) -> Path | None:
     ax.bar(x + 0.20, tin, width=0.38, color=style.ORANGE, zorder=3,
            label="tiny plumes (<0.1%)")
     ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
-    ax.text(-0.45, 100.8, "unquantized FP16 — nothing lost", ha="left",
+    ax.text(-0.45, 100.8, "unquantized FP16 — full accuracy", ha="left",
             va="bottom", fontsize=8.4, color=style.INK_2, style="italic")
     for i, (a, t) in enumerate(zip(agg, tin)):
         ax.text(i - 0.20, a + 2.5, f"{a:.0f}", ha="center", fontsize=8.6,
@@ -2935,7 +2935,7 @@ def fig_xp07e2(records) -> Path | None:
     ax.set_xticks(x)
     ax.set_xticklabels([nice[m] for m in order], fontsize=8.0)
     ax.set_ylim(0, 118)
-    ax.set_ylabel("mAP50 kept, as % of the unquantized model\n(100% = nothing lost)")
+    ax.set_ylabel("DETECTION ACCURACY kept\n(mAP50, as % of the unquantized FP16 model)")
     ax.set_title("1. One setting, 62 points of mAP50", fontsize=12, loc="left")
     ax.set_ylim(0, 122)
     # Every arm ships the same bytes, which is what makes the spread free.
@@ -2967,7 +2967,7 @@ def fig_xp07e2(records) -> Path | None:
         ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
         ax.set_ylim(80, 108)
     ax.set_xlabel("calibration images (nested subsets)")
-    ax.set_ylabel("mAP50 kept, as % of the unquantized model\n(100% = nothing lost)")
+    ax.set_ylabel("DETECTION ACCURACY kept\n(mAP50, as % of the unquantized FP16 model)")
     ax.set_title("2. …and 32 images is enough", fontsize=12, loc="left")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2,
               fontsize=9, frameon=False)
@@ -3555,7 +3555,7 @@ def fig_xp07_clipping(records) -> Path | None:
                 ha="right", va="center", fontsize=10.5, color=style.INK, fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=style.INK, lw=1.4))
     ax.text(T * 1.06, top * 0.02,
-            f"above the line: {h[c > T].sum() / tot * 100:.3f}% of values\n"
+            f"above the line: {h[c > T].sum() / tot * 100:.3f}% of the values\n"
             f"(3 in 100,000) — every one of\nthem is stored as {T:.0f}",
             fontsize=9.6, color=style.RED, fontweight="bold", va="center")
     ax.text(T * 0.14, top * 0.0012, "below the line:\n127 evenly spaced steps", ha="left",
@@ -3576,7 +3576,7 @@ def fig_xp07_clipping(records) -> Path | None:
         best[name] = (E.min(), Ts[int(E.argmin())] / meta["observed_max"] * 100)
         ratio[name] = {k: err(c, h, meta["clips"][k]) / E.min() for k in ORDER}
 
-    CALL = {(INPUT, "entropy"): "   erases 22% of the data",
+    CALL = {(INPUT, "entropy"): "   erases 22% of the pixel values",
             (INNER, "minmax"): "   range 2.6x too wide"}
     ys = np.arange(len(ORDER))
     for i, name in enumerate((INPUT, INNER)):
@@ -3602,9 +3602,11 @@ def fig_xp07_clipping(records) -> Path | None:
     bx.set_yticks(ys)
     bx.set_yticklabels([f"{nice[k]}\n{RULE[k]}" for k in ORDER], fontsize=9.6, linespacing=1.45)
     bx.set_ylim(len(ORDER) - 0.28, -0.55)
-    bx.set_xlabel("error compared with the best stopping point that tensor allows\n"
-                  "(1x = as good as it gets  \u00b7  10x = ten times worse)")
-    bx.set_title("2. Four rules for choosing T, and what each one costs",
+    bx.set_xlabel("NUMERICAL ERROR added to the tensor's numbers, vs the best stopping point\n"
+                  "(1x = the least any choice can add  \u00b7  10x = ten times more)\n"
+                  "This is error in the values, not detection accuracy — what it does to "
+                  "accuracy is the next figure.")
+    bx.set_title("2. Four rules for choosing T, and the error each one adds",
                  fontsize=12.5, loc="left")
     bx.legend(loc="upper right", fontsize=9.2, frameon=True, framealpha=0.95)
     style.tidy(bx)
