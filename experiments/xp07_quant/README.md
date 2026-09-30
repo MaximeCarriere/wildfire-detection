@@ -346,62 +346,46 @@ Every percentage below is **detection accuracy** against those two baselines.
 
 ![Calibration decides almost everything at INT8](../../results/figures/xp07e2_calibration.png)
 
-**Panel 1 — the rule you pick is the whole result.** Five arms, one config string apart. Same
-weights, same 7.08 MB, same speed. Read the orange bars, because the tiny-plume slice is where the
-rules separate:
+**Panel 1 — which rule you pick.**
 
-| the rule | overall | tiny plumes | in plain terms |
-|---|---:|---:|---|
-| **percentile 99.99** | **0.9458** (99.6%) | **0.3193** (94.9%) | **the winner** — costs 5% of the hardest slice |
-| MSE | 0.9451 (99.5%) | 0.3232 (96.1%) | tied with it; either is a safe default |
-| percentile 99.9 | 0.9345 (98.4%) | 0.2312 (68.7%) | one decimal place costs **26 points** of tiny |
-| min-max *(XP10's fix)* | 0.8817 (92.9%) | 0.1282 (38.1%) | loses **62%** of tiny plumes |
-| entropy *(TensorRT's default)* | 0.3243 (34.2%) | 0.0052 (1.5%) | **not a detector any more** |
+| rule | overall | tiny plumes |
+|---|---:|---:|
+| **percentile 99.99** | **0.9458** (99.6%) | **0.3193** (94.9%) |
+| MSE | 0.9451 (99.5%) | 0.3232 (96.1%) |
+| percentile 99.9 | 0.9345 (98.4%) | 0.2312 (68.7%) |
+| min-max — *XP10's fix* | 0.8817 (92.9%) | 0.1282 (38.1%) |
+| entropy — *TensorRT's default* | 0.3243 (34.2%) | **0.0052 (1.5%)** |
 
-Four things follow from that panel alone:
+- **The default is broken, not degraded.** Choose nothing and you get entropy: **1.5%** of
+  tiny-plume accuracy.
+- **Aggregate accuracy hides it.** min-max reads 93% overall and **38%** on tiny plumes — one
+  headline number would ship it.
+- **Being right is free.** All five are the same **7.08 MB** at the same speed: **0.62 mAP50** of
+  spread for a config string. The hypothesis — that INT8 methods are interchangeable on CNNs — is
+  wrong, and that spread beats pruning criterion, resolution and model choice anywhere in this
+  series.
+- **Both ends fail, in opposite directions.** On `model.24.m.0` entropy stops at **11.1** (too
+  narrow) and min-max at **142.0** (too wide — **2.7x** wider than percentile on the median layer,
+  >2x on 56 of 60). XP10 compared only those two ends and never tested the middle.
 
-1. **The default is catastrophic.** Build an INT8 engine without choosing, and TensorRT picks
-   entropy: 34% of overall accuracy, 1.5% on tiny plumes. Not degraded — **broken**.
-2. **Overall accuracy hides it.** min-max looks acceptable at 93% overall; on tiny plumes it is at
-   38%. Anyone reporting one aggregate number would ship it.
-3. **The top two are free and tied.** percentile 99.99 and MSE both land within 5% of FP16 on the
-   hardest slice. There is no reason to accept anything worse.
-4. **It costs nothing to be right.** Every arm is the same 7.08 MB model at the same speed. The
-   62-point spread is bought with a config string — no retraining, no extra bytes, no latency.
+**Panel 2 — how many calibration images.**
 
-**Against the hypothesis, and the rest of the series:**
+- **8 is too few** (tiny plumes 88.6%); **32 is enough** (99.1%).
+- **Nothing past 32 helps**: 128 → 99.9%, 512 → 94.9%.
+- 512 scores *below* 128, so this is not a rising curve — past 32 the slice moves ~5 points with no
+  trend. Unexplained, and **not repeated**, so it is an open question, not noise.
 
-- **The hypothesis is wrong.** The spread across sane methods is **0.62 mAP50** — larger than
-  pruning criterion, resolution, or model choice anywhere in this series.
-- **XP10's prescription is wrong.** It compared entropy against min-max — the two *ends* of the
-  sweep — and stopped. Min-max costs **62%** of tiny-plume accuracy; percentile 99.99 costs **5%**.
-- **Both ends fail for opposite reasons.** On `model.24.m.0`: entropy picks 0–**11.1** when the
-  tensor reaches ~30 (real signal saturated); min-max picks 0–**142.0** (**4.8x too wide**, so 4.8x
-  of the 255 levels are spent on values occurring in under 0.01% of the tensor). Across all 60
-  layers min-max is **2.7x wider on the median**, up to 8.6x, wider by >2x on **56 of 60**.
-- **The two methods agree on the input tensor** (1.0000 vs 0.9998). XP10's diagnosis was about
-  entropy and the input; the min-max problem is in the internal activations.
-- **Panel 2 — how much data calibration needs: 32 images.** Same rule throughout, only the image
-  count changes. 8 is too few (tiny plumes 88.6%); 32 reaches 99.1% and **nothing after that
-  improves** (128 → 99.9%, 512 → 94.9%). The 512 point is *lower* than 128, so this is not a curve
-  that keeps rising — past 32 the tiny slice moves by ~5 points with no trend. That wobble is
-  unexplained and is listed as an open question, not called noise: it has not been repeated.
+**Where the 7.08 MB goes** — 7.006 MB quantized weights (99.7% of parameters) + 0.038 MB left FP16
+(batch-norm, biases) + 0.038 MB for 9,567 per-channel scales. Counted from the configuration, not
+measured: fake-quant leaves every tensor a float. E4's engines are the measured counterpart, at
+16.98 / 9.1 MB — 1.98x counted, 1.87x measured.
 
-**Where the 7.08 MB goes** — since "INT8 halves the model" deserves itemising:
+**Conclusion.**
 
-| | |
-|---|---:|
-| quantized weights, 8-bit, 99.7% of parameters | 7.006 MB |
-| parameters left FP16 (batch-norm, biases) | 0.038 MB |
-| **9,567 per-channel weight scales** | 0.038 MB |
-| **total** | **7.083 MB** |
-
-Counted from the configuration, not measured: fake-quant leaves every tensor a float. E4's engines
-are the measured counterpart and are larger (16.98 / 9.1 MB) — 1.98x counted, 1.87x measured.
-
-**Conclusion.** The accuracy question at 8 bits is decided by *which* clipping rule, not by how much
-data it sees. **Use percentile 99.99 (or MSE), calibrate on 32 images.** Every INT8 number anywhere
-should state its clipping rule: labelled only "INT8", the five engines above span 0.32 to 0.95.
+- **Use percentile 99.99 (or MSE), calibrated on 32 images.**
+- INT8 accuracy is decided by **which clipping rule**, not by how much data it sees.
+- **Never report "INT8" without its rule** — labelled only that, these five engines span 0.32 to
+  0.95 mAP50.
 
 ---
 
