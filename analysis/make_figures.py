@@ -2818,9 +2818,15 @@ def fig_xp07e1(records) -> Path | None:
                 xytext=(len(order) * 0.30, lo + 0.25), ha="left", fontsize=9.5,
                 color=style.RED, fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=style.RED, lw=1.3))
-    ax.set_xlabel("the 60 convolutions, in forward order")
+    ax.set_xlabel("the 60 convolutions, in forward order\n"
+                  "(one point = that layer quantized alone, the other 59 left FP16)")
     ax.set_ylabel("mAP50 kept, % of the unquantized model")
     ax.set_title("1. Quantize one layer: what does it cost?", fontsize=12, loc="left")
+    # The narrow range is the reason panel 2 exists; say so on the panel.
+    ax.text(0.99, 0.045, f"note the scale — this whole panel spans "
+                         f"{100.2 - (lo - 0.45):.1f}%",
+            transform=ax.transAxes, ha="right", fontsize=9, color=style.INK_2,
+            style="italic")
     ax.legend(loc="lower left", fontsize=9.5)
     style.tidy(ax)
 
@@ -2852,10 +2858,12 @@ def fig_xp07e1(records) -> Path | None:
                     arrowprops=dict(arrowstyle="->", lw=1.3, zorder=6,
                                     connectionstyle="arc3,rad=-0.12",
                                     color=style.RED if n in head else style.INK_2))
-    ax.set_xlabel("the 60 convolutions, in forward order")
+    ax.set_xlabel("the same 60 convolutions, same experiments\n"
+                  "(one bar = that layer quantized alone)")
     ax.set_ylabel("tiny-plume mAP50 kept, % of the unquantized model")
     ax.set_title("2. The same 60 cells, scored on distant smoke only\n"
-                 "(red = a Detect head convolution)", fontsize=12, loc="left")
+                 "— now the axis needs 0–120% (red = a Detect head conv)",
+                 fontsize=12, loc="left")
     style.tidy(ax)
 
     fig.tight_layout()

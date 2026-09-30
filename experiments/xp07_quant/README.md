@@ -169,6 +169,12 @@ That asymmetry is XP10's unexplained fingerprint: mAP50 0.2554, tiny plumes −9
 
 ![Where INT8 damage lives](../../results/figures/xp07e1_sensitivity.png)
 
+*Both panels plot the same 60 experiments — one point or bar per convolution, that layer quantized
+alone with the other 59 left in FP16 — and both y-axes are **% of the unquantized model kept**.
+**Left**, scored on aggregate mAP50: the whole panel spans 3.1%, and only the three head
+convolutions move at all. **Right**, the identical runs scored on plumes under 0.1% of the frame:
+the axis now needs 0–120%. Same perturbations, same models; the slice is what separates them.*
+
 - **W8 is free, everywhere.** Worst cell **0.19%**, median 0.04%. The three head convs average
   **−0.010%** — noise. No layer needs more than 8 bits for its weights.
 - **W8A8 damage is 20x concentrated.** Head convs lose **1.65%** on average vs **0.080%** for the
@@ -189,6 +195,8 @@ That asymmetry is XP10's unexplained fingerprint: mAP50 0.2554, tiny plumes −9
   0.763, 0.359).
 - **The second-worst layer for distant smoke is not in the head at all.** `model.20.cv3.conv` sits
   in the neck. A hand-picked "protect the head" split misses it.
+- **So "W8A8 is fine except the last layers" is true of the aggregate and false of the slice.** The
+  left panel supports it; the right panel is the same experiments and does not.
 
 **Conclusion.** INT8 here is a three-tensor problem, not a whole-network one, and the tensor that
 matters most is the input to the small-object head. The two rankings E1 produces share **one**
