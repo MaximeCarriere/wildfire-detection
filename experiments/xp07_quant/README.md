@@ -197,10 +197,30 @@ the axis now needs 0–120%. Same perturbations, same models; the slice is what 
   in the neck. A hand-picked "protect the head" split misses it.
 - **So "W8A8 is fine except the last layers" is true of the aggregate and false of the slice.** The
   left panel supports it; the right panel is the same experiments and does not.
+- **Some bars sit above 100% — quantizing that layer really did score higher, repeatably.**
+  `model.17.cv3.conv` reaches **116.4%**, and re-running it five times reproduces 0.3914 exactly
+  (spread 0.0pp). It is not measurement noise. mAP is an area under a *ranking* of detections, so a
+  perturbation that happens to demote a false positive below a true one raises it — and on a slice
+  of **127 images** that is worth several points. **Reproducible is not the same as generalisable**:
+  this is a property of this configuration on this validation subset, with no reason to expect it on
+  test or on other data, and no way to predict which layer will do it. It is also why the two
+  rankings disagree — the aggregate ranking's third pick is the slice's best cell.
 
-**Conclusion.** INT8 here is a three-tensor problem, not a whole-network one, and the tensor that
-matters most is the input to the small-object head. The two rankings E1 produces share **one**
-layer, so *which* ranking E6 protects is a real decision — not a detail.
+**Conclusion**
+
+- **Weights are free — there is nothing to decide.** All 60 convolutions, 8 bits, worst cell 0.19%.
+- **The damage is in the activations, and in three of them.** W8A8 quantizes each convolution's
+  **input activation tensor** as well as its weights; 57 of those 60 tensors cost under 0.9% of
+  aggregate mAP50, and three carry the rest. *That* is what "a three-tensor problem" means — not
+  three layers' weights, three activation tensors.
+- **The worst single one is the input to the stride-8 head** (`model.24.m.0`). Quantizing that one
+  tensor costs **63% of the distant-smoke accuracy** while moving the headline **2.1%**.
+- **Which three depends on what you measure.** Ranked on aggregate mAP50 they are `24.m.2`,
+  `24.m.0`, `17.cv3.conv`; ranked on distant smoke, `24.m.0`, `20.cv3.conv`, `17.m.0.cv2.conv`.
+  **Only `24.m.0` appears in both**, and `17.cv3.conv` — third-worst on the aggregate — is the
+  *best* cell of all 60 on distant smoke.
+- **So E6 has a real choice to make, not a detail.** It ran both splits; they differ by 45 points
+  of distant-smoke accuracy.
 
 ---
 
@@ -842,10 +862,15 @@ accuracy. Every compression here spends small-object accuracy to buy speed; reso
 - **One decision per experiment.** Frozen calibration; class-name assert on every load.
 - **Engine variance before any speed claim** — one ONNX built three times bounds tactic noise
   (**0.25%** here); warm-die control between build sessions.
-- **Accuracy variance too.** Re-running one arm unchanged bounds it: aggregate mAP50 reproduces to
-  **0.12%**, the tiny-plume slice to **11.9% relative** at small values (127 of 1,721 images, and
-  GPU reductions are not bit-deterministic). Claims here clear that floor by an order of magnitude;
-  where they do not, the page says so.
+- **Accuracy variance too, and its source is not yet isolated.** Re-running E10 arm 1 as a fresh
+  process moved aggregate mAP50 **0.12%** and the tiny-plume slice **11.9% relative**. But
+  re-running an E1 cell *within* one process — same loaded model, same frozen scales — reproduces
+  **exactly** (0.0pp over five repeats). So evaluation is deterministic, and the across-process
+  variation comes from somewhere upstream, most plausibly **calibration**: the GPU histogram
+  reductions that pick the scales are not bit-deterministic, and different scales are a different
+  quantized model. **Not yet measured**, and stated here as a hypothesis rather than a cause.
+  Claims on this page clear the observed floor by an order of magnitude; where they do not, the page
+  says so.
 - **Per-layer precision on every INT8 engine**, read from the engine. *"INT8" is a request.*
 - **Recovery loops must round-trip the baseline before their numbers count.** E10 arm 2 is what
   happens when that rule is skipped.
