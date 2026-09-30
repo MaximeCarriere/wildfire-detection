@@ -2399,77 +2399,115 @@ def fig_xp07_concepts(records) -> Path | None:
 
 
 def fig_xp07_head(records) -> Path | None:
-    """Why the detection head cannot take a per-tensor INT8 scale."""
+    """Why the decode tensor cannot take INT8: one grid, two populations."""
     import matplotlib.pyplot as plt
     import numpy as np
+    from matplotlib.patches import Rectangle
 
     d = _side("xp07_concepts.json")
     if not d:
         return None
     det = d["detect_output"]
-
     names = det["channel_names"]
     amax = np.array(det["channel_absmax"])
     step = det["per_tensor_step"]
     is_box = np.array([n in ("x", "y", "w", "h") for n in names])
+    pmax = float(amax[~is_box].max())
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.2, 4.6),
-                             gridspec_kw={"width_ratios": [1.25, 1]})
-    fig.suptitle("One tensor, two populations, and a single scale that cannot serve both",
-                 y=1.06)
-    style.subtitle(fig, "YOLOv5's Detect layer concatenates box coordinates in pixels with "
-                        "probabilities in [0,1]. INT8 carries one scale per tensor.", y=1.0)
+    fig = plt.figure(figsize=(17.2, 5.0))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.0, 1.45, 0.95], wspace=0.30)
+    fig.suptitle("INT8 has one step size per tensor. This tensor holds two populations "
+                 "1,500x apart.", y=1.05, fontsize=14.5)
+    style.subtitle(fig, "YOLOv5's final layer writes box coordinates in pixels and class "
+                        "probabilities in [0,1] side by side in one tensor. Measured over "
+                        "calibration images.", y=0.995)
 
-    # --- left: the two populations ---------------------------------------
-    ax = axes[0]
+    # ---- panel 1: what is in the tensor ---------------------------------
+    ax = fig.add_subplot(gs[0, 0])
     cols = [style.BLUE if b else style.ORANGE for b in is_box]
     ax.bar(names, amax, color=cols, zorder=3, width=0.68)
     ax.set_yscale("log")
-    ax.axhline(step, color=style.RED, lw=1.8, ls="--", zorder=4)
-    ax.text(len(names) - 0.4, step * 1.25,
-            f"one INT8 step = {step:.2f}", ha="right", fontsize=9.5,
-            color=style.RED, fontweight="bold")
-    for i, (n, v) in enumerate(zip(names, amax)):
-        ax.text(i, v * 1.3, f"{v:.2f}".rstrip("0").rstrip("."), ha="center",
+    for i, v in enumerate(amax):
+        ax.text(i, v * 1.35, f"{v:.0f}" if v >= 10 else f"{v:.2f}", ha="center",
                 fontsize=9, color=style.INK, fontweight="bold")
-    ax.text(1.5, amax.max() * 3.0, "box coordinates, in pixels", ha="center",
+    ax.text(1.5, amax.max() * 4.5, "box coordinates\n(pixels)", ha="center",
             fontsize=9.5, color=style.BLUE, fontweight="bold")
-    ax.text(5.0, amax.max() * 3.0, "probabilities, in [0,1]", ha="center",
+    ax.text(5.0, amax.max() * 4.5, "probabilities\n(0–1)", ha="center",
             fontsize=9.5, color=style.ORANGE, fontweight="bold")
-    ax.set_ylim(top=amax.max() * 9)
-    ax.set_ylabel("largest value seen in this channel, log scale")
-    ax.set_xlabel("the 7 channels of the decoded Detect output")
-    ax.set_title("The scale is set by the widest channel", fontsize=11, loc="left")
+    ax.set_ylim(top=amax.max() * 22)
+    ax.set_ylabel("largest value reached, log scale")
+    ax.set_xlabel("the 7 channels of the decoded output")
+    ax.set_title("1. One tensor, two populations", fontsize=12, loc="left")
     style.tidy(ax)
 
-    # --- right: what each population gets --------------------------------
-    ax = axes[1]
-    levels_box = amax[is_box].max() / step
-    levels_prob = 1.0 / step
-    bars = ax.barh(["box coordinate\n(range 0–%.0f)" % amax[is_box].max(),
-                    "probability\n(range 0–1)"],
-                   [levels_box, levels_prob],
-                   color=[style.BLUE, style.ORANGE], zorder=3, height=0.34)
-    ax.set_xscale("log")
-    ax.set_xlim(0.02, 4000)
-    ax.axvline(1.0, color=style.RED, lw=1.6, zorder=4)
-    ax.text(1.0, 1.42, "one step", fontsize=9, color=style.RED,
+    # ---- panel 2: the grid itself ---------------------------------------
+    ax = fig.add_subplot(gs[0, 1])
+    top = step * 5.4
+    ax.set_xlim(-step * 0.30, top)
+    ax.set_ylim(0, 1)
+    ax.set_yticks([])
+
+    # every representable value, drawn
+    for k in range(6):
+        v = k * step
+        ax.axvline(v, color=style.INK_2, lw=1.6, ymin=0.28, ymax=0.72, zorder=3)
+        ax.text(v, 0.735, f"{v:.1f}", ha="center", fontsize=9, color=style.INK_2)
+    ax.text(top * 0.52, 0.905,
+            f"step = {amax[is_box].max():.0f} / 127 = {step:.2f}   —   these are the "
+            f"only values INT8 can store here",
+            ha="center", fontsize=10, color=style.INK, fontweight="bold")
+    ax.text(top * 0.52, 0.825,
+            f"a probability of 1.0  →  1.0 / {step:.2f} = {1 / step:.3f} of a step  →  0",
+            ha="center", fontsize=10.5, color=style.RED, fontweight="bold")
+
+    # the probability population, crammed below the first step
+    ax.add_patch(Rectangle((0, 0.30), pmax, 0.40, facecolor=style.ORANGE,
+                           alpha=0.9, zorder=4))
+    ax.annotate("", xy=(0, 0.235), xytext=(step, 0.235),
+                arrowprops=dict(arrowstyle="<->", color=style.RED, lw=1.8))
+    ax.text(step * 0.5, 0.175, "no value representable in here",
+            ha="center", fontsize=9.4, color=style.RED, fontweight="bold")
+
+    # Two callouts, one per population, pushed to opposite ends of the axis so
+    # they cannot share a band.
+    ax.annotate(f"all {len(names) - int(is_box.sum())} probability channels\n"
+                f"are inside this sliver (0–{pmax:g})",
+                xy=(pmax * 0.5, 0.31), xytext=(step * 0.12, 0.055),
+                ha="left", va="center", fontsize=9.6, color=style.ORANGE,
+                fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=style.ORANGE, lw=1.6))
+
+    bx = 3 * step + step * 0.42
+    ax.scatter([bx], [0.50], s=130, color=style.BLUE, zorder=6)
+    ax.annotate("a box coordinate lands near\na step — ~11 px error, survives",
+                xy=(bx, 0.44), xytext=(step * 3.05, 0.055), ha="left", va="center",
+                fontsize=9.6, color=style.BLUE, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=style.BLUE, lw=1.6))
+
+    ax.set_xlabel("value")
+    ax.set_title("2. The grid the whole tensor must share", fontsize=12, loc="left")
+    for sp in ("left", "right", "top"):
+        ax.spines[sp].set_visible(False)
+
+    # ---- panel 3: what each population gets -----------------------------
+    ax = fig.add_subplot(gs[0, 2])
+    lb, lp = amax[is_box].max() / step, pmax / step
+    ax.barh(["box coordinate", "probability"], [lb, lp],
+            color=[style.BLUE, style.ORANGE], zorder=3, height=0.34)
+    ax.set_xscale("log"); ax.set_xlim(0.02, 4000)
+    ax.axvline(1.0, color=style.RED, lw=1.8, zorder=4)
+    ax.text(1.0, 1.45, "one step", fontsize=9.5, color=style.RED,
             fontweight="bold", ha="center")
-    ax.text(levels_box * 1.3, 0, f"{levels_box:.0f} levels", va="center",
-            fontsize=10.5, color=style.BLUE, fontweight="bold")
-    # Parked to the right of the "one step" line so the sentence crosses nothing.
-    ax.text(2.6, 1, f"{levels_prob:.3f} of one level\n→ every probability rounds to zero",
+    ax.text(lb * 1.35, 0, f"{lb:.0f} levels", va="center", fontsize=11,
+            color=style.BLUE, fontweight="bold")
+    ax.text(2.6, 1, f"{lp:.3f} of one level\n→ every probability becomes 0",
             va="center", ha="left", fontsize=10.5, color=style.RED, fontweight="bold")
     ax.set_ylim(-0.6, 1.7)
-    ax.set_xlabel("how many INT8 levels this quantity actually gets")
-    ax.set_title("Box regression survives. The classifier does not.",
-                 fontsize=11, loc="left")
+    ax.set_xlabel("INT8 levels this quantity actually gets")
+    ax.set_title("3. Boxes survive. Scores do not.", fontsize=12, loc="left")
     style.tidy(ax, ygrid=False)
 
-    fig.tight_layout()
     return save(fig, "xp07_head.png")
-
-
 
 
 def fig_xp07e9(records) -> Path | None:

@@ -1,0 +1,82 @@
+{
+  "experiment": "xp07_precision_support",
+  "question": "which numeric formats can this board represent, multiply, and be made to use?",
+  "gpu": "Orin",
+  "compute_capability": "sm_87",
+  "ptx_isa_version": "8.5",
+  "isa_probe": {
+    "fp16 (f16 x f16 -> f32)": {
+      "instruction": "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32",
+      "arch": "sm_87",
+      "ptx_version": "8.5",
+      "supported": "YES",
+      "control_arch": "sm_80",
+      "control_assembles": true,
+      "note": ""
+    },
+    "int8 (s8 x s8 -> s32)": {
+      "instruction": "mma.sync.aligned.m16n8k32.row.col.s32.s8.s8.s32",
+      "arch": "sm_87",
+      "ptx_version": "8.5",
+      "supported": "YES",
+      "control_arch": "sm_80",
+      "control_assembles": true,
+      "note": ""
+    },
+    "int4 (s4 x s4 -> s32)": {
+      "instruction": "mma.sync.aligned.m8n8k32.row.col.s32.s4.s4.s32",
+      "arch": "sm_87",
+      "ptx_version": "8.5",
+      "supported": "YES",
+      "control_arch": "sm_80",
+      "control_assembles": true,
+      "note": ""
+    },
+    "binary (b1 x b1 -> s32, and.popc)": {
+      "instruction": "mma.sync.aligned.m8n8k128.row.col.s32.b1.b1.s32.and.popc",
+      "arch": "sm_87",
+      "ptx_version": "8.5",
+      "supported": "YES",
+      "control_arch": "sm_80",
+      "control_assembles": true,
+      "note": ""
+    },
+    "fp8 E4M3 (e4m3 x e4m3 -> f32)": {
+      "instruction": "mma.sync.aligned.m16n8k32.row.col.f32.e4m3.e4m3.f32",
+      "arch": "sm_87",
+      "ptx_version": "8.5",
+      "supported": "NO",
+      "control_arch": "sm_89",
+      "control_assembles": true,
+      "note": "assembles for sm_89, not for sm_87"
+    },
+    "fp8 E5M2 (e5m2 x e5m2 -> f32)": {
+      "instruction": "mma.sync.aligned.m16n8k32.row.col.f32.e5m2.e5m2.f32",
+      "arch": "sm_87",
+      "ptx_version": "8.5",
+      "supported": "NO",
+      "control_arch": "sm_89",
+      "control_assembles": true,
+      "note": "assembles for sm_89, not for sm_87"
+    }
+  },
+  "torch_storage_dtypes": {
+    "float8_e4m3fn": true,
+    "float8_e5m2": true,
+    "int8": true,
+    "quint4x2": true,
+    "bfloat16": true
+  },
+  "tensorrt": {
+    "tensorrt": "10.3.0",
+    "platform_has_fast_fp16": true,
+    "platform_has_fast_int8": true,
+    "BuilderFlag.FP8": true,
+    "DataType.FP8": true,
+    "BuilderFlag.INT4": true,
+    "DataType.INT4": true,
+    "BuilderFlag.BF16": true,
+    "DataType.BF16": true
+  },
+  "caveat": "ISA support is necessary, not sufficient. A format the silicon multiplies but the runtime exposes no kernel for is unusable without hand-written CUTLASS \u2014 XP6-E4's lesson, one level down."
+}

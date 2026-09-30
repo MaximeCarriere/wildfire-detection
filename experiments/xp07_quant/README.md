@@ -41,8 +41,21 @@ in the series — while keeping **31% of the distant-smoke accuracy**. That half
 
 The XP6-E4 rule — *no silicon story, no experiment*:
 
-- **Binary / ternary** — Orin has no 1-bit datapath; 1-bit weights would execute as INT8.
-- **FP8 / MX formats** — need Hopper or Ada. Orin is Ampere; the format is absent.
+All four were **measured, not assumed** (`probe_precision.py`, and a build attempt for INT4);
+`results/raw/xp07_precision_support.json` has the raw answers.
+
+- **FP8** — `mma...e4m3` assembles for `sm_89` and **not** for this board's `sm_87`. The silicon has
+  no FP8 datapath, so it would be widened to FP16 to compute: all of 8-bit's accuracy loss, none of
+  its speed. (TensorRT 10.3 still *advertises* `BuilderFlag.FP8` here — advertised is not available.)
+- **Binary / ternary** — **the silicon can do it.** `mma.m8n8k128...b1.b1.s32.and.popc` assembles
+  for `sm_87`, and that `and.popc` *is* the XNOR-popcount primitive binary networks are built on.
+  **TensorRT has no 1-bit type at all**, so there is no path to it short of hand-written CUTLASS.
+  The blocker is the compiler, not the chip — XP6-E4's lesson one level down.
+- **INT4** — same story, one step further. `mma...s4.s4.s32` assembles for `sm_87`, TensorRT
+  exposes `DataType.INT4`, and a build **succeeds** — then picks a **TF32** kernel
+  (`sm80_xmma_gemm_f32f32_tf32f32_f32`). It is also 2D-only: a 4D convolution is rejected outright
+  with *"Block quantization is supported only for 2D inputs"*. Accepted, built, and never run in
+  INT4 — which is precisely the failure `e4_precision.py` exists to catch.
 - **SmoothQuant / AWQ outlier migration** — built for LLM activation outliers. **E2 is the check**,
   and it found outliers worth clipping but not worth migrating: a percentile suffices.
 - **Dynamic activation quantization** — a CPU-runtime feature. TensorRT executes **static** scales,
@@ -119,14 +132,63 @@ serve both. If true, `model.24.m.*` are the worst cells in the sweep.
 
 **The mechanism, measured before the sweep ran:**
 
-![One tensor, two populations, one scale](../../results/figures/xp07_head.png)
+![One tensor, two populations, one grid](../../results/figures/xp07_head.png)
 
-- Box channels reach **1479** (width/height decode exponentially); probability channels stop at 1.0.
-- One INT8 step is therefore **11.65**.
-- A box coordinate gets 127 levels and survives. **A probability gets 0.086 of one level** — it
-  cannot reach the first step, so every probability rounds to zero.
-- That asymmetry is the fingerprint XP10 saw and could not explain: mAP50 0.2554, tiny plumes −99%,
-  while the night slice still held 0.48.
+YOLOv5's final layer writes **7 numbers per candidate box into one tensor**: `x, y, w, h` in
+**pixels**, and `obj, smoke, fire` in **[0, 1]**. Measured over calibration images, the largest
+value each channel reaches is:
+
+```
+x = 527.5   y = 509.5   w = 1479   h = 1268   |   obj = 0.91   smoke = 1.0   fire = 1.0
+```
+
+(`w` exceeds the 512 px input because YOLOv5 decodes width as `(2·sigmoid(t))²·anchor` — a
+predicted box can be larger than the frame.) **Two populations, 1,500x apart, in one tensor.**
+
+**INT8 stores 256 levels spaced by a single step size `S`, chosen so the largest value fits in
+127 steps:**
+
+```
+S = 1479 / 127 = 11.65
+```
+
+The only representable values are now `0, 11.65, 23.30, 34.94, …` — **nothing in between**:
+
+| value | ÷ 11.65 | rounds to | stored as |
+|---|---:|---:|---|
+| a box coordinate, 527.5 px | 45.3 | 45 | 524.2 — ~11 px granularity, survives |
+| objectness, 0.91 | 0.078 | **0** | **0** |
+| class score, 1.0 | 0.086 | **0** | **0** |
+
+**Every probability in the tensor becomes exactly zero** — not degraded, zero. Boxes come out with
+zero confidence, nothing clears the detection threshold, and mAP50 is **0.0000** by construction.
+That is the meaning of "a probability gets 0.086 of a level": *it cannot reach the first non-zero
+step.*
+
+**And no other step size fixes it.** Pick `S` small enough for probabilities — say `1/127 = 0.0079`
+— and the boxes need 1479 / 0.0079 = **187,000 steps**. There are 127. Every box saturates and box
+regression is destroyed instead. **With one scale you must annihilate one population or the
+other.**
+
+> **Does this mean YOLO — or any box detector — cannot use INT8?** No, and the reason matters.
+> The problem is **the ratio, not the magnitude**. A tensor reaching 1479 is perfectly fine in INT8
+> on its own (127 levels, ~11 px resolution); so is a tensor of probabilities on its own
+> (`S = 0.0079`, 127 levels). Only the *concatenation* breaks, because INT8's grid is **uniform**
+> and cannot span two ranges 1,500x apart. So this is a property of the **graph**, not of detection
+> and not of INT8.
+>
+> In practice nobody hits it: **TensorRT keeps the decode out of INT8 on its own**, which is why
+> XP10's engines score 0.7181 and not 0, and why E4's do too. The 57 convolutions *before* the
+> decode quantize essentially for free (below). E6 had to force the bad case deliberately in order
+> to measure what the default is protecting you from. The usual deployment recipe — export the
+> graph without the decode and do it in postprocessing — exists for exactly this reason.
+>
+> A format with an **exponent** would not have the problem at all, since small numbers would get
+> small steps. That is FP8, and this board has no FP8 silicon —
+> [measured](../../results/raw/xp07_precision_support.json), not assumed.
+
+That asymmetry is the fingerprint XP10 saw and could not explain: mAP50 0.2554, tiny plumes −99%,
+while the night slice still held 0.48 — **box regression destroyed, classification limping on.**
 
 **Results** — unquantized: **0.9494** mAP50, **0.3363** tiny.
 
