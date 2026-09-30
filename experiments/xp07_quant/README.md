@@ -234,6 +234,54 @@ accuracy question at 8 bits is closed and effort belongs at 4 bits.
 **Why it matters.** *Calibration* is measuring activation ranges on sample data to fix the scales.
 It is the only part of INT8 that has an opinion, and most toolchains do not surface it as a choice.
 
+**What "clipping" means, and why there is no safe default**
+
+INT8 gives you 256 values, so before anything can be stored you must answer one question: **which
+real value does the largest code stand for?** Call it `T`.
+
+- Everything from `0` to `T` gets **127 evenly spaced steps**.
+- Everything **above `T` is flattened onto `T`** — that is clipping.
+
+Moving `T` trades one error against the other, and they pull in opposite directions:
+
+| pick `T` too **large** | pick `T` too **small** |
+|---|---|
+| nothing is clipped, but the 127 steps are stretched thin | steps are fine, but large values are erased |
+| **rounding error** — every value slightly wrong | **clipping error** — a few values very wrong |
+
+There is no default that is safe on both, because **the right `T` depends on the shape of the
+tensor** — and one network contains both shapes:
+
+![What clipping is, and why both ends of the sweep are wrong](../../results/figures/xp07_clipping.png)
+
+| tensor | shape | best `T` | what that means |
+|---|---|---:|---|
+| `model.0.conv` (input) | bounded, fills 0–1 | **100% of max** | clipping anything is pure loss |
+| `model.24.m.0` (inner) | long tail to 142 | **40% of max** | clipping is mandatory |
+
+Two consequences, measured on the histograms above, not argued:
+
+- **Discarding almost nothing can help a lot.** On `model.24.m.0`, MSE clips **0.0031%** of values —
+  3 in 100,000 — and that alone cuts the total error **2.4x** versus min-max, because the surviving
+  99.997% get **2.6x** the resolution (127 steps across 0–55.4 instead of 0–142).
+- **Discarding a little more destroys it.** On the input, entropy clips **22%** of all values and
+  costs **5,607x** the error of the best choice.
+
+Each method's error, as a multiple of the best possible `T` for that tensor:
+
+| method | `model.0.conv` | `model.24.m.0` | fails |
+|---|---:|---:|---|
+| **MSE** | 1.1x | **1.0x** | never |
+| **percentile 99.99** | 1.1x | 1.6x | never badly |
+| min-max | 1.1x | 2.4x | on long tails — *too wide* |
+| entropy (TRT default) | **5,607x** | 8.4x | on bounded inputs — *too narrow* |
+
+That table is computed from activation histograms alone — no detector, no mAP, no inference run —
+and it **recovers the accuracy ranking measured below**: the two safe methods first, min-max next,
+entropy far behind. It was computed after the sweep, so it explains the result rather than having
+predicted it; its value is that it reaches the same ordering from the tensors alone, so the ordering
+is a property of this network's activations and not of one evaluation split.
+
 **Method**
 
 - Five methods, whole network W8A8, per-channel, no retraining, so damage is attributable to the

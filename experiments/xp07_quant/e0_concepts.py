@@ -50,6 +50,19 @@ from _quant import (HIST_BINS, Observer, conv_layers,              # noqa: E402
 #: figure caption can state exactly which layer it is showing.
 SHOWCASE_CONV = "model.8.cv1.conv"
 
+#: Tensors whose full activation histogram is recorded, so the clipping
+#: explainer can be drawn from real distributions rather than a sketch.
+#:
+#: Two are needed, because the two calibration failure modes are opposite and one
+#: tensor can only show one of them. The **network input** is bounded in [0, 1]
+#: with mass right up to the edge — clipping anything there is pure loss, which is
+#: where entropy calibration fails. An **internal activation** is a long-tailed
+#: distribution where a handful of outliers sit far above the bulk — refusing to
+#: clip there spends the whole range on values that almost never occur, which is
+#: where min-max fails. E2's headline, that both ends of the sweep are wrong,
+#: needs both pictures.
+HISTOGRAM_LAYERS = ["model.0.conv", "model.24.m.0", "model.17.cv3.conv"]
+
 
 def weight_panel(model) -> dict:
     """One layer's weights, its per-tensor grid, and its per-channel ranges."""
@@ -122,6 +135,40 @@ def activation_panel(model, n_images: int) -> dict:
     }
 
 
+def histogram_panels(model, n_images: int) -> dict:
+    """Full |activation| histograms for a few named layers, for the figures."""
+    from lib.trt_export import _letterbox_batch
+
+    mods = dict(conv_layers(model))
+    obs = {n: Observer(method="mse", bits=8) for n in HISTOGRAM_LAYERS}
+    handles = [mods[n].register_forward_pre_hook(
+        lambda _m, inp, _o=obs[n]: _o.collect(inp[0])) for n in HISTOGRAM_LAYERS]
+
+    paths = _calib.calib_paths(n_images)
+    with torch.no_grad():
+        for i in range(0, len(paths), 8):
+            arr = _letterbox_batch(paths[i:i + 8], _calib.RES, _calib.YOLOV5_REPO)
+            model(torch.from_numpy(arr).cuda().half())
+    for h in handles:
+        h.remove()
+
+    out = {}
+    for name, o in obs.items():
+        methods = {}
+        for m, pct in (("minmax", None), ("percentile", 99.99), ("entropy", None),
+                       ("mse", None)):
+            probe = Observer(method=m, bits=8, percentile=pct or 99.99)
+            probe.lo, probe.hi = o.lo, o.hi
+            probe.hist, probe.bin_width, probe.n_batches = o.hist, o.bin_width, o.n_batches
+            lo, hi = probe.range()
+            s_, _ = quant_params(lo, hi, bits=8, symmetric=True)
+            key = m if pct is None else f"{m}_{pct}"
+            methods[key] = round(float(s_.flatten()[0] * qrange(8, symmetric=True)[1]), 6)
+        out[name] = {"hist_counts": o.hist.cpu().tolist(), "bin_width": o.bin_width,
+                     "observed_max": float(o.hi.item()), "clips": methods}
+    return out
+
+
 def detect_panel(model, n_images: int) -> dict:
     """Per-channel ranges of the Detect output — the two-populations mechanism."""
     from lib.trt_export import _letterbox_batch
@@ -186,8 +233,15 @@ def main() -> None:
     log("e0", f"  one step = {det['per_tensor_step']:.3f}; a probability in [0,1] "
               f"gets {det['probability_levels']:.1f} levels")
 
+    log("e0", "collecting activation histograms for the clipping explainer")
+    hists = histogram_panels(model, args.images)
+    for n, h in hists.items():
+        log("e0", f"  {n:22s} max {h['observed_max']:.3f} | " +
+                  ", ".join(f"{k}={v:g}" for k, v in h["clips"].items()))
+
     _calib.write_json(args.out, {
         "experiment": "xp07_e0_concepts",
+        "histograms": hists,
         "purpose": "measured inputs for the explainer figures — every teaching "
                    "picture on the XP7 page is drawn from this detector, not a schematic",
         "resolution": _calib.RES,

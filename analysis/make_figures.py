@@ -2305,7 +2305,9 @@ def fig_xp07_concepts(records) -> Path | None:
                              gridspec_kw={"width_ratios": [1, 1, 1.35]})
     fig.suptitle("Quantization is one decision repeated: where do you put the grid?", y=1.06)
     style.subtitle(fig, "All three panels are measured on this detector — YOLOv5s at 512 px — "
-                        "not drawn as a schematic.", y=1.005)
+                        f"not drawn as a schematic.\nLeft and middle: the weights of "
+                        f"{w['layer']}. Right: the network input, over "
+                        f"{a['n_images']} calibration images.", y=1.0)
 
     # --- panel 1: the grid ------------------------------------------------
     ax = axes[0]
@@ -2419,8 +2421,9 @@ def fig_xp07_head(records) -> Path | None:
     fig.suptitle("INT8 has one step size per tensor. This tensor holds two populations "
                  "1,500x apart.", y=1.05, fontsize=14.5)
     style.subtitle(fig, "YOLOv5's final layer writes box coordinates in pixels and class "
-                        "probabilities in [0,1] side by side in one tensor. Measured over "
-                        "calibration images.", y=0.995)
+                        "probabilities in [0,1] side by side in one tensor.\nMaxima measured over "
+                        "the frozen calibration set; the step is what one per-tensor INT8 scale "
+                        "gives that tensor.", y=0.99)
 
     # ---- panel 1: what is in the tensor ---------------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -2540,8 +2543,9 @@ def fig_xp07e9(records) -> Path | None:
                  "you are willing to give up", y=0.975, fontsize=15)
     # Wrapped: an unbroken subtitle this long makes bbox_inches="tight" stretch
     # the whole figure to fit it.
-    style.subtitle(fig, "Every point is one engine measured on the Jetson Orin Nano Super at "
-                        "512 px unless labelled otherwise.\nMarker area is energy per 1,000 "
+    style.subtitle(fig, "Every point is one engine on the full 4,306-image test set, measured "
+                        "on the Jetson Orin Nano Super at 512 px unless labelled otherwise.\n"
+                        "Marker area is energy per 1,000 "
                         "frames (bigger dot, more joules) and is indicative only — XP7's engines "
                         "were integrated over a\nflat-out batch-16 window, the older rows over a "
                         "batch-1 one, and the same FP16 engine reads 43.3 vs 52.1 J/1k.",
@@ -2702,8 +2706,10 @@ def _xp07_metric_figure(key: str, fname: str, headline: str, blurb: str,
     # be wide enough for them or they run into the left panel's data.
     fig = plt.figure(figsize=(17.6, 5.8))
     gs = fig.add_gridspec(1, 2, width_ratios=[1, 1.0], wspace=0.52)
-    fig.suptitle(headline, y=1.045, fontsize=14.5)
-    style.subtitle(fig, blurb, y=0.985)
+    fig.suptitle(headline, y=1.05, fontsize=14.5)
+    style.subtitle(fig, blurb + "\nOne dot or bar = one TensorRT engine on the full "
+                                "4,306-image test set; marker area is energy per 1,000 frames.",
+                   y=0.978)
 
     # ---- panel 1: this metric vs throughput -----------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -2903,8 +2909,9 @@ def fig_xp07e2(records) -> Path | None:
     gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1.25, 0.85], wspace=0.30)
     fig.suptitle("Calibration decides almost everything at INT8 — for free, and both ends "
                  "of the sweep are wrong", y=1.06, fontsize=14.5)
-    style.subtitle(fig, "Whole network W8A8, per-channel weights, no retraining, "
-                        "512 calibration images. Validation split.", y=1.0)
+    style.subtitle(fig, "Whole network W8A8, per-channel weights, no retraining, 512 calibration "
+                        "images.\nOne bar pair (left) or line (middle) = one calibration method, "
+                        f"scored on the {d['n_val_images']}-image validation split.", y=0.995)
 
     # ---- panel 1: what each method costs --------------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -3020,8 +3027,9 @@ def fig_xp07e4(records) -> Path | None:
     fig, axes = plt.subplots(1, 3, figsize=(17.2, 5.2))
     fig.suptitle("INT8 on the board: the speed is real, and so is what it costs "
                  "distant smoke", y=1.05, fontsize=14.5)
-    style.subtitle(fig, "Full 4,306-image test set at 512 px, batch 16, Jetson Orin Nano "
-                        "Super. Every engine built from the same ONNX.", y=0.995)
+    style.subtitle(fig, "Full 4,306-image test set at 512 px, batch 16, Jetson Orin Nano Super. "
+                        "Every engine built from the same ONNX.\nOne bar = one built engine; "
+                        "min-max calibration throughout (E2 measures what that costs).", y=0.985)
 
     x = np.arange(len(order))
 
@@ -3134,8 +3142,9 @@ def fig_xp07e5(records) -> Path | None:
                              gridspec_kw={"width_ratios": [1.15, 1]})
     fig.suptitle("Quantizing the weights is free. Quantizing the activations is the whole cost.",
                  y=1.05, fontsize=14)
-    style.subtitle(fig, "Whole network, min-max calibration, no retraining. Validation split, "
-                        f"{d['n_val_images']} images.", y=0.995)
+    style.subtitle(fig, "Whole network, min-max calibration, no retraining. One bar = one "
+                        f"quantization target,\nscored on the {d['n_val_images']}-image "
+                        "validation split.", y=0.99)
 
     # ---- panel 1: what each target keeps, and what it weighs -------------
     ax = axes[0]
@@ -3219,7 +3228,8 @@ def fig_xp07e3(records) -> Path | None:
     fig.suptitle("The scale count nobody needs, and the zero point nobody mentions",
                  y=1.05, fontsize=14)
     style.subtitle(fig, "Whole network W8A8, min-max calibration, no retraining. Weights are "
-                        "symmetric in every arm.", y=0.995)
+                        "symmetric in every arm.\nOne bar = one whole-network setting, scored on "
+                        f"the {d['n_val_images']}-image validation split.", y=0.985)
 
     # ---- panel 1: the four arms -----------------------------------------
     ax = axes[0]
@@ -3287,7 +3297,9 @@ def fig_xp07e6(records) -> Path | None:
     fig.suptitle("The damage has an address: three of sixty convolutions",
                  y=1.05, fontsize=14.5)
     style.subtitle(fig, "Whole network W8A8, min-max calibration, no retraining. The layers left "
-                        "in FP16 were read out of E1's map, not chosen by hand.", y=0.995)
+                        "in FP16 were read out of E1's map, not chosen by hand.\nOne bar = one "
+                        f"whole-network arm, scored on the {d['n_val_images']}-image validation "
+                        "split.", y=0.985)
 
     # ---- panel 1: the decode cliff --------------------------------------
     ax = axes[0]
@@ -3392,7 +3404,8 @@ def fig_xp07e9b(records) -> Path | None:
     style.subtitle(fig, "Left and middle: fake-quant on the 1,721-image validation split. "
                         "Right: TensorRT engines on the 4,306-image test split. Each block "
                         "is normalised to its own unquantized baseline, because the two "
-                        "splits are 17 points apart.", y=0.975)
+                        "splits are 17 points apart.\nOne bar (left) = one axis; one dot "
+                        "(middle) = one arm; one dot (right) = one built engine.", y=0.968)
 
     # ---- panel 1: how much each axis is worth ---------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -3514,11 +3527,141 @@ def fig_xp07e9b(records) -> Path | None:
     return save(fig, "xp07e9b_quant.png")
 
 
+
+
+def fig_xp07_clipping(records) -> Path | None:
+    """What clipping is, and why both ends of the sweep are wrong — on real tensors."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07_concepts.json")
+    if not d or "histograms" not in d:
+        return None
+    H = d["histograms"]
+    INNER, INPUT = "model.24.m.0", "model.0.conv"
+    if INNER not in H or INPUT not in H:
+        return None
+
+    nice = {"minmax": "min-max", "percentile_99.99": "percentile 99.99",
+            "entropy": "entropy (TRT default)", "mse": "MSE"}
+    MSIZE = {"minmax": 210, "percentile_99.99": 140, "entropy": 92, "mse": 48}
+    mcol = {"minmax": style.RED, "percentile_99.99": style.AQUA,
+            "entropy": "#8e44ad", "mse": style.BLUE}
+
+    def prep(name):
+        h = np.array(H[name]["hist_counts"], float)
+        bw = H[name]["bin_width"]
+        return h, bw, (np.arange(len(h)) + 0.5) * bw, h.sum(), H[name]
+
+    def errors(c, h, T):
+        S = T / 127.0
+        lo = c <= T
+        rnd = ((c[lo] - np.round(c[lo] / S) * S) ** 2 * h[lo]).sum()
+        clp = ((c[~lo] - T) ** 2 * h[~lo]).sum()
+        return rnd, clp
+
+    fig, axes = plt.subplots(1, 3, figsize=(17.4, 5.2))
+    fig.suptitle("Calibration is one choice: where to stop. Clip too little and every value is "
+                 "coarse; clip too much and real signal is erased.", y=1.06, fontsize=14)
+    style.subtitle(fig, "Measured activation histograms from this detector over the frozen "
+                        "calibration set. INT8 spreads 127 steps between 0 and the clip point, "
+                        "and flattens everything above it onto that point.", y=0.995)
+
+    # ---- panel 1: what clipping does ------------------------------------
+    h, bw, c, tot, meta = prep(INNER)
+    ax = axes[0]
+    T = meta["clips"]["mse"]
+    ax.fill_between(c, h, color=style.BLUE, alpha=0.30, step="mid", zorder=2)
+    ax.plot(c, h, color=style.BLUE, lw=1.1, zorder=3)
+    ax.set_yscale("log")
+    ax.axvline(T, color=style.INK, lw=2.0, zorder=5)
+    ax.axvspan(T, c[-1], color=style.RED, alpha=0.13, zorder=1)
+    pct = h[c > T].sum() / tot * 100
+    ax.annotate(f"clip point\nT = {T:.1f}", xy=(T, h[h > 0].max() * 0.25),
+                xytext=(T * 0.42, h[h > 0].max() * 0.25), ha="right", va="center",
+                fontsize=10, color=style.INK, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=style.INK, lw=1.4))
+    ax.text(T * 1.06, h[h > 0].max() * 0.012,
+            f"only {pct:.3f}% of values\nare out here — and every\none is stored as {T:.0f}",
+            fontsize=9.4, color=style.RED, fontweight="bold", va="center")
+    ax.text(T * 0.5, h[h > 0].max() * 0.0015,
+            f"127 steps are spread\nacross 0 → {T:.0f}", ha="center",
+            fontsize=9.4, color=style.BLUE, fontweight="bold")
+    ax.set_xlim(0, meta["observed_max"] * 1.02)
+    ax.set_xlabel(f"activation value arriving at {INNER}")
+    ax.set_ylabel("how many values, log scale")
+    ax.set_title("1. Clipping = choosing where to stop", fontsize=12, loc="left")
+    style.tidy(ax)
+
+    # ---- panels 2 and 3: the trade-off on two tensors --------------------
+    for ax, name, title in (
+            (axes[1], INNER, "2. A long-tailed inner tensor:\nthe best choice clips"),
+            (axes[2], INPUT, "3. The bounded input tensor:\nthe best choice clips nothing")):
+        h, bw, c, tot, meta = prep(name)
+        Ts = np.linspace(meta["observed_max"] * 0.03, meta["observed_max"], 220)
+        E = np.array([errors(c, h, t) for t in Ts])
+        rnd, clp = E[:, 0], E[:, 1]
+        tot_e = rnd + clp
+        ax.plot(Ts, np.maximum(rnd, 1e-3), color=style.BLUE, lw=1.6,
+                label="rounding error (coarse steps)")
+        ax.plot(Ts, np.maximum(clp, 1e-3), color=style.RED, lw=1.6,
+                label="clipping error (signal erased)")
+        ax.plot(Ts, tot_e, color=style.INK, lw=2.4, label="total")
+        ax.set_yscale("log")
+        ibest = int(np.argmin(tot_e))
+        best, ebest = Ts[ibest], tot_e[ibest]
+        ax.axvline(best, color=style.AQUA, lw=1.6, ls="--", zorder=4)
+        right = best > meta["observed_max"] * 0.6
+        ax.annotate(f"best T = {best:.3g}\n({best / meta['observed_max'] * 100:.0f}% of max)",
+                    xy=(best, 0.03), xycoords=("data", "axes fraction"),
+                    xytext=(-7 if right else 7, 0), textcoords="offset points",
+                    ha="right" if right else "left", va="bottom",
+                    fontsize=9.4, color="#0d5f43", fontweight="bold")
+        worst = None
+        for k, sz in MSIZE.items():
+            T = meta["clips"].get(k)
+            if T is None:
+                continue
+            r, cl = errors(c, h, T)
+            ax.scatter([T], [r + cl], s=sz, color=mcol[k], zorder=6,
+                       edgecolor="white", linewidth=1.2)
+            if worst is None or r + cl > worst[1]:
+                worst = (T, r + cl, k)
+        # say what the worst choice actually costs, in multiples of the best
+        T, e, k = worst
+        ax.text(0.975, 0.955, f"worst choice here: {nice[k]}\nstops at T = {T:.3g}, and costs\n"
+                              f"{e / ebest:,.0f}x the error of the best",
+                transform=ax.transAxes, ha="right", va="top",
+                fontsize=9.4, color=mcol[k], fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.45", fc="white", ec=mcol[k], lw=1.1, alpha=0.95))
+        ax.set_ylim(bottom=tot_e.min() / 1e5, top=tot_e.max() * 40)
+        ax.set_xlabel(f"clip point T for {name}")
+        ax.set_ylabel("squared error over the tensor, log scale")
+        ax.set_title(title, fontsize=12, loc="left")
+        style.tidy(ax)
+    curves = [plt.Line2D([], [], color=style.BLUE, lw=2, label="rounding error — steps too coarse"),
+              plt.Line2D([], [], color=style.RED, lw=2, label="clipping error — signal erased"),
+              plt.Line2D([], [], color=style.INK, lw=2.6, label="total error (what you pay)")]
+    leg1 = fig.legend(handles=curves, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.085),
+                      frameon=False, fontsize=10, title="panels 2 and 3: the two errors trade off "
+                                                       "(markers nest, so a hidden method still shows as a ring)")
+    leg1.get_title().set_fontweight("bold")
+    fig.add_artist(leg1)
+    handles = [plt.Line2D([], [], marker="o", ls="", color=mcol[k],
+                          markersize=(MSIZE[k] / 3.1) ** 0.5 * 1.55, label=nice[k])
+               for k in MSIZE]
+    leg2 = fig.legend(handles=handles, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.195),
+                      frameon=False, fontsize=10, title="where each calibration method stops")
+    leg2.get_title().set_fontweight("bold")
+    fig.tight_layout()
+    return save(fig, "xp07_clipping.png")
+
+
 BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
             fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9, fig_xp15, fig_xp15_confusion,
             fig_xp06e6,
             fig_xp06e7,
-            fig_xp07_concepts, fig_xp07_head, fig_xp07e9,
+            fig_xp07_concepts, fig_xp07_head, fig_xp07_clipping, fig_xp07e9,
             fig_xp07e9_fire, fig_xp07e9_tiny, fig_xp07e1, fig_xp07e2, fig_xp07e4, fig_xp07e5, fig_xp07e3, fig_xp07e6, fig_xp07e9b]
 
 
