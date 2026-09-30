@@ -398,6 +398,29 @@ measured: fake-quant leaves every tensor a float. E4's engines are the measured 
 scale factors out of the accumulator and folds into the following batch-norm. Symmetric vs
 asymmetric activations is expected to be small at INT8.
 
+**First: the scale is not a new decision. It is E2's clip point, divided by 127.**
+
+For symmetric INT8, `quant_params()` does exactly one line of arithmetic on the calibrated range:
+
+```python
+amax  = max(|lo|, |hi|)     # this is T — E2's clip point
+scale = amax / 127          # so S = T / 127
+```
+
+E2's entropy arm stopped at **T = 0.4475**; the scale TensorRT stores in its calibration cache is
+**0.0035237**. Same number to float32 precision. So the two experiments are consecutive steps in
+one pipeline, not competing choices:
+
+| step | decides | where |
+|---|---|---|
+| **calibrate** | the range `lo … hi` — *where to stop* | **E2** |
+| **derive** | `S` and `Z` from that range | **E3** |
+| **repeat** | once per tensor, or once per output filter | **E3** |
+
+**Clipping comes first, always** — the scale is what clipping produces, so there is no ordering to
+choose. E3 never re-picks the range; it asks how that range is *carved up* (`Z`) and how many
+ranges are kept (granularity).
+
 **What a scale factor is**
 
 INT8 stores a whole number `q` between −128 and 127. The real number is rebuilt with two

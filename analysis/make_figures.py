@@ -2905,8 +2905,9 @@ def fig_xp07_scales(records) -> Path | None:
     fig.suptitle("A scale factor is a step size. How big the step is, and how many you keep.",
                  y=1.04, fontsize=14)
     style.subtitle(fig, "INT8 stores a whole number q; the real value is recovered as "
-                        "r = S x (q - Z). S is the step size, Z is which code means zero. "
-                        "Both panels use this detector's own tensors.", y=0.995)
+                        "r = S x (q - Z). S is the step size, Z is which code means zero.\n"
+                        "S is not a new decision: for symmetric INT8 it is the previous figure's "
+                        "clip point divided by 127. Clipping first, scale second.", y=0.995)
 
     # ---- panel 1: what Z buys, on a real one-sided tensor -----------------
     for y, (lo, label, step) in enumerate(((-HI, "SYMMETRIC  (Z fixed at the middle)", sym_step),
