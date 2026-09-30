@@ -2957,23 +2957,40 @@ def fig_xp07e2(records) -> Path | None:
     sizes = d.get("sizes") or {}
     ns = sorted(int(k) for k in sizes)
     if ns:
-        ax.plot(ns, [sizes[str(n)]["map50"] / base_map * 100 for n in ns],
-                color=style.BLUE, marker="o", lw=1.8, zorder=3, label="aggregate mAP50")
-        ax.plot(ns, [sizes[str(n)]["tiny_plume"] / base_tiny * 100 for n in ns],
-                color=style.ORANGE, marker="o", lw=1.8, zorder=3, label="tiny plumes")
+        agg_n = [sizes[str(n)]["map50"] / base_map * 100 for n in ns]
+        tin_n = [sizes[str(n)]["tiny_plume"] / base_tiny * 100 for n in ns]
+        # everything from 32 on is flat: shade it so "enough" is visible, not inferred
+        ax.axvspan(32, ns[-1], color=style.AQUA, alpha=0.10, zorder=1)
+        ax.plot(ns, agg_n, color=style.BLUE, marker="o", lw=1.8, zorder=3,
+                label="aggregate mAP50")
+        ax.plot(ns, tin_n, color=style.ORANGE, marker="o", lw=1.8, zorder=3,
+                label="tiny plumes")
         ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
         ax.set_xscale("log", base=2)
         ax.set_xticks(ns)
         ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
-        ax.set_ylim(80, 108)
-    ax.set_xlabel("calibration images (nested subsets)")
+        ax.set_ylim(80, 112)
+        ax.annotate(f"8 images is too few:\ntiny plumes lose {100 - tin_n[0]:.0f}%",
+                    xy=(ns[0], tin_n[0]), xytext=(11, 84), fontsize=9,
+                    color=style.ORANGE, fontweight="bold",
+                    arrowprops=dict(arrowstyle="->", color=style.ORANGE, lw=1.3))
+        ax.text(np.sqrt(32 * ns[-1]), 109.5, "32 images on, nothing improves",
+                ha="center", va="top", fontsize=9.4, color="#0d5f43", fontweight="bold")
+        ax.annotate(f"{tin_n[-1]:.0f}% — the slice moves ±5 points\nhere with no trend; "
+                    "not explained",
+                    xy=(ns[-1], tin_n[-1]), xytext=(-8, -26), textcoords="offset points",
+                    ha="right", fontsize=8.6, color=style.INK_2,
+                    arrowprops=dict(arrowstyle="->", color=style.INK_2, lw=1.1))
+    ax.set_xlabel("how many images the rule was calibrated on\n"
+                  "(nested subsets: the 8 are the first 8 of the 32, and so on)")
     ax.set_ylabel("DETECTION ACCURACY kept\n(mAP50, as % of the unquantized FP16 model)")
-    ax.set_title("2. …and 32 calibration images is enough", fontsize=12, loc="left")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2,
+    ax.set_title("2. Same rule (percentile 99.99), more images — 32 is enough",
+                 fontsize=12, loc="left")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2,
               fontsize=9, frameon=False)
     style.tidy(ax)
 
-    fig.subplots_adjust(top=0.74, bottom=0.20)
+    fig.subplots_adjust(top=0.74, bottom=0.26)
     return save(fig, "xp07e2_calibration.png")
 
 

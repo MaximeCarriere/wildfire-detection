@@ -341,24 +341,38 @@ out of the tensors alone, so it is a property of this network's activations and 
 the exact number XP10 decoded from TensorRT's own calibration cache (0.0035237 × 127). The
 simulation predicts the engine rather than approximating it.
 
-**Results** — unquantized: **0.9494** mAP50, **0.3363** tiny, **14.05 MB**. Every "kept" column
-below is **detection accuracy** as a percentage of those two baselines.
+**Results** — unquantized FP16: **0.9494** mAP50 overall, **0.3363** on tiny plumes, **14.05 MB**.
+Every percentage below is **detection accuracy** against those two baselines.
 
 ![Calibration decides almost everything at INT8](../../results/figures/xp07e2_calibration.png)
 
-| method | size | mAP50 | kept | tiny | kept | input range |
-|---|---:|---:|---:|---:|---:|---|
-| unquantized FP16 | 14.05 MB | 0.9494 | 100% | 0.3363 | 100% | — |
-| **percentile 99.99** | 7.08 MB | **0.9458** | 99.6% | **0.3193** | **94.9%** | 0–0.9998 |
-| MSE | 7.08 MB | 0.9451 | 99.5% | 0.3232 | 96.1% | 0–0.9998 |
-| percentile 99.9 | 7.08 MB | 0.9345 | 98.4% | 0.2312 | 68.7% | 0–0.9998 |
-| **min-max** — *XP10's fix* | 7.08 MB | 0.8817 | 92.9% | **0.1282** | **38.1%** | 0–1.0000 |
-| entropy — *TRT's default* | 7.08 MB | 0.3243 | 34.2% | 0.0052 | 1.5% | **0–0.4475** |
+**Panel 1 — the rule you pick is the whole result.** Five arms, one config string apart. Same
+weights, same 7.08 MB, same speed. Read the orange bars, because the tiny-plume slice is where the
+rules separate:
 
-- **The hypothesis is wrong: the spread is 0.62 mAP50**, larger than pruning criterion, resolution,
-  or model choice anywhere in this series.
-- **Every arm ships an identical 7.08 MB model.** The method is a config string — the spread is
-  bought for **zero bytes, zero speed, zero training time**.
+| the rule | overall | tiny plumes | in plain terms |
+|---|---:|---:|---|
+| **percentile 99.99** | **0.9458** (99.6%) | **0.3193** (94.9%) | **the winner** — costs 5% of the hardest slice |
+| MSE | 0.9451 (99.5%) | 0.3232 (96.1%) | tied with it; either is a safe default |
+| percentile 99.9 | 0.9345 (98.4%) | 0.2312 (68.7%) | one decimal place costs **26 points** of tiny |
+| min-max *(XP10's fix)* | 0.8817 (92.9%) | 0.1282 (38.1%) | loses **62%** of tiny plumes |
+| entropy *(TensorRT's default)* | 0.3243 (34.2%) | 0.0052 (1.5%) | **not a detector any more** |
+
+Four things follow from that panel alone:
+
+1. **The default is catastrophic.** Build an INT8 engine without choosing, and TensorRT picks
+   entropy: 34% of overall accuracy, 1.5% on tiny plumes. Not degraded — **broken**.
+2. **Overall accuracy hides it.** min-max looks acceptable at 93% overall; on tiny plumes it is at
+   38%. Anyone reporting one aggregate number would ship it.
+3. **The top two are free and tied.** percentile 99.99 and MSE both land within 5% of FP16 on the
+   hardest slice. There is no reason to accept anything worse.
+4. **It costs nothing to be right.** Every arm is the same 7.08 MB model at the same speed. The
+   62-point spread is bought with a config string — no retraining, no extra bytes, no latency.
+
+**Against the hypothesis, and the rest of the series:**
+
+- **The hypothesis is wrong.** The spread across sane methods is **0.62 mAP50** — larger than
+  pruning criterion, resolution, or model choice anywhere in this series.
 - **XP10's prescription is wrong.** It compared entropy against min-max — the two *ends* of the
   sweep — and stopped. Min-max costs **62%** of tiny-plume accuracy; percentile 99.99 costs **5%**.
 - **Both ends fail for opposite reasons.** On `model.24.m.0`: entropy picks 0–**11.1** when the
@@ -367,7 +381,11 @@ below is **detection accuracy** as a percentage of those two baselines.
   layers min-max is **2.7x wider on the median**, up to 8.6x, wider by >2x on **56 of 60**.
 - **The two methods agree on the input tensor** (1.0000 vs 0.9998). XP10's diagnosis was about
   entropy and the input; the min-max problem is in the internal activations.
-- **Size is worth nothing past 32 images**: 8 → 99.2%, 32 → 99.8%, 512 → 99.6%.
+- **Panel 2 — how much data calibration needs: 32 images.** Same rule throughout, only the image
+  count changes. 8 is too few (tiny plumes 88.6%); 32 reaches 99.1% and **nothing after that
+  improves** (128 → 99.9%, 512 → 94.9%). The 512 point is *lower* than 128, so this is not a curve
+  that keeps rising — past 32 the tiny slice moves by ~5 points with no trend. That wobble is
+  unexplained and is listed as an open question, not called noise: it has not been repeated.
 
 **Where the 7.08 MB goes** — since "INT8 halves the model" deserves itemising:
 
