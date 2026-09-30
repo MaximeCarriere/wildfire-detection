@@ -20,14 +20,29 @@
         "tiny_plume": 0.1805
       },
       "damage": {
-        "map50": 0.8196,
-        "small_plume": 0.6173,
-        "tiny_plume": 0.0655
+        "map50": 0.8186,
+        "small_plume": 0.6137,
+        "tiny_plume": 0.0577
       },
-      "quantization_cost_pct": 4.742,
-      "quantization_cost_tiny_pct": 63.712,
+      "quantization_cost_pct": 4.858,
+      "quantization_cost_tiny_pct": 68.033,
       "calibration": "re-collected on the pruned model, never reused from dense",
       "start_from": "yolov5s_pruned25_recovered.pt"
+    },
+    "prune_quantize_then_recover": {
+      "damage": {
+        "map50": 0.0,
+        "small_plume": 0.0,
+        "tiny_plume": 0.0
+      },
+      "start_from": "yolov5s_pruned25_raw.pt",
+      "recovered": {
+        "epochs": 12,
+        "map50": 0.0001,
+        "small_plume": 0.0001,
+        "tiny_plume": 0.0,
+        "train_seconds": 10811.0
+      }
     }
   },
   "board": "skipped",

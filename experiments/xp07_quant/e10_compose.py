@@ -39,6 +39,8 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+
+import torch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -155,10 +157,40 @@ def main() -> None:
             _calib.run_calibration(model, q, args.calib_images, tag="e10_recal")
             q.enable()
             post = _calib.score(model, val, "e10_pqr_post")
+
+            # Three controls, because the first run of this arm produced a clean
+            # training curve (loss 1.166 -> 0.804 over 12 epochs) and a recovered
+            # mAP50 of 0.0001, and nothing in the output distinguished between:
+            #   (a) the fine-tune never recovered the pruned network,
+            #   (b) it recovered, and re-calibrating afterwards broke it,
+            #   (c) it recovered, and the quantization at evaluation broke it.
+            # The model was not saved, so none of them could be told apart without
+            # spending the three hours again. This is XP6-E7's guardrail rule
+            # applied where it should have been from the start: prove the loop
+            # returns a working model before believing any number it produces.
+            q.restore()
+            unquant = _calib.score(model, val, "e10_pqr_post_unquantized")
+            log("e10", f"control — same weights, quantization OFF: "
+                       f"map50={unquant['map50']:.4f}")
+            q.enable()
+
+            ckpt = _calib.WEIGHTS / "xp07_e10_pqr_recovered.pt"
+            torch.save({"model": model}, ckpt)
+            log("e10", f"saved {ckpt.name} so this is diagnosable without a re-run")
+
             row["recovered"] = {"epochs": args.recover_epochs, "map50": post["map50"],
                                 "small_plume": post["small_plume"]["map50"],
                                 "tiny_plume": post["tiny_plume"]["map50"],
-                                "train_seconds": round(time.time() - t0, 1)}
+                                "train_seconds": round(time.time() - t0, 1),
+                                "control_unquantized": {
+                                    "map50": unquant["map50"],
+                                    "small_plume": unquant["small_plume"]["map50"],
+                                    "tiny_plume": unquant["tiny_plume"]["map50"],
+                                    "means": "if this is healthy the fine-tune worked "
+                                             "and the fault is in the quantization or "
+                                             "the re-calibration; if it is ~0 the "
+                                             "fine-tune never recovered the network"},
+                                "checkpoint": str(ckpt.name)}
             log("e10", f"recovered map50={post['map50']:.4f}")
         rows["prune_quantize_then_recover"] = row
         q.restore()
