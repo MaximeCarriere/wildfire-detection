@@ -2886,6 +2886,95 @@ def fig_xp07e1(records) -> Path | None:
 
 
 
+def fig_xp07_scales(records) -> Path | None:
+    """What a scale factor is, what the zero point does, and how many scales are needed."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    d = _side("xp07_concepts.json")
+    if not d or "weights" not in d or "histograms" not in d:
+        return None
+    w = d["weights"]
+    HI = d["histograms"]["model.24.m.0"]["observed_max"]
+    LO = -0.278465                      # SiLU's floor: min of x*sigmoid(x), a hard bound
+    sym_step, asym_step = HI / 127, (HI - LO) / 255
+    wasted = (HI + LO) / (2 * HI) * 100
+
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(16.2, 5.4),
+                                 gridspec_kw={"width_ratios": [1.15, 1.0]})
+    fig.suptitle("A scale factor is a step size. How big the step is, and how many you keep.",
+                 y=1.04, fontsize=14)
+    style.subtitle(fig, "INT8 stores a whole number q; the real value is recovered as "
+                        "r = S x (q - Z). S is the step size, Z is which code means zero. "
+                        "Both panels use this detector's own tensors.", y=0.995)
+
+    # ---- panel 1: what Z buys, on a real one-sided tensor -----------------
+    for y, (lo, label, step) in enumerate(((-HI, "SYMMETRIC  (Z fixed at the middle)", sym_step),
+                                           (LO, "ASYMMETRIC  (Z free to slide)", asym_step))):
+        y = 1 - y
+        if lo < LO:                                  # the dead half
+            ax.barh(y, LO - lo, left=lo, height=0.42, color=style.RED, alpha=0.30, zorder=3)
+            ax.text((lo + LO) / 2, y, f"{wasted:.0f}% of the codes\nland here, where this\n"
+                                      "tensor has no values",
+                    ha="center", va="center", fontsize=9.2, color=style.RED, fontweight="bold",
+                    zorder=6, bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none",
+                                        alpha=0.80))
+        ax.barh(y, HI - LO, left=LO, height=0.42, color=style.AQUA, alpha=0.45, zorder=3)
+        for t in np.arange(lo, HI, step * 8):        # every 8th code, so density is visible
+            ax.plot([t, t], [y - 0.21, y + 0.21], color=style.INK, lw=0.5, alpha=0.5, zorder=4)
+        ax.text(-HI * 1.03, y + 0.36, label, fontsize=10.2, fontweight="bold",
+                color=style.INK, va="bottom")
+        ax.text(HI * 1.02, y, f"step S\n= {step:.3f}", fontsize=9.6, fontweight="bold",
+                color=style.INK, va="center", ha="left")
+    ax.annotate("same 8 bits, same tensor —\nbut the steps are 2.0x finer",
+                xy=(HI * 0.55, 0.22), xytext=(HI * 0.10, -0.42), fontsize=9.6,
+                color="#0d5f43", fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color="#0d5f43", lw=1.4))
+    ax.set_xlim(-HI * 1.10, HI * 1.30)
+    ax.set_ylim(-0.75, 1.75)
+    ax.set_yticks([])
+    ax.set_xlabel("real value represented, for the tensor arriving at model.24.m.0\n"
+                  f"max {HI:.0f} measured; floor {LO:.3f} is SiLU's hard bound, "
+                  "so the tensor is one-sided")
+    ax.set_title("1. Where the 256 codes are put", fontsize=12.5, loc="left")
+    style.tidy(ax)
+    ax.spines["left"].set_visible(False)
+
+    # ---- panel 2: how many scales -----------------------------------------
+    a = np.sort(np.array(w["per_channel_absmax"]))[::-1]
+    pt = w["per_tensor_scale"] * 127
+    xs = np.arange(len(a))
+    bx.fill_between(xs, a, color=style.BLUE, alpha=0.30, zorder=3)
+    bx.plot(xs, a, color=style.BLUE, lw=1.4, zorder=4)
+    bx.axhline(pt, color=style.RED, ls="--", lw=1.8, zorder=5)
+    bx.text(len(a) * 0.02, pt * 1.015, f"ONE shared scale must reach the widest filter, "
+                                       f"{pt:.3f}", fontsize=9.6, color=style.RED,
+            fontweight="bold", va="bottom")
+    bx.text(len(a) * 0.30, a[int(len(a) * 0.30)] * 0.62, "PER-FILTER scales follow this curve\n"
+                                                         "— each filter gets its own step size",
+            fontsize=9.4, color="#1b4f86", fontweight="bold", va="top")
+    bx.fill_between(xs, a, pt, color=style.RED, alpha=0.10, zorder=2)
+    med = float(np.median(a))
+    bx.annotate(f"the median filter only reaches {med:.3f}\n"
+                f"— it uses {med / pt * 100:.0f}% of the 127 codes,\n"
+                "and the shaded gap is what it wastes",
+                xy=(len(a) * 0.5, med), xytext=(len(a) * 0.30, pt * 0.72),
+                fontsize=9.4, color=style.INK, fontweight="bold",
+                arrowprops=dict(arrowstyle="->", color=style.INK_2, lw=1.2))
+    bx.text(len(a) * 0.985, pt * 0.90, f"widest / narrowest = "
+                                       f"{w['widest_over_narrowest']:.1f}x",
+            ha="right", va="top", fontsize=9.6, color=style.INK_2, fontweight="bold")
+    bx.set_xlim(0, len(a))
+    bx.set_ylim(0, pt * 1.16)
+    bx.set_xlabel(f"the {len(a)} output filters of {w['layer']}, widest first")
+    bx.set_ylabel("largest weight the filter contains")
+    bx.set_title("2. One scale for the tensor, or one per filter?", fontsize=12.5, loc="left")
+    style.tidy(bx)
+    fig.tight_layout()
+    fig.subplots_adjust(top=0.86, wspace=0.20)
+    return save(fig, "xp07_scales.png")
+
+
 def fig_xp07e2(records) -> Path | None:
     """Both ends of the clipping sweep are wrong, and the middle was never tested."""
     import matplotlib.pyplot as plt
@@ -3637,7 +3726,7 @@ BUILDERS = [fig_xp00, fig_xp01, fig_xp02, fig_xp06, fig_xp09, fig_xp10,
             fig_xp12, fig_xp06e1, fig_xp06e2, fig_xp06e3, fig_xp06e4, fig_xp06e4b, fig_xp06e5, fig_xp06e7b, fig_xp06e9, fig_xp15, fig_xp15_confusion,
             fig_xp06e6,
             fig_xp06e7,
-            fig_xp07_concepts, fig_xp07_head, fig_xp07_clipping, fig_xp07e9,
+            fig_xp07_concepts, fig_xp07_head, fig_xp07_clipping, fig_xp07_scales, fig_xp07e9,
             fig_xp07e9_fire, fig_xp07e9_tiny, fig_xp07e1, fig_xp07e2, fig_xp07e4, fig_xp07e5, fig_xp07e3, fig_xp07e6, fig_xp07e9b]
 
 

@@ -398,9 +398,38 @@ measured: fake-quant leaves every tensor a float. E4's engines are the measured 
 scale factors out of the accumulator and folds into the following batch-norm. Symmetric vs
 asymmetric activations is expected to be small at INT8.
 
-**Why the zero point should matter.** SiLU is bounded below at ≈−0.278 and unbounded above, so
-post-activation tensors are **one-sided**; a symmetric range spends nearly half its 255 codes on
-values that never occur.
+**What a scale factor is**
+
+INT8 stores a whole number `q` between −128 and 127. The real number is rebuilt with two
+constants:
+
+```
+r  =  S × (q − Z)
+```
+
+- **`S`, the scale — a step size.** It is the gap between one code and the next. A tensor reaching
+  142 spread over 127 codes has `S = 1.118`, so nothing finer than ~1.1 can be represented.
+- **`Z`, the zero point — which code means zero.** *Symmetric* nails `Z` to the middle, so the
+  range is forced to `−T … +T`. *Asymmetric* lets `Z` slide, so the range can be `lo … hi`.
+
+E3 turns two knobs on these: **how many `S` values to keep** (one per tensor, or one per output
+filter) and **whether `Z` is allowed to move**.
+
+![What a scale factor is, and how many are needed](../../results/figures/xp07_scales.png)
+
+**Panel 1 — why `Z` matters here.** SiLU cannot go below **−0.278**, so every post-activation
+tensor in this network is **one-sided**: it runs from ≈0 up to its maximum, with nothing
+underneath. Forcing `Z` to the middle makes the quantizer cover `−142 … +142` when the data only
+occupies `−0.278 … 142` — **49.9% of the codes describe values the tensor never produces**.
+Letting `Z` slide covers exactly `−0.278 … 142`, which halves the step (1.118 → 0.558):
+**2.0x the resolution, from the same 8 bits, for free.**
+
+**Panel 2 — why per-filter does not.** One shared scale must reach the widest filter (0.323), so
+narrower filters use only part of the code range — the median filter reaches 0.073 and uses **22%**
+of its 127 codes. That waste is real, but small: widest / narrowest is only **7.7x** here, against
+**100x+** in the textbook case (Lecture 06's MobileNetV2 depthwise layer). And E1 already located
+INT8's damage in **activations at three head tensors**, not in weight resolution — so buying
+weights more precision fixes something that was not broken.
 
 **Method**
 
@@ -414,30 +443,39 @@ values that never occur.
 
 ![The scale count nobody needs, and the zero point nobody mentions](../../results/figures/xp07e3_granularity.png)
 
-| arm | weight scales | overhead | size | mAP50 | kept | tiny | kept |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| unquantized FP16 | — | — | 14.05 MB | 0.9494 | 100% | 0.3363 | 100% |
-| per-tensor, symmetric | 60 | 0.24 KB | 7.045 MB | 0.8804 | 92.7% | 0.1168 | 34.7% |
-| per-channel, symmetric | 9,567 | 38.3 KB | 7.083 MB | 0.8817 | 92.9% | 0.1282 | 38.1% |
-| per-channel, **asymmetric** | 9,567 | 38.3 KB | 7.083 MB | 0.9222 | 97.1% | 0.1348 | 40.1% |
-| **per-tensor, asymmetric** | **60** | **0.24 KB** | **7.045 MB** | **0.9228** | **97.2%** | 0.1330 | 39.5% |
+| arm | scales | size | mAP50 | kept | tiny | kept |
+|---|---:|---:|---:|---:|---:|---:|
+| unquantized FP16 | — | 14.05 MB | 0.9494 | 100% | 0.3363 | 100% |
+| per-tensor, symmetric | 60 | 7.045 MB | 0.8804 | 92.7% | 0.1168 | 34.7% |
+| per-channel, symmetric | 9,567 | 7.083 MB | 0.8817 | 92.9% | 0.1282 | 38.1% |
+| per-channel, **asymmetric** | 9,567 | 7.083 MB | 0.9222 | 97.1% | 0.1348 | 40.1% |
+| **per-tensor, asymmetric** | **60** | **7.045 MB** | **0.9228** | **97.2%** | 0.1330 | 39.5% |
 
-- **The hypothesis is wrong on both counts.** Per-channel: **+0.0013 mAP50**, inside run-to-run
-  noise. Asymmetric activations: **+0.0405** — **31x more**.
-- **The best arm is the smallest.** Per-tensor asymmetric leads nominally (0.9228 vs 0.9222) with
-  **60 scales instead of 9,567** and 38 KB less.
-- **Why per-channel has nothing to fix here:** E0 measured the widest output filter's range at only
-  **7.7x** the narrowest. The textbook case (Lecture 06's MobileNetV2 depthwise layer) is 100x+.
-- **E2 and E3 are one disease — wasted range.** Min-max spends 2.7x more range than needed because
-  one outlier sets the ceiling; symmetric spends half the range on a sign the tensor barely uses.
+- **The hypothesis is wrong on both counts.** Per-channel buys **+0.0013 mAP50** — inside
+  run-to-run noise. Letting `Z` move buys **+0.0405**, **31x more**.
+- **The best arm is the smallest.** Per-tensor asymmetric leads (0.9228 vs 0.9222) on **60 scales
+  instead of 9,567**, 38 KB lighter.
+- **The knob everyone tunes is the one that does nothing here.** Panel 2 explains why: 7.7x of
+  filter spread, and weights were never where the damage was.
+- **E2 and E3 are one disease — wasted range.** Min-max spends 2.7x more range than the tensor
+  needs because one outlier sets the ceiling; symmetric spends half the range on a sign the tensor
+  never uses.
 
-**Caveat.** Per-channel is free at inference; **asymmetric activations are not** — `Z ≠ 0` adds a
-cross-term to every integer product. And **TensorRT's INT8 path uses symmetric activations**, so
-+0.0405 is currently unreachable on this board through either build path.
+**Caveat — the win is currently unreachable.** Per-channel is free at inference (the scale folds
+into the following batch-norm), but **asymmetric activations are not**: `Z ≠ 0` adds a cross-term
+to every integer product. **TensorRT's INT8 path uses symmetric activations**, so the +0.0405
+cannot be built on this board through either path. It is a simulated result and is labelled one.
 
-**Conclusion.** The knob everyone tunes is worth nothing here; the flag nobody discusses is worth
-4 points. The accuracy-optimal simulated recipe is **percentile 99.99 + asymmetric + per-tensor** —
-which is also the smallest of the four arms.
+**Conclusion.**
+
+- **Keep 60 scales, not 9,567.** Per-filter granularity is the knob everyone reaches for and it is
+  worth nothing on this network.
+- **The zero point is worth 31x more**, and nobody discusses it — because SiLU makes every
+  activation one-sided, and symmetric throws away half the codes.
+- Accuracy-optimal simulated recipe: **percentile 99.99 + asymmetric + per-tensor** — which is also
+  the **smallest** of the four arms.
+- **Blocked in practice:** TensorRT will not build asymmetric activations, so E4 ships the
+  symmetric engine and this stays a number on paper.
 
 ---
 
