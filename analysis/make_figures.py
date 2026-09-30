@@ -2907,14 +2907,12 @@ def fig_xp07e2(records) -> Path | None:
 
     fig = plt.figure(figsize=(12.8, 5.6))
     gs = fig.add_gridspec(1, 2, width_ratios=[1.32, 1.0], wspace=0.28)
-    fig.suptitle("Calibration decides almost everything at INT8 — for free, and both ends "
-                 "of the sweep are wrong", y=1.05, fontsize=14.5)
+    fig.suptitle("Calibration decides almost everything at INT8 — 62 points of DETECTION "
+                 "ACCURACY, for free", y=1.05, fontsize=14.5)
     style.subtitle(fig, "Whole network W8A8, per-channel weights, no retraining. Left: five "
                         "calibration rules, 512 images each. Right: the winner, on nested "
                         f"subsets.\nBoth scored on the {d['n_val_images']}-image validation "
-                        f"split.\n100% = the unquantized FP16 model ({base_map:.4f} mAP50 "
-                        f"overall, {base_tiny:.4f} on tiny plumes); the drop below 100 is "
-                        "DETECTION ACCURACY lost to quantizing, not values lost.", y=0.995)
+                        "split.", y=0.995)
 
     # ---- panel 1: what each method costs --------------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -2925,29 +2923,31 @@ def fig_xp07e2(records) -> Path | None:
     ax.bar(x + 0.20, tin, width=0.38, color=style.ORANGE, zorder=3,
            label="tiny plumes (<0.1%)")
     ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
-    ax.text(-0.45, 100.8, "unquantized FP16 — full accuracy", ha="left",
-            va="bottom", fontsize=8.4, color=style.INK_2, style="italic")
     for i, (a, t) in enumerate(zip(agg, tin)):
-        ax.text(i - 0.20, a + 2.5, f"{a:.0f}", ha="center", fontsize=8.6,
+        ax.text(i - 0.20, a + 2.5, f"{a:.0f}%", ha="center", fontsize=8.6,
                 color=style.BLUE, fontweight="bold")
-        ax.text(i + 0.20, t + 2.5, f"{t:.0f}", ha="center", fontsize=8.6,
+        ax.text(i + 0.20, t + 2.5, f"{t:.0f}%", ha="center", fontsize=8.6,
                 color=style.ORANGE, fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels([nice[m] for m in order], fontsize=8.0)
     ax.set_ylim(0, 118)
     ax.set_ylabel("DETECTION ACCURACY kept\n(mAP50, as % of the unquantized FP16 model)")
-    ax.set_title("1. One setting, 62 points of mAP50", fontsize=12, loc="left")
+    ax.set_title("1. Which rule you pick — accuracy only, size is constant",
+                 fontsize=12, loc="left")
     ax.set_ylim(0, 122)
     # Every arm ships the same bytes, which is what makes the spread free.
     sz = {m: (meth[m].get("size") or {}).get("total_mb") for m in order}
     same = {v for v in sz.values() if v}
     if len(same) == 1:
         fp16_mb = next(iter(meth.values()))["size"]["fp16_baseline_mb"]
-        ax.text(0.5, 0.965, f"all five arms ship the same model: "
-                            f"{next(iter(same)):.2f} MB, from {fp16_mb:.2f} MB FP16",
-                transform=ax.transAxes, ha="center", va="top", fontsize=9.2,
-                color=style.INK, fontweight="bold",
-                bbox=dict(boxstyle="round,pad=0.4", fc="#eef5ee", ec="#8ec9b4", lw=1.0))
+        fig.text(0.5, 0.915, "Every number here is DETECTION ACCURACY (mAP50), as a % of the "
+                             f"unquantized FP16 model — {base_map:.4f} overall, {base_tiny:.4f} "
+                             "on tiny plumes.\nModel size and weight count never change: all "
+                             f"five rules ship the identical {next(iter(same)):.2f} MB model, "
+                             f"from {fp16_mb:.2f} MB FP16. Nothing here measures values lost.",
+                 ha="center", va="top", fontsize=9.6, color=style.INK, fontweight="bold",
+                 linespacing=1.6,
+                 bbox=dict(boxstyle="round,pad=0.5", fc="#eef5ee", ec="#8ec9b4", lw=1.2))
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2,
               fontsize=9, frameon=False)
     style.tidy(ax)
@@ -2968,12 +2968,12 @@ def fig_xp07e2(records) -> Path | None:
         ax.set_ylim(80, 108)
     ax.set_xlabel("calibration images (nested subsets)")
     ax.set_ylabel("DETECTION ACCURACY kept\n(mAP50, as % of the unquantized FP16 model)")
-    ax.set_title("2. …and 32 images is enough", fontsize=12, loc="left")
+    ax.set_title("2. …and 32 calibration images is enough", fontsize=12, loc="left")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2,
               fontsize=9, frameon=False)
     style.tidy(ax)
 
-    fig.subplots_adjust(top=0.84, bottom=0.20)
+    fig.subplots_adjust(top=0.74, bottom=0.20)
     return save(fig, "xp07e2_calibration.png")
 
 
