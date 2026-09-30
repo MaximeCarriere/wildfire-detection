@@ -2912,7 +2912,9 @@ def fig_xp07e2(records) -> Path | None:
     style.subtitle(fig, "Whole network W8A8, per-channel weights, no retraining. Left: five "
                         "calibration rules, 512 images each. Right: the winner, on nested "
                         f"subsets.\nBoth scored on the {d['n_val_images']}-image validation "
-                        "split. Why the rules differ is the previous figure.", y=0.995)
+                        f"split.\n100% = the unquantized FP16 model ({base_map:.4f} mAP50 "
+                        f"overall, {base_tiny:.4f} on tiny plumes); the drop below 100 is what "
+                        "quantizing costs.", y=0.995)
 
     # ---- panel 1: what each method costs --------------------------------
     ax = fig.add_subplot(gs[0, 0])
@@ -2923,6 +2925,8 @@ def fig_xp07e2(records) -> Path | None:
     ax.bar(x + 0.20, tin, width=0.38, color=style.ORANGE, zorder=3,
            label="tiny plumes (<0.1%)")
     ax.axhline(100, color=style.INK_2, ls="--", lw=1.1, zorder=4)
+    ax.text(-0.45, 100.8, "unquantized FP16 — nothing lost", ha="left",
+            va="bottom", fontsize=8.4, color=style.INK_2, style="italic")
     for i, (a, t) in enumerate(zip(agg, tin)):
         ax.text(i - 0.20, a + 2.5, f"{a:.0f}", ha="center", fontsize=8.6,
                 color=style.BLUE, fontweight="bold")
@@ -2931,7 +2935,7 @@ def fig_xp07e2(records) -> Path | None:
     ax.set_xticks(x)
     ax.set_xticklabels([nice[m] for m in order], fontsize=8.0)
     ax.set_ylim(0, 118)
-    ax.set_ylabel("% of the unquantized model kept")
+    ax.set_ylabel("mAP50 kept, as % of the unquantized model\n(100% = nothing lost)")
     ax.set_title("1. One setting, 62 points of mAP50", fontsize=12, loc="left")
     ax.set_ylim(0, 122)
     # Every arm ships the same bytes, which is what makes the spread free.
@@ -2963,13 +2967,13 @@ def fig_xp07e2(records) -> Path | None:
         ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
         ax.set_ylim(80, 108)
     ax.set_xlabel("calibration images (nested subsets)")
-    ax.set_ylabel("% of the unquantized model kept")
+    ax.set_ylabel("mAP50 kept, as % of the unquantized model\n(100% = nothing lost)")
     ax.set_title("2. …and 32 images is enough", fontsize=12, loc="left")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2,
               fontsize=9, frameon=False)
     style.tidy(ax)
 
-    fig.subplots_adjust(top=0.88, bottom=0.20)
+    fig.subplots_adjust(top=0.84, bottom=0.20)
     return save(fig, "xp07e2_calibration.png")
 
 
