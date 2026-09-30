@@ -183,9 +183,19 @@ other.**
 > to measure what the default is protecting you from. The usual deployment recipe — export the
 > graph without the decode and do it in postprocessing — exists for exactly this reason.
 >
-> A format with an **exponent** would not have the problem at all, since small numbers would get
-> small steps. That is FP8, and this board has no FP8 silicon —
-> [measured](../../results/raw/xp07_precision_support.json), not assumed.
+> **Is the gap unbridgeable?** Only for *one uniform grid shared by one tensor*. Drop either
+> constraint and it goes away:
+>
+> | fix | what it does | available here? |
+> |---|---|---|
+> | **don't quantize the decode** | keep it in float — a negligible share of FLOPs | **yes** — TensorRT's default |
+> | **split the tensor** | boxes and scores as separate outputs, each with its own scale (11.65 and 0.0079) | **yes** — E6's decode-out arm |
+> | **per-channel activation scales** | one scale per channel instead of per tensor; both populations fit | **no** — TensorRT quantizes activations per-tensor only |
+> | **a format with an exponent** | small numbers get small steps; no shared grid at all | **no** — [no FP8 silicon on this board](../../results/raw/xp07_precision_support.json) |
+>
+> Two of the four are standard practice, which is why this failure is a curiosity rather than a
+> blocker. The third is a **runtime limitation, not a mathematical one** — per-channel activation
+> quantization would solve it outright.
 
 That asymmetry is the fingerprint XP10 saw and could not explain: mAP50 0.2554, tiny plumes −99%,
 while the night slice still held 0.48 — **box regression destroyed, classification limping on.**

@@ -2465,22 +2465,21 @@ def fig_xp07_head(records) -> Path | None:
                            alpha=0.9, zorder=4))
     ax.annotate("", xy=(0, 0.235), xytext=(step, 0.235),
                 arrowprops=dict(arrowstyle="<->", color=style.RED, lw=1.8))
-    ax.text(step * 0.5, 0.175, "no value representable in here",
+    ax.text(step * 0.5, 0.152, "nothing representable in here",
             ha="center", fontsize=9.4, color=style.RED, fontweight="bold")
 
     # Two callouts, one per population, pushed to opposite ends of the axis so
     # they cannot share a band.
-    ax.annotate(f"all {len(names) - int(is_box.sum())} probability channels\n"
-                f"are inside this sliver (0–{pmax:g})",
-                xy=(pmax * 0.5, 0.31), xytext=(step * 0.12, 0.055),
+    ax.annotate(f"all {len(names) - int(is_box.sum())} probability\nchannels are in here",
+                xy=(pmax * 0.6, 0.32), xytext=(step * 0.30, 0.42),
                 ha="left", va="center", fontsize=9.6, color=style.ORANGE,
                 fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=style.ORANGE, lw=1.6))
 
     bx = 3 * step + step * 0.42
     ax.scatter([bx], [0.50], s=130, color=style.BLUE, zorder=6)
-    ax.annotate("a box coordinate lands near\na step — ~11 px error, survives",
-                xy=(bx, 0.44), xytext=(step * 3.05, 0.055), ha="left", va="center",
+    ax.annotate("a box coordinate lands near a step\n— ~11 px granularity, survives",
+                xy=(bx, 0.44), xytext=(step * 1.55, 0.055), ha="left", va="center",
                 fontsize=9.6, color=style.BLUE, fontweight="bold",
                 arrowprops=dict(arrowstyle="->", color=style.BLUE, lw=1.6))
 
@@ -2496,13 +2495,14 @@ def fig_xp07_head(records) -> Path | None:
             color=[style.BLUE, style.ORANGE], zorder=3, height=0.34)
     ax.set_xscale("log"); ax.set_xlim(0.02, 4000)
     ax.axvline(1.0, color=style.RED, lw=1.8, zorder=4)
-    ax.text(1.0, 1.45, "one step", fontsize=9.5, color=style.RED,
-            fontweight="bold", ha="center")
-    ax.text(lb * 1.35, 0, f"{lb:.0f} levels", va="center", fontsize=11,
+    ax.text(1.0, -0.52, "one step", fontsize=9.5, color=style.RED,
+            fontweight="bold", ha="center", va="center")
+    ax.text(lb * 1.30, 0, f"{lb:.0f} levels", va="center", fontsize=11,
             color=style.BLUE, fontweight="bold")
-    ax.text(2.6, 1, f"{lp:.3f} of one level\n→ every probability becomes 0",
+    # Starts right of the "one step" line so the line does not strike through it.
+    ax.text(1.5, 1.34, f"{lp:.3f} of one level\n→ every probability becomes 0",
             va="center", ha="left", fontsize=10.5, color=style.RED, fontweight="bold")
-    ax.set_ylim(-0.6, 1.7)
+    ax.set_ylim(-0.85, 1.75)
     ax.set_xlabel("INT8 levels this quantity actually gets")
     ax.set_title("3. Boxes survive. Scores do not.", fontsize=12, loc="left")
     style.tidy(ax, ygrid=False)
