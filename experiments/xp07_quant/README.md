@@ -91,7 +91,7 @@ clip point. Four of five keep the whole range; one does not.*
 | [E7](#e7-ptq-vs-qat-fairly) | effort | does QAT beat PTQ at a matched budget? | ⏸ not run; **costed at 9.0 h** |
 | [E8](#e8-below-8-bits-and-storage-only-compression) | bit-width | how small can the artifact get? | ✅ **3.23 MB** — and dominated by plain INT4 |
 | [E9](#e9-the-frontier-quantization-first-then-everything-else) | — | which decision matters, and which technique wins? | ✅ **[calibration and target decide it](#e9a-quantization-on-its-own)**; across families, no outright winner |
-| [E10](#e10-composition-prune-then-quantize) | composition | do XP6 and XP7 stack? | ⚠️ on aggregate yes; **19.5% of distant smoke survives**; arm 2 unresolved |
+| [E10](#e10-composition-prune-then-quantize) | composition | do XP6 and XP7 stack? | ⚠️ on aggregate yes; **17.2% of distant smoke survives**; arm 2 unresolved |
 
 **The unquantized FP16 model is the top row of every table**, so every number is read against it.
 
@@ -693,7 +693,7 @@ Plumes under 0.1% of the frame (~20x20 px). This is what early detection *is*.
 ## E10. Composition: prune, then quantize
 
 > **Axis:** composition · **Question:** do XP6's and XP7's savings stack? · **Answer:** on aggregate
-> the second compression costs *less* than the first; on distant smoke they multiply and **19.5%**
+> the second compression costs *less* than the first; on distant smoke they multiply and **17.2%**
 > survives. Arm 2 is **unresolved** — see below.
 
 **Hypothesis.** The two save through different mechanisms (fewer channels vs cheaper MACs on less
